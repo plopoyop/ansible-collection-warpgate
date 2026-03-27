@@ -1,0 +1,11 @@
+---
+# handlers file for plopoyop.warpgate
+- name: "Restart Warpgate"
+  ansible.builtin.service:
+    name: "{{ warpgate_service_name }}"
+    state: "restarted"
+  when: warpgate_service_state == "started" and warpgate_service_enabled
+
+- name: "Reload Systemd"
+  ansible.builtin.systemd_service:
+    daemon_reload: true

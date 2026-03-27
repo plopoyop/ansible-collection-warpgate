@@ -1,0 +1,16 @@
+[Unit]
+Description=Warpgate
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+User={{ warpgate_system_user }}
+Group={{ warpgate_system_group }}
+ExecStart={{ warpgate_executable_path }} --config {{ warpgate_config_file_path }} run
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

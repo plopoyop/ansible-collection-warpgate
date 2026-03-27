@@ -1,0 +1,39 @@
+---
+- name: "Set command args"
+  ansible.builtin.set_fact:
+    warpgate_command_args:
+      - "--config {{ warpgate_config_file_path }}"
+      - "unattended-setup"
+      - "--data-path {{ warpgate_data_path }}"
+      - "--http-port {{ warpgate_http_port }}"
+      - "--admin-password {{ warpgate_admin_password }}"
+      - "{{ '--ssh-port ' + warpgate_ssh_port | ansible.builtin.string if warpgate_ssh_enabled else '' }}"
+      - "--database-url {{ warpgate_database_url }}"
+      - "{{ '--mysql-port ' + warpgate_mysql_port | ansible.builtin.string if warpgate_mysql_enabled else '' }}"
+      - "{{ '--postgres-port ' + warpgate_postgres_port | ansible.builtin.string if warpgate_postgres_enabled else '' }}"
+      - "{{ '--record-sessions' if warpgate_record_sessions else '' }}"
+      - "--external-host {{ warpgate_external_host }}"
+
+- name: "Create initial configuration"
+  ansible.builtin.command:
+    cmd: "{{ warpgate_executable_path }} {{ warpgate_command_args | join(' ') }}"
+    creates: "{{ warpgate_config_file_path }}"
+  become: true
+  become_user: "{{ warpgate_system_user }}"
+
+- name: "Update config file"
+  ansible.builtin.template:
+    src: "etc/warpgate/warpgate.yaml.j2"
+    dest: "{{ warpgate_config_file_path }}"
+    owner: "{{ warpgate_system_user }}"
+    group: "{{ warpgate_system_group }}"
+    mode: "0600"
+  notify:
+    - "Restart Warpgate"
+
+- name: "Ensure service is in correct state"
+  ansible.builtin.service:
+    name: "{{ warpgate_service_name }}"
+    state: "{{ warpgate_service_state }}"
+    enabled: "{{ warpgate_service_enabled }}"
+  when: not ansible_check_mode

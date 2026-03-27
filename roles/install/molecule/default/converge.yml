@@ -1,0 +1,20 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: false
+  vars:
+    warpgate_system_user: "warpgateu"
+    warpgate_system_group: "warpgateg"
+    warpgate_admin_password: "admin"
+    warpgate_ssh_enabled: true
+    warpgate_ssh_port: 2223
+    warpgate_mysql_enabled: true
+    warpgate_mysql_port: 3306
+    warpgate_postgres_enabled: true
+    warpgate_postgres_port: 5432
+    warpgate_record_sessions: true
+    warpgate_external_host: "localhost"
+  tasks:
+    - name: "Import role"
+      ansible.builtin.import_role:
+        name: "plopoyop.warpgate.install"

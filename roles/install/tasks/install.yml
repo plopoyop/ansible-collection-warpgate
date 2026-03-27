@@ -1,0 +1,40 @@
+---
+- name: "Create systemd service file"
+  ansible.builtin.template:
+    src: "etc/systemd/system/warpgate.service.j2"
+    dest: "{{ warpgate_service_file_path }}"
+    owner: "{{ warpgate_system_user }}"
+    group: "{{ warpgate_system_group }}"
+    mode: "0640"
+  notify:
+    - "Reload Systemd"
+
+- name: "Ensure systemd service is reloaded"
+  ansible.builtin.meta: flush_handlers
+
+- name: "Download Warpgate"
+  ansible.builtin.get_url:
+    url: "{{ warpgate_download_url }}"
+    dest: "{{ warpgate_executable_path }}"
+    owner: "{{ warpgate_system_user }}"
+    group: "{{ warpgate_system_group }}"
+    mode: "0750"
+  ignore_errors: "{{ ansible_check_mode }}"
+  notify: "Restart Warpgate"
+  when: ( not warpgate_exec.stat.exists ) or ( warpgate_current_version != warpgate_version)
+
+- name: "Ensure data path exists"
+  ansible.builtin.file:
+    path: "{{ warpgate_data_path }}"
+    state: "directory"
+    owner: "{{ warpgate_system_user }}"
+    group: "{{ warpgate_system_group }}"
+    mode: "0750"
+
+- name: "Ensure config file directory exists"
+  ansible.builtin.file:
+    path: "{{ warpgate_config_file_directory }}"
+    state: "directory"
+    owner: "{{ warpgate_system_user }}"
+    group: "{{ warpgate_system_group }}"
+    mode: "0750"
