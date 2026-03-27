@@ -1,0 +1,25 @@
+---
+name: Test roles
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'roles/**'
+      - '.github/**'
+      - devbox.json
+      - devbox.lock
+  pull_request:
+    branches: [main]
+    paths:
+      - 'roles/**'
+      - '.github/**'
+      - devbox.json
+      - devbox.lock
+
+jobs:
+  install:
+    uses: ./.github/workflows/test-role.yaml
+    with:
+      role_name: "install"

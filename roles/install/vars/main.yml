@@ -1,0 +1,10 @@
+---
+# vars file for plopoyop.warpgate
+warpgate_download_url: "https://github.com/warp-tech/warpgate/releases/download/v{{ warpgate_version }}/warpgate-v{{ warpgate_version }}-x86_64-linux"
+warpgate_install_path: "/usr/bin"
+warpgate_executable_path: "{{ warpgate_install_path }}/warpgate"
+
+warpgate_service_name: "warpgate"
+warpgate_service_file_path: "/etc/systemd/system/{{ warpgate_service_name }}.service"
+
+warpgate_config_file_directory: "/etc/warpgate"

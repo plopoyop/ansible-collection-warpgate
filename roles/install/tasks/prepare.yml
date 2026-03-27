@@ -1,0 +1,32 @@
+---
+- name: "Create Warpgate group"
+  ansible.builtin.group:
+    name: "{{ warpgate_system_group }}"
+    system: true
+
+- name: "Create Warpgate user"
+  ansible.builtin.user:
+    name: "{{ warpgate_system_user }}"
+    group: "{{ warpgate_system_group }}"
+    create_home: false
+    shell: "/usr/sbin/nologin"
+    system: true
+
+- name: "Check if already installed"
+  ansible.builtin.stat:
+    path: "{{ warpgate_executable_path }}"
+  register: warpgate_exec
+
+- name: "Get version if warpgate is installed"
+  when: warpgate_exec.stat.exists
+  block:
+    - name: "Get version"
+      ansible.builtin.command: "{{ warpgate_executable_path }} version"
+      failed_when: false
+      changed_when: false
+      check_mode: false
+      register: warpgate_output
+
+    - name: "Set current installed version"
+      ansible.builtin.set_fact:
+        warpgate_current_version: "{{ warpgate_output.stdout_lines[0] | regex_search('^warpgate\\sv((0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*))-?(.*)?$', '\\1') | first }}"

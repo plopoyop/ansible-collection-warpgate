@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.0/.schema/devbox.schema.json",
+  "packages": [
+    "ansible-doctor@8.2.2",
+    "ansible-lint@25.8.2",
+    "git@2.53.0",
+    "go-task@3.48.0",
+    "podman@5.8.1",
+    "prek@0.3.6",
+    "python313Packages.ansible@13.3.0",
+    "python313Packages.molecule@25.12.0",
+    "python313Packages.molecule-plugins@23.5.3",
+    "python313Packages.pytest@9.0.2",
+    "python313Packages.pytest-ansible@26.2.0",
+    "python313Packages.ruff@0.15.6",
+    "yamllint@1.37.1"
+  ]
+}

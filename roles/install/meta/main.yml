@@ -1,0 +1,25 @@
+---
+galaxy_info:
+  author: "Clément Hubert"
+  role_name: "install"
+  description: "Install warpgate"
+
+  license: "MPL2"
+
+  min_ansible_version: "2.1"
+
+  galaxy_tags:
+    - "warpgate"
+    - "ssh"
+    - "bastion"
+    - "proxy"
+    - "http"
+    - "mysql"
+    - "postgresql"
+
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+
+dependencies: []

@@ -1,0 +1,127 @@
+---
+# defaults file for plopoyop.warpgate
+# @var warpgate_system_user
+# @var warpgate_system_user:type: string
+# @var warpgate_system_user:description: >
+# System user name to create
+warpgate_system_user: "warpgate"
+
+# @var warpgate_system_group
+# @var warpgate_system_group:type: string
+# @var warpgate_system_group:description: >
+# System group name to create
+warpgate_system_group: "warpgate"
+
+# @var warpgate_version
+# @var warpgate_version:type: string
+# @var warpgate_version:description: >
+# warpgate version to install
+warpgate_version: 0.21.1
+
+# @var warpgate_service_state
+# @var warpgate_service_state:type: string
+# @var warpgate_service_state:description: >
+# warpgate service desired state
+warpgate_service_state: "started"
+
+# @var warpgate_service_enabled
+# @var warpgate_service_enabled:type: boolean
+# @var warpgate_service_enabled:description: >
+# Enable warpgate service
+warpgate_service_enabled: true
+
+
+# @var warpgate_data_path
+# @var warpgate_data_path:type: string
+# @var warpgate_data_path:description: >
+# Warpgate data path
+warpgate_data_path: "/var/lib/warpgate"
+
+# @var warpgate_config_file_path
+# @var warpgate_config_file_path:type: string
+# @var warpgate_config_file_path:description: >
+# Warpgate config path
+warpgate_config_file_path: "{{ warpgate_config_file_directory }}/warpgate.yaml"
+
+# @var warpgate_http_port
+# @var warpgate_http_port:type: int
+# @var warpgate_http_port:description: >
+# Warpgate HTTP port
+warpgate_http_port: 8888
+
+# @var warpgate_ssh_enabled
+# @var warpgate_ssh_enabled:type: boolean
+# @var warpgate_ssh_enabled:description: >
+# Warpgate SSH enabled
+warpgate_ssh_enabled: false
+
+# @var warpgate_ssh_port
+# @var warpgate_ssh_port:type: int
+# @var warpgate_ssh_port:description: >
+# Warpgate SSH port
+warpgate_ssh_port: 2222
+
+# @var warpgate_admin_password
+# @var warpgate_admin_password:type: string
+# @var warpgate_admin_password:description: >
+# Warpgate admin password
+
+# @var warpgate_database_url
+# @var warpgate_database_url:type: string
+# @var warpgate_database_url:description: >
+# Warpgate database URL
+warpgate_database_url: "sqlite:{{ warpgate_data_path }}/warpgate.db"
+
+# @var warpgate_mysql_enabled
+# @var warpgate_mysql_enabled:type: boolean
+# @var warpgate_mysql_enabled:description: >
+# Warpgate MySQL enabled
+warpgate_mysql_enabled: false
+
+# @var warpgate_mysql_port
+# @var warpgate_mysql_port:type: int
+# @var warpgate_mysql_port:description: >
+# Warpgate MySQL port
+warpgate_mysql_port: 33306
+
+# @var warpgate_postgres_enabled
+# @var warpgate_postgres_enabled:type: boolean
+# @var warpgate_postgres_enabled:description: >
+# Warpgate PostgreSQL enabled
+warpgate_postgres_enabled: false
+
+# @var warpgate_postgres_port
+# @var warpgate_postgres_port:type: int
+# @var warpgate_postgres_port:description: >
+# Warpgate PostgreSQL port
+warpgate_postgres_port: 55432
+
+# @var warpgate_record_sessions
+# @var warpgate_record_sessions:type: boolean
+# @var warpgate_record_sessions:description: >
+# Warpgate record sessions
+warpgate_record_sessions: true
+
+# @var warpgate_external_host
+# @var warpgate_external_host:type: string
+# @var warpgate_external_host:description: >
+# Warpgate external host
+warpgate_external_host: "localhost"
+
+# @var warpgate_kubernetes_enabled
+# @var warpgate_kubernetes_enabled:type: boolean
+# @var warpgate_kubernetes_enabled:description: >
+# Warpgate Kubernetes enabled
+warpgate_kubernetes_enabled: false
+
+# @var warpgate_kubernetes_port
+# @var warpgate_kubernetes_port:type: int
+# @var warpgate_kubernetes_port:description: >
+# Warpgate Kubernetes port
+warpgate_kubernetes_port: 8443
+
+# @var warpgate_sso_providers
+# @var warpgate_sso_providers:type: list
+# @var warpgate_sso_providers:description: >
+# Warpgate SSO providers
+warpgate_sso_providers: []

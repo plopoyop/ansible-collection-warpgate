@@ -1,0 +1,56 @@
+---
+- name: Verify
+  hosts: all
+  tasks:
+    - name: "Check group has been created"
+      ansible.builtin.group:
+        name: "warpgateg"
+        state: "present"
+      check_mode: true
+      register: "warpgate_group_check"
+
+    - name: "Check user has been created"
+      ansible.builtin.user:
+        name: "warpgateu"
+        group: "warpgateg"
+        create_home: false
+        system: true
+      check_mode: true
+      register: "warpgate_user_check"
+
+    - name: "Verify warpgate service is running"
+      ansible.builtin.service:
+        name: "warpgate"
+        state: "started"
+        enabled: true
+      failed_when: false
+      check_mode: true
+      register: "warpgate_service"
+
+    - name: "Check install"
+      ansible.builtin.stat:
+        path: "/usr/bin/warpgate"
+      register: "st_bin"
+
+    - name: "Check service config file"
+      ansible.builtin.stat:
+        path: "/etc/warpgate/warpgate.yaml"
+      register: "st_service_config"
+
+    - name: "Gather facts on listening ports"
+      community.general.listen_ports_facts:
+
+    - name: "Assert conditions"
+      ansible.builtin.assert:
+        that:
+          - not warpgate_group_check.changed
+          - not warpgate_user_check.changed
+          - not warpgate_service.changed
+          - st_bin.stat.mode == "0750"
+          - st_service_config.stat.mode == "0600"
+          - (ansible_facts.tcp_listen | selectattr('port', 'equalto', 2223) | length ) > 0
+          - (ansible_facts.tcp_listen | selectattr('port', 'equalto', 8888) | length ) > 0
+          - (ansible_facts.tcp_listen | selectattr('port', 'equalto', 3306) | length ) > 0
+          - (ansible_facts.tcp_listen | selectattr('port', 'equalto', 5432) | length ) > 0
+        success_msg: "All assertions passed!"
+        fail_msg: "Some assertions failed!"
