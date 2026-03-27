@@ -1,0 +1,19 @@
+---
+name: test role
+on:
+  workflow_call:
+    inputs:
+      role_name:
+        required: true
+        type: string
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install devbox
+        uses: jetify-com/devbox-install-action@v0.15.0
+      - name: Prepare env
+        run: devbox run -- task prepare
+      - name: Run molecule test
+        run: devbox run -- task test:role:${{inputs.role_name}}
