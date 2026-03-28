@@ -6,16 +6,22 @@ on:
     branches: [main]
     paths:
       - 'roles/**'
+      - 'plugins/**'
+      - 'tests/**'
       - '.github/workflows/lint.yml'
-      - '.ansible-lint.yml'
-      - '.yamllint.yml'
+      - '.ansible-lint'
+      - '.yamllint'
+      - 'ruff.toml'
   pull_request:
     branches: [main]
     paths:
       - 'roles/**'
+      - 'plugins/**'
+      - 'tests/**'
       - '.github/workflows/lint.yml'
-      - '.ansible-lint.yml'
-      - '.yamllint.yml'
+      - '.ansible-lint'
+      - '.yamllint'
+      - 'ruff.toml'
 
 jobs:
   lint:

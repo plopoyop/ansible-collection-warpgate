@@ -36,6 +36,12 @@ tasks:
     cmds:
       - yamllint .
       - ansible-lint
+      - ruff check plugins/ tests/
+
+  test:modules:
+    desc: "Run pytest for ansible modules"
+    cmds:
+      - PYTHONPATH=${PYTHONPATH}:${PWD} pytest tests/
 
   test:role:*:
     desc: "Run tests on a specific role"
