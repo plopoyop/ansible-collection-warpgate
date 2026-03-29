@@ -125,3 +125,10 @@ warpgate_kubernetes_port: 8443
 # @var warpgate_sso_providers:description: >
 # Warpgate SSO providers
 warpgate_sso_providers: []
+
+# @var warpgate_minimize_password_login
+# @var warpgate_minimize_password_login:type: boolean
+# @var warpgate_minimize_password_login:description: >
+# When true, the password login form is collapsed behind a toggle on the login page.
+# Useful for SSO-first environments where password login is only used by admins.
+warpgate_minimize_password_login: false
