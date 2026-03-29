@@ -1,0 +1,5 @@
+extend-exclude = ["tests/_vendor"]
+
+[lint.per-file-ignores]
+# E402: module-level imports not at top — standard pattern for Ansible modules
+"plugins/modules/*.py" = ["E402"]

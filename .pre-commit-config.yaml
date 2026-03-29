@@ -30,3 +30,11 @@ repos:
         additional_dependencies:
           - ansible
         verbose: false
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.7
+    hooks:
+      - id: ruff
+        args: ["--fix", "./plugins/", "./tests/"]
+      - id: ruff-format
+        args: ["./plugins/", "./tests/"]

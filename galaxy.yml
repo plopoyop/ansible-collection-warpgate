@@ -28,7 +28,23 @@ homepage: 'https://github.com/plopoyop/ansible-collection-warpgate'
 issues: 'https://github.com/plopoyop/ansible-collection-warpgate/issues'
 
 build_ignore:
+  - tests
+  - collections
   - .devbox
+  - .pytest_cache
+  - .ruff_cache
+  - __pycache__
+  - .github
+  - .ansible-lint
+  - .yamllint
+  - .pre-commit-config.yaml
+  - .gitignore
+  - .ansible
+  - .task
   - Taskfile.yml
   - devbox.json
   - devbox.lock
+  - ruff.toml
+  - pytest.ini
+  - renovate.json
+  - CHANGELOG.md
