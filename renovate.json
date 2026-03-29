@@ -2,5 +2,30 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "github>plopoyop/renovate-config"
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "github-releases"
+      ],
+      "matchPackageNames": [
+        "stalwartlabs/stalwart"
+      ]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "roles/install/defaults/main.yml",
+        "roles/install/README.md"
+      ],
+      "matchStrings": [
+        "stalwart_version:\\s*(?<quote>\")?(?<currentValue>[0-9\\.]+)\"?"
+      ],
+      "depNameTemplate": "stalwartlabs/stalwart",
+      "autoReplaceStringTemplate": "stalwart_version: {{#if quote}}\"{{newValue}}\"{{else}}{{newValue}}{{/if}}",
+      "datasourceTemplate": "github-releases"
+    }
   ]
 }
