@@ -18,6 +18,7 @@ Install warpgate
   - [warpgate_install_path](#warpgate_install_path)
   - [warpgate_kubernetes_enabled](#warpgate_kubernetes_enabled)
   - [warpgate_kubernetes_port](#warpgate_kubernetes_port)
+  - [warpgate_minimize_password_login](#warpgate_minimize_password_login)
   - [warpgate_mysql_enabled](#warpgate_mysql_enabled)
   - [warpgate_mysql_port](#warpgate_mysql_port)
   - [warpgate_postgres_enabled](#warpgate_postgres_enabled)
@@ -167,6 +168,19 @@ Warpgate Kubernetes port
 
 ```YAML
 warpgate_kubernetes_port: 8443
+```
+
+### warpgate_minimize_password_login
+
+When true, the password login form is collapsed behind a toggle on the login page.
+Useful for SSO-first environments where password login is only used by admins.
+
+**_Type:_** boolean<br />
+
+#### Default value
+
+```YAML
+warpgate_minimize_password_login: false
 ```
 
 ### warpgate_mysql_enabled

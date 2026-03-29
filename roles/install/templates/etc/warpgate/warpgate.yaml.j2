@@ -24,6 +24,7 @@ http:
   session_max_age: 30m
   cookie_max_age: 1day
   sni_certificates: []
+  minimize_password_login: {{ warpgate_minimize_password_login | string | ansible.builtin.lower }}
 kubernetes:
   enable: {{ warpgate_kubernetes_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_kubernetes_port }}'
