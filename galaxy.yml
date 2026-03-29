@@ -4,12 +4,9 @@ version: 1.0.0
 readme: README.md
 authors:
   - Clément Hubert
-
 description: Ansible collection to install and configure Warpgate
-
 license:
   - MPL-2.0
-
 tags:
   - infrastructure
   - linux
@@ -20,13 +17,10 @@ tags:
   - http
   - mysql
   - postgresql
-
 dependencies: {}
-
 repository: 'https://github.com/plopoyop/ansible-collection-warpgate'
 homepage: 'https://github.com/plopoyop/ansible-collection-warpgate'
 issues: 'https://github.com/plopoyop/ansible-collection-warpgate/issues'
-
 build_ignore:
   - tests
   - collections
