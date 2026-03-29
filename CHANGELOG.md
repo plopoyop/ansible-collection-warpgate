@@ -6,12 +6,9 @@
 
 ## 🚀 New Features
 
+- Add configure warpgate role [\#3](https://github.com/plopoyop/ansible-collection-warpgate/pull/3) ([plopoyop](https://github.com/plopoyop))
 - Add Warpgate ansible module [\#2](https://github.com/plopoyop/ansible-collection-warpgate/pull/2) ([plopoyop](https://github.com/plopoyop))
 - Init collection [\#1](https://github.com/plopoyop/ansible-collection-warpgate/pull/1) ([plopoyop](https://github.com/plopoyop))
-
-**Merged pull requests:**
-
-- Add configure warpgate role [\#3](https://github.com/plopoyop/ansible-collection-warpgate/pull/3) ([plopoyop](https://github.com/plopoyop))
 
 
 
