@@ -1,0 +1,88 @@
+---
+# defaults file for plopoyop.warpgate.configure
+
+# @var warpgate_admin_username
+# @var warpgate_admin_username:type: string
+# @var warpgate_admin_username:description: >
+# Warpgate admin username (for automatic API token via POST session)
+warpgate_admin_username: "admin"
+
+# @var warpgate_admin_password
+# @var warpgate_admin_password:type: string
+# @var warpgate_admin_password:description: >
+# Warpgate admin password
+
+# @var warpgate_api_token
+# @var warpgate_api_token:type: string
+# @var warpgate_api_token:description: >
+# Warpgate API token. If unset, the role will try to obtain one via user API
+# (POST /auth/login then POST /profile/api-tokens). You can also set it manually (Admin UI).
+
+# @var warpgate_api_host
+# @var warpgate_api_host:type: string
+# @var warpgate_api_host:description: >
+# Warpgate API host
+# @var warpgate_api_host:example: >
+# warpgate_api_host: "https://localhost:8888/@warpgate/admin/api/"
+
+# @var warpgate_api_insecure
+# @var warpgate_api_insecure:type: boolean
+# @var warpgate_api_insecure:description: >
+# Warpgate API insecure
+warpgate_api_insecure: false
+
+# @var warpgate_roles:type: list
+# @var warpgate_roles:description: >
+# Warpgate roles
+# @var warpgate_roles: example:
+# warpgate_roles:
+#   - name: "developers"
+#     description: "Role for development team"
+#   - name: "ops"
+#     description: "Role for ops team"
+warpgate_roles: []
+
+# @var warpgate_users:type: list
+# @var warpgate_users:description: >
+# Warpgate users
+# @var warpgate_users: example:
+# warpgate_users:
+#   - name: "test"
+#     description: "test"
+#     roles:
+#       - "developers"
+#   - name: "test2"
+#     description: "test2"
+#     roles:
+#       - "ops"
+#     password_credentials:
+#       - "test"
+#       - "test2"
+#     public_key_credentials:
+#       - label: "Work Laptop"
+#         public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPybWSk9tjp8btUNrHjLbVxSLD+Wopno8cpbJyTp5wlr"
+warpgate_users: []
+
+# @var warpgate_target_groups:type: list
+# @var warpgate_target_groups:description: >
+# Warpgate target groups
+# @var warpgate_target_groups: example:
+# warpgate_target_groups:
+#   - name: "production"
+#     description: "Production environment servers"
+#     color: "Danger"
+warpgate_target_groups: []
+
+# @var warpgate_targets:type: list
+# @var warpgate_targets:description: >
+# Warpgate targets
+# @var warpgate_targets: example:
+# warpgate_targets:
+#   - name: "test"
+#     description: "test"
+#     group: "production"
+#     ssh_options:
+#       host: "localhost"
+#       port: 22
+#       username: "test"
+warpgate_targets: []

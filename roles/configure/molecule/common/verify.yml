@@ -1,0 +1,177 @@
+---
+- name: Verify
+  hosts: all
+  vars_files:
+    - "../vars/configure.yml"
+  tasks:
+    - name: "Set user API base URL"
+      ansible.builtin.set_fact:
+        warpgate_user_api_host: "{{ (warpgate_api_host | regex_replace('/@warpgate/admin/api/?$', '/@warpgate/api/')) }}"
+
+    - name: "Login to Warpgate API"
+      ansible.builtin.uri:
+        url: "{{ warpgate_user_api_host }}auth/login"
+        method: POST
+        body_format: json
+        body:
+          username: "{{ warpgate_admin_username }}"
+          password: "{{ warpgate_admin_password }}"
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        status_code: [201]
+        timeout: 10
+      register: _verify_login
+
+    - name: "Set auth headers"
+      ansible.builtin.set_fact:
+        _verify_auth_headers:
+          Cookie: "{{ _verify_login.set_cookie }}"
+
+    # ---- Verify Roles ----
+    - name: "Get all roles from API"
+      ansible.builtin.uri:
+        url: "{{ warpgate_api_host }}roles"
+        method: GET
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        headers: "{{ _verify_auth_headers }}"
+        status_code: [200]
+        timeout: 10
+      register: _verify_roles
+
+    - name: "Assert expected roles exist"
+      ansible.builtin.assert:
+        that:
+          - item.name in (_verify_roles.json | map(attribute='name'))
+        fail_msg: "Role '{{ item.name }}' not found in Warpgate"
+        success_msg: "Role '{{ item.name }}' exists"
+      loop: "{{ warpgate_roles }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    # ---- Verify Users ----
+    - name: "Get all users from API"
+      ansible.builtin.uri:
+        url: "{{ warpgate_api_host }}users"
+        method: GET
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        headers: "{{ _verify_auth_headers }}"
+        status_code: [200]
+        timeout: 10
+      register: _verify_users
+
+    - name: "Assert expected users exist"
+      ansible.builtin.assert:
+        that:
+          - item.name in (_verify_users.json | map(attribute='username'))
+        fail_msg: "User '{{ item.name }}' not found in Warpgate"
+        success_msg: "User '{{ item.name }}' exists"
+      loop: "{{ warpgate_users }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    # ---- Verify Target Groups ----
+    - name: "Get all target groups from API"
+      ansible.builtin.uri:
+        url: "{{ warpgate_api_host }}target-groups"
+        method: GET
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        headers: "{{ _verify_auth_headers }}"
+        status_code: [200]
+        timeout: 10
+      register: _verify_groups
+
+    - name: "Assert expected target groups exist"
+      ansible.builtin.assert:
+        that:
+          - item.name in (_verify_groups.json | map(attribute='name'))
+        fail_msg: "Target group '{{ item.name }}' not found in Warpgate"
+        success_msg: "Target group '{{ item.name }}' exists"
+      loop: "{{ warpgate_target_groups }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    # ---- Verify Targets ----
+    - name: "Get all targets from API"
+      ansible.builtin.uri:
+        url: "{{ warpgate_api_host }}targets"
+        method: GET
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        headers: "{{ _verify_auth_headers }}"
+        status_code: [200]
+        timeout: 10
+      register: _verify_targets
+
+    - name: "Assert expected targets exist"
+      ansible.builtin.assert:
+        that:
+          - item.name in (_verify_targets.json | map(attribute='name'))
+        fail_msg: "Target '{{ item.name }}' not found in Warpgate"
+        success_msg: "Target '{{ item.name }}' exists"
+      loop: "{{ warpgate_targets }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    # ---- Verify User Role Assignments ----
+    - name: "Build user ID map"
+      ansible.builtin.set_fact:
+        _verify_user_map: >-
+          {{ _verify_user_map | default({}) | combine({user.username: user.id}) }}
+      loop: "{{ _verify_users.json }}"
+      loop_control:
+        loop_var: user
+        label: "{{ user.username }}"
+
+    - name: "Get roles for each expected user"
+      ansible.builtin.uri:
+        url: "{{ warpgate_api_host }}users/{{ _verify_user_map[item.name] }}/roles"
+        method: GET
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        headers: "{{ _verify_auth_headers }}"
+        status_code: [200]
+        timeout: 10
+      register: _verify_user_roles
+      loop: "{{ warpgate_users | selectattr('roles', 'defined') }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "Assert user role assignments"
+      ansible.builtin.assert:
+        that:
+          - item.1 in (item.0.json | map(attribute='name'))
+        fail_msg: "User '{{ item.0.item.name }}' is not assigned role '{{ item.1 }}'"
+        success_msg: "User '{{ item.0.item.name }}' has role '{{ item.1 }}'"
+      loop: "{{ _verify_user_roles.results | subelements('item.roles') }}"
+      loop_control:
+        label: "{{ item.0.item.name }} -> {{ item.1 }}"
+
+    # ---- Verify Target Role Assignments ----
+    - name: "Build target ID map"
+      ansible.builtin.set_fact:
+        _verify_target_map: >-
+          {{ _verify_target_map | default({}) | combine({target.name: target.id}) }}
+      loop: "{{ _verify_targets.json }}"
+      loop_control:
+        loop_var: target
+        label: "{{ target.name }}"
+
+    - name: "Get roles for each expected target"
+      ansible.builtin.uri:
+        url: "{{ warpgate_api_host }}targets/{{ _verify_target_map[item.name] }}/roles"
+        method: GET
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        headers: "{{ _verify_auth_headers }}"
+        status_code: [200]
+        timeout: 10
+      register: _verify_target_roles
+      loop: "{{ warpgate_targets | selectattr('roles', 'defined') }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "Assert target role assignments"
+      ansible.builtin.assert:
+        that:
+          - item.1 in (item.0.json | map(attribute='name'))
+        fail_msg: "Target '{{ item.0.item.name }}' is not assigned role '{{ item.1 }}'"
+        success_msg: "Target '{{ item.0.item.name }}' has role '{{ item.1 }}'"
+      loop: "{{ _verify_target_roles.results | subelements('item.roles') }}"
+      loop_control:
+        label: "{{ item.0.item.name }} -> {{ item.1 }}"

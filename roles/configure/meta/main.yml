@@ -1,0 +1,23 @@
+---
+galaxy_info:
+  namespace: "plopoyop"
+  role_name: "configure"
+  description: "Configure warpgate via API (roles, users, targets, groups)"
+  author: "Clément Hubert"
+
+  issue_tracker_url: "https://github.com/plopoyop/ansible-role-warpgate/issues"
+
+  license: "MPL2"
+
+  min_ansible_version: "2.1"
+
+  galaxy_tags:
+    - "warpgate"
+    - "ssh"
+    - "bastion"
+    - "proxy"
+    - "http"
+    - "mysql"
+    - "postgresql"
+
+dependencies: []

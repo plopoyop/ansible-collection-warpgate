@@ -1,0 +1,3 @@
+---
+- name: "Import configure tasks"
+  ansible.builtin.import_tasks: "configure.yml"
