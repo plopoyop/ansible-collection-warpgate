@@ -1,0 +1,9 @@
+---
+- name: Prepare
+  hosts: all
+  vars_files:
+    - "../vars/configure.yml"
+  tasks:
+    - name: "Import install role"
+      ansible.builtin.import_role:
+        name: "plopoyop.warpgate.install"

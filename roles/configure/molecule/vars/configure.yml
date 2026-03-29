@@ -1,0 +1,44 @@
+---
+warpgate_api_host: "https://localhost:8888/@warpgate/admin/api/"
+warpgate_api_insecure: true
+warpgate_admin_username: "admin"
+warpgate_admin_password: "admin"
+
+warpgate_roles:
+  - name: "developers"
+    description: "Role for development team"
+  - name: "ops"
+    description: "Role for ops team"
+
+warpgate_users:
+  - name: "Dave lopper"
+    description: "Lead developer"
+    roles:
+      - "developers"
+  - name: "Amin Nistrator"
+    description: "Administrator for production environment"
+    roles:
+      - "ops"
+
+warpgate_target_groups:
+  - name: "production"
+    description: "Production environment servers"
+    color: "Danger"
+  - name: "development"
+    description: "Development environment servers"
+    color: "Success"
+
+warpgate_targets:
+  - name: "localhost-prod"
+    description: "Production server"
+    group: "production"
+    roles:
+      - "developers"
+      - "ops"
+    ssh_options:
+      host: "localhost"
+      port: 22
+      username: "testuser"
+      allow_insecure_algos: false
+      password_auth:
+        password: "testpassword"

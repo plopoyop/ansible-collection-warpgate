@@ -1,0 +1,73 @@
+---
+- name: Handle Warpgate roles
+  warpgate_role:
+    host: "{{ warpgate_api_host }}"
+    token: "{{ warpgate_api_token if (warpgate_api_token is defined and warpgate_api_token | length > 0) else omit }}"
+    api_username: "{{ warpgate_admin_username | default(omit) }}"
+    api_password: "{{ warpgate_admin_password | default(omit) }}"
+    insecure: "{{ warpgate_api_insecure }}"
+    name: "{{ warpgate_current_role.name }}"
+    description: "{{ warpgate_current_role.description | default('') }}"
+    state: "{{ warpgate_current_role.state | default('present') }}"
+  loop: "{{ warpgate_roles }}"
+  loop_control:
+    loop_var: "warpgate_current_role"
+
+- name: Handle Warpgate users
+  warpgate_user:
+    host: "{{ warpgate_api_host }}"
+    token: "{{ warpgate_api_token if (warpgate_api_token is defined and warpgate_api_token | length > 0) else omit }}"
+    api_username: "{{ warpgate_admin_username | default(omit) }}"
+    api_password: "{{ warpgate_admin_password | default(omit) }}"
+    insecure: "{{ warpgate_api_insecure }}"
+    username: "{{ warpgate_current_user.name }}"
+    description: "{{ warpgate_current_user.description | default('') }}"
+    credential_policy:
+      http: "{{ warpgate_current_user.credential_policy.http | default([]) }}"
+      ssh: "{{ warpgate_current_user.credential_policy.ssh | default([]) }}"
+      mysql: "{{ warpgate_current_user.credential_policy.mysql | default([]) }}"
+      postgres: "{{ warpgate_current_user.credential_policy.postgres | default([]) }}"
+      kubernetes: "{{ warpgate_current_user.credential_policy.kubernetes | default([]) }}"
+    password_credentials: "{{ warpgate_current_user.password_credentials | default([]) }}"
+    public_key_credentials: "{{ warpgate_current_user.public_key_credentials | default([]) }}"
+    roles: "{{ warpgate_current_user.roles | default([]) }}"
+    state: "{{ warpgate_current_user.state | default('present') }}"
+  loop: "{{ warpgate_users }}"
+  loop_control:
+    loop_var: "warpgate_current_user"
+
+- name: Handle Warpgate target groups
+  warpgate_group:
+    host: "{{ warpgate_api_host }}"
+    token: "{{ warpgate_api_token if (warpgate_api_token is defined and warpgate_api_token | length > 0) else omit }}"
+    api_username: "{{ warpgate_admin_username | default(omit) }}"
+    api_password: "{{ warpgate_admin_password | default(omit) }}"
+    insecure: "{{ warpgate_api_insecure }}"
+    name: "{{ warpgate_current_target_group.name }}"
+    description: "{{ warpgate_current_target_group.description | default('') }}"
+    color: "{{ warpgate_current_target_group.color | default('') }}"
+    state: "{{ warpgate_current_target_group.state | default('present') }}"
+  loop: "{{ warpgate_target_groups }}"
+  loop_control:
+    loop_var: "warpgate_current_target_group"
+
+- name: Handle Warpgate targets
+  warpgate_target:
+    host: "{{ warpgate_api_host }}"
+    token: "{{ warpgate_api_token if (warpgate_api_token is defined and warpgate_api_token | length > 0) else omit }}"
+    api_username: "{{ warpgate_admin_username | default(omit) }}"
+    api_password: "{{ warpgate_admin_password | default(omit) }}"
+    insecure: "{{ warpgate_api_insecure }}"
+    name: "{{ warpgate_current_target.name }}"
+    group: "{{ warpgate_current_target.group | default('') }}"
+    description: "{{ warpgate_current_target.description | default('') }}"
+    ssh_options: "{{ warpgate_current_target.ssh_options | default({}) }}"
+    http_options: "{{ warpgate_current_target.http_options | default({}) }}"
+    mysql_options: "{{ warpgate_current_target.mysql_options | default({}) }}"
+    postgres_options: "{{ warpgate_current_target.postgres_options | default({}) }}"
+    kubernetes_options: "{{ warpgate_current_target.kubernetes_options | default({}) }}"
+    roles: "{{ warpgate_current_target.roles | default([]) }}"
+    state: "{{ warpgate_current_target.state | default('present') }}"
+  loop: "{{ warpgate_targets }}"
+  loop_control:
+    loop_var: "warpgate_current_target"

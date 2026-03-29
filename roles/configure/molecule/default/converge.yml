@@ -1,0 +1,9 @@
+---
+- name: Converge
+  hosts: all
+  vars_files:
+    - "../vars/configure.yml"
+  tasks:
+    - name: "Import role configure"
+      ansible.builtin.import_role:
+        name: "plopoyop.warpgate.configure"

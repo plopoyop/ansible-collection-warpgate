@@ -1,0 +1,50 @@
+---
+- name: Converge
+  hosts: all
+  vars_files:
+    - "../vars/configure.yml"
+  vars:
+    warpgate_api_token_label: "ansible-token"
+    warpgate_api_token_expiry: "2099-12-31T23:59:59Z"
+  tasks:
+    - name: "Set user API base URL (for login and api-tokens)"
+      ansible.builtin.set_fact:
+        warpgate_user_api_host: "{{ (warpgate_api_host | regex_replace('/@warpgate/admin/api/?$', '/@warpgate/api/')) }}"
+
+    - name: "Login to Warpgate user API (POST /auth/login, sets session cookie)"
+      ansible.builtin.uri:
+        url: "{{ warpgate_user_api_host }}auth/login"
+        method: POST
+        body_format: json
+        body:
+          username: "{{ warpgate_admin_username }}"
+          password: "{{ warpgate_admin_password }}"
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        status_code: [201]
+        timeout: 10
+      register: warpgate_login_result
+      ignore_errors: true
+
+    - name: "Create API token via user API (POST /profile/api-tokens, TokenAndSecret)"
+      ansible.builtin.uri:
+        url: "{{ warpgate_user_api_host }}profile/api-tokens"
+        method: POST
+        body_format: json
+        body:
+          label: "{{ warpgate_api_token_label }}"
+          expiry: "{{ warpgate_api_token_expiry }}"
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        return_content: true
+        headers:
+          Cookie: "{{ warpgate_login_result.set_cookie | default('') }}"
+        status_code: [201]
+        timeout: 10
+      register: warpgate_create_token_result
+
+    - name: "Set API token from TokenAndSecret.secret"
+      ansible.builtin.set_fact:
+        warpgate_api_token: "{{ warpgate_create_token_result.json.secret }}"
+
+    - name: "Import role"
+      ansible.builtin.import_role:
+        name: "plopoyop.warpgate.configure"
