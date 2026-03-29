@@ -6,6 +6,7 @@
 
 ## 🚀 New Features
 
+- Add new options minimize password login [\#4](https://github.com/plopoyop/ansible-collection-warpgate/pull/4) ([plopoyop](https://github.com/plopoyop))
 - Add configure warpgate role [\#3](https://github.com/plopoyop/ansible-collection-warpgate/pull/3) ([plopoyop](https://github.com/plopoyop))
 - Add Warpgate ansible module [\#2](https://github.com/plopoyop/ansible-collection-warpgate/pull/2) ([plopoyop](https://github.com/plopoyop))
 - Init collection [\#1](https://github.com/plopoyop/ansible-collection-warpgate/pull/1) ([plopoyop](https://github.com/plopoyop))
