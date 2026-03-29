@@ -1,13 +1,17 @@
 # Changelog
 
-## [Unreleased](https://github.com/plopoyop/ansible-collection-warpgate/tree/HEAD)
+## [1.0.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.0) (2026-03-29)
 
-[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/50c7d3e701260a787d8e2e3820fa909212a4076c...HEAD)
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/50c7d3e701260a787d8e2e3820fa909212a4076c...1.0.0)
 
 ## 🚀 New Features
 
 - Add Warpgate ansible module [\#2](https://github.com/plopoyop/ansible-collection-warpgate/pull/2) ([plopoyop](https://github.com/plopoyop))
 - Init collection [\#1](https://github.com/plopoyop/ansible-collection-warpgate/pull/1) ([plopoyop](https://github.com/plopoyop))
+
+**Merged pull requests:**
+
+- Add configure warpgate role [\#3](https://github.com/plopoyop/ansible-collection-warpgate/pull/3) ([plopoyop](https://github.com/plopoyop))
 
 
 
