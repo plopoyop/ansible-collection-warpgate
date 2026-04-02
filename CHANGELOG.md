@@ -6,6 +6,7 @@
 
 ## ⚙️ Dependencies
 
+- feat\(deps\): update pre-commit hook ansible/ansible-lint \(v26.3.0 → v26.4.0\) [\#13](https://github.com/plopoyop/ansible-collection-warpgate/pull/13) ([plopoyop](https://github.com/plopoyop))
 - feat\(ci\)!: Update hugo19941994/delete-draft-releases action \(v2.0.0 → v3.0.0\) [\#10](https://github.com/plopoyop/ansible-collection-warpgate/pull/10) ([plopoyop](https://github.com/plopoyop))
 - feat\(deps\): update pre-commit hook ansible/ansible-lint \(v26.1.1 → v26.3.0\) [\#9](https://github.com/plopoyop/ansible-collection-warpgate/pull/9) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.15.7 → v0.15.8\) [\#8](https://github.com/plopoyop/ansible-collection-warpgate/pull/8) ([plopoyop](https://github.com/plopoyop))
@@ -13,6 +14,7 @@
 
 **Merged pull requests:**
 
+- fix\(deps\): update python313packages.ruff \(0.15.6 → 0.15.7\) [\#12](https://github.com/plopoyop/ansible-collection-warpgate/pull/12) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.6 → v46.1.7\) [\#11](https://github.com/plopoyop/ansible-collection-warpgate/pull/11) ([plopoyop](https://github.com/plopoyop))
 
 ## [1.0.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.0) (2026-03-29)
