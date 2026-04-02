@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.1) (2026-04-01)
+## [1.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.1) (2026-04-02)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.0.0...1.0.1)
 
@@ -10,6 +10,10 @@
 - feat\(deps\): update pre-commit hook ansible/ansible-lint \(v26.1.1 → v26.3.0\) [\#9](https://github.com/plopoyop/ansible-collection-warpgate/pull/9) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.15.7 → v0.15.8\) [\#8](https://github.com/plopoyop/ansible-collection-warpgate/pull/8) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.5 → v46.1.6\) [\#7](https://github.com/plopoyop/ansible-collection-warpgate/pull/7) ([plopoyop](https://github.com/plopoyop))
+
+**Merged pull requests:**
+
+- fix\(ci\): update renovatebot/github-action action \(v46.1.6 → v46.1.7\) [\#11](https://github.com/plopoyop/ansible-collection-warpgate/pull/11) ([plopoyop](https://github.com/plopoyop))
 
 ## [1.0.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.0) (2026-03-29)
 
