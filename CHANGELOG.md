@@ -1,11 +1,12 @@
 # Changelog
 
-## [1.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.1) (2026-04-02)
+## [1.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.1) (2026-04-03)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.0.0...1.0.1)
 
 ## ⚙️ Dependencies
 
+- fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.15.8 → v0.15.9\) [\#14](https://github.com/plopoyop/ansible-collection-warpgate/pull/14) ([plopoyop](https://github.com/plopoyop))
 - feat\(deps\): update pre-commit hook ansible/ansible-lint \(v26.3.0 → v26.4.0\) [\#13](https://github.com/plopoyop/ansible-collection-warpgate/pull/13) ([plopoyop](https://github.com/plopoyop))
 - feat\(ci\)!: Update hugo19941994/delete-draft-releases action \(v2.0.0 → v3.0.0\) [\#10](https://github.com/plopoyop/ansible-collection-warpgate/pull/10) ([plopoyop](https://github.com/plopoyop))
 - feat\(deps\): update pre-commit hook ansible/ansible-lint \(v26.1.1 → v26.3.0\) [\#9](https://github.com/plopoyop/ansible-collection-warpgate/pull/9) ([plopoyop](https://github.com/plopoyop))
