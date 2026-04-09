@@ -1,67 +1,67 @@
 {
   "lockfile_version": "1",
   "packages": {
-    "ansible-doctor@8.2.2": {
-      "last_modified": "2026-03-21T07:29:51Z",
-      "resolved": "github:NixOS/nixpkgs/09061f748ee21f68a089cd5d91ec1859cd93d0be#ansible-doctor",
+    "ansible-doctor@8.3.0": {
+      "last_modified": "2026-04-06T17:08:15Z",
+      "resolved": "github:NixOS/nixpkgs/ff048610a1b698607a66f4671821716c2272dc9f#ansible-doctor",
       "source": "devbox-search",
-      "version": "8.2.2",
+      "version": "8.3.0",
       "systems": {
         "aarch64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/4hjxvs1blxljpw4nzsr720wa42v28s55-ansible-doctor-8.2.2",
+              "path": "/nix/store/mns325wfp39mff22rgjip7dx06rsc2l2-ansible-doctor-8.3.0",
               "default": true
             },
             {
               "name": "dist",
-              "path": "/nix/store/n3kfd63xaimcy4sw9p1kwsqynk6i6xzk-ansible-doctor-8.2.2-dist"
+              "path": "/nix/store/zpfgcr5sd8f8haxhqyyqaklnw6qjgpg5-ansible-doctor-8.3.0-dist"
             }
           ],
-          "store_path": "/nix/store/4hjxvs1blxljpw4nzsr720wa42v28s55-ansible-doctor-8.2.2"
+          "store_path": "/nix/store/mns325wfp39mff22rgjip7dx06rsc2l2-ansible-doctor-8.3.0"
         },
         "aarch64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/imqva77xn38njkrw4gpzjp93w8kbvzdw-ansible-doctor-8.2.2",
+              "path": "/nix/store/v0zcixhfw7q2935zwwnnz544sh8iqzzm-ansible-doctor-8.3.0",
               "default": true
             },
             {
               "name": "dist",
-              "path": "/nix/store/3g6vrl3wgx6rixvbh11ah6ysm9nq4psp-ansible-doctor-8.2.2-dist"
+              "path": "/nix/store/rr3idli16kw01javrdafvgjgr9azffgk-ansible-doctor-8.3.0-dist"
             }
           ],
-          "store_path": "/nix/store/imqva77xn38njkrw4gpzjp93w8kbvzdw-ansible-doctor-8.2.2"
+          "store_path": "/nix/store/v0zcixhfw7q2935zwwnnz544sh8iqzzm-ansible-doctor-8.3.0"
         },
         "x86_64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/2n73srgh76b7w1v1crlnbf3p6m0wisyj-ansible-doctor-8.2.2",
+              "path": "/nix/store/yhy0jvnx9glfn1y8jqmh5x6kjhagh1yv-ansible-doctor-8.3.0",
               "default": true
             },
             {
               "name": "dist",
-              "path": "/nix/store/wj2bmc2dbvds0zxb9jy88ahhd2phn4cf-ansible-doctor-8.2.2-dist"
+              "path": "/nix/store/ys6lwjcd8h6wbxj5fc2zk6jis4ir6y3a-ansible-doctor-8.3.0-dist"
             }
           ],
-          "store_path": "/nix/store/2n73srgh76b7w1v1crlnbf3p6m0wisyj-ansible-doctor-8.2.2"
+          "store_path": "/nix/store/yhy0jvnx9glfn1y8jqmh5x6kjhagh1yv-ansible-doctor-8.3.0"
         },
         "x86_64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/9i0r5qagi7p0mk84p0dj0i4cfq03jnn3-ansible-doctor-8.2.2",
+              "path": "/nix/store/ki7939rgidbxigdbjcbvnkwsdqmz2zr3-ansible-doctor-8.3.0",
               "default": true
             },
             {
               "name": "dist",
-              "path": "/nix/store/77v7mx50sgix7yzadwdvjvssk4ikyrzf-ansible-doctor-8.2.2-dist"
+              "path": "/nix/store/q5fbl6v6vzihsx5mmhq6j0b7zikz7z81-ansible-doctor-8.3.0-dist"
             }
           ],
-          "store_path": "/nix/store/9i0r5qagi7p0mk84p0dj0i4cfq03jnn3-ansible-doctor-8.2.2"
+          "store_path": "/nix/store/ki7939rgidbxigdbjcbvnkwsdqmz2zr3-ansible-doctor-8.3.0"
         }
       }
     },
