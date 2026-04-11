@@ -6,6 +6,7 @@
 
 ## ⚙️ Dependencies
 
+- fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.15.9 → v0.15.10\) [\#21](https://github.com/plopoyop/ansible-collection-warpgate/pull/21) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.7 → v46.1.8\) [\#15](https://github.com/plopoyop/ansible-collection-warpgate/pull/15) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.15.8 → v0.15.9\) [\#14](https://github.com/plopoyop/ansible-collection-warpgate/pull/14) ([plopoyop](https://github.com/plopoyop))
 - feat\(deps\): update pre-commit hook ansible/ansible-lint \(v26.3.0 → v26.4.0\) [\#13](https://github.com/plopoyop/ansible-collection-warpgate/pull/13) ([plopoyop](https://github.com/plopoyop))
