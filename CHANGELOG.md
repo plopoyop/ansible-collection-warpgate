@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.1) (2026-04-09)
+## [1.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.1) (2026-04-11)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.0.0...1.0.1)
 
@@ -16,6 +16,7 @@
 
 **Merged pull requests:**
 
+- fix\(deps\): update prek \(0.3.6 → 0.3.8\) [\#16](https://github.com/plopoyop/ansible-collection-warpgate/pull/16) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update python313packages.ruff \(0.15.6 → 0.15.7\) [\#12](https://github.com/plopoyop/ansible-collection-warpgate/pull/12) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.6 → v46.1.7\) [\#11](https://github.com/plopoyop/ansible-collection-warpgate/pull/11) ([plopoyop](https://github.com/plopoyop))
 
