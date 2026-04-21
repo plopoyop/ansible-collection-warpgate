@@ -3,54 +3,54 @@
 
 sso_providers: {{ warpgate_sso_providers }}
 recordings:
-  enable: {{ warpgate_record_sessions | string | ansible.builtin.lower  }}
-  path: {{ warpgate_data_path }}/recordings
-external_host: localhost
-database_url: sqlite:{{ warpgate_data_path }}/warpgate.db
+  enable: {{ warpgate_record_sessions | string | ansible.builtin.lower }}
+  path: {{ warpgate_recordings_path }}
+external_host: {{ warpgate_external_host }}
+database_url: {{ warpgate_database_url }}
 ssh:
   enable: {{ warpgate_ssh_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_ssh_port }}'
-  external_port: null
-  external_host: null
-  keys: {{ warpgate_data_path }}/ssh-keys
-  host_key_verification: prompt
-  inactivity_timeout: 5m
-  keepalive_interval: null
+  external_port: {{ warpgate_ssh_external_port | ansible.builtin.to_json }}
+  external_host: {{ warpgate_ssh_external_host | ansible.builtin.to_json }}
+  keys: {{ warpgate_ssh_keys_path }}
+  host_key_verification: {{ warpgate_ssh_host_key_verification }}
+  inactivity_timeout: {{ warpgate_ssh_inactivity_timeout }}
+  keepalive_interval: {{ warpgate_ssh_keepalive_interval | ansible.builtin.to_json }}
 http:
   listen: '[::]:{{ warpgate_http_port }}'
-  external_port: null
-  external_host: null
-  certificate: {{ warpgate_data_path }}/tls.certificate.pem
-  key: {{ warpgate_data_path }}/tls.key.pem
-  trust_x_forwarded_headers: false
-  session_max_age: 30m
-  cookie_max_age: 1day
-  sni_certificates: []
+  external_port: {{ warpgate_http_external_port | ansible.builtin.to_json }}
+  external_host: {{ warpgate_http_external_host | ansible.builtin.to_json }}
+  certificate: {{ warpgate_http_certificate }}
+  key: {{ warpgate_http_key }}
+  trust_x_forwarded_headers: {{ warpgate_http_trust_x_forwarded_headers | string | ansible.builtin.lower }}
+  session_max_age: {{ warpgate_http_session_max_age }}
+  cookie_max_age: {{ warpgate_http_cookie_max_age }}
+  sni_certificates: {{ warpgate_http_sni_certificates }}
   minimize_password_login: {{ warpgate_minimize_password_login | string | ansible.builtin.lower }}
 kubernetes:
   enable: {{ warpgate_kubernetes_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_kubernetes_port }}'
-  external_port: null
-  external_host: null
-  certificate: {{ warpgate_data_path }}/tls.certificate.pem
-  key: {{ warpgate_data_path }}/tls.key.pem
-  session_max_age: 30m
+  external_port: {{ warpgate_kubernetes_external_port | ansible.builtin.to_json }}
+  external_host: {{ warpgate_kubernetes_external_host | ansible.builtin.to_json }}
+  certificate: {{ warpgate_kubernetes_certificate }}
+  key: {{ warpgate_kubernetes_key }}
+  session_max_age: {{ warpgate_kubernetes_session_max_age }}
 mysql:
   enable: {{ warpgate_mysql_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_mysql_port }}'
-  external_port: null
-  external_host: null
-  certificate: {{ warpgate_data_path }}/tls.certificate.pem
-  key: {{ warpgate_data_path }}/tls.key.pem
+  external_port: {{ warpgate_mysql_external_port | ansible.builtin.to_json }}
+  external_host: {{ warpgate_mysql_external_host | ansible.builtin.to_json }}
+  certificate: {{ warpgate_mysql_certificate }}
+  key: {{ warpgate_mysql_key }}
 postgres:
   enable: {{ warpgate_postgres_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_postgres_port }}'
-  external_port: null
-  external_host: null
-  certificate: {{ warpgate_data_path }}/tls.certificate.pem
-  key: {{ warpgate_data_path }}/tls.key.pem
+  external_port: {{ warpgate_postgres_external_port | ansible.builtin.to_json }}
+  external_host: {{ warpgate_postgres_external_host | ansible.builtin.to_json }}
+  certificate: {{ warpgate_postgres_certificate }}
+  key: {{ warpgate_postgres_key }}
 log:
-  retention: 7days
-  audit_retention: 11months 30days 3h 50m 24s
-  send_to: null
-  format: text
+  retention: {{ warpgate_log_retention }}
+  audit_retention: {{ warpgate_log_audit_retention }}
+  send_to: {{ warpgate_log_send_to | ansible.builtin.to_json }}
+  format: {{ warpgate_log_format }}

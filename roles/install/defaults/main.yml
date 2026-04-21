@@ -132,3 +132,231 @@ warpgate_sso_providers: []
 # When true, the password login form is collapsed behind a toggle on the login page.
 # Useful for SSO-first environments where password login is only used by admins.
 warpgate_minimize_password_login: false
+
+# @var warpgate_recordings_path
+# @var warpgate_recordings_path:type: string
+# @var warpgate_recordings_path:description: >
+# Path where session recordings are stored
+warpgate_recordings_path: "{{ warpgate_data_path }}/recordings"
+
+# @var warpgate_tls_certificate_path
+# @var warpgate_tls_certificate_path:type: string
+# @var warpgate_tls_certificate_path:description: >
+# Default TLS certificate path used by HTTP / Kubernetes / MySQL / PostgreSQL listeners
+warpgate_tls_certificate_path: "{{ warpgate_data_path }}/tls.certificate.pem"
+
+# @var warpgate_tls_key_path
+# @var warpgate_tls_key_path:type: string
+# @var warpgate_tls_key_path:description: >
+# Default TLS key path used by HTTP / Kubernetes / MySQL / PostgreSQL listeners
+warpgate_tls_key_path: "{{ warpgate_data_path }}/tls.key.pem"
+
+# -----------------------------------------------------------------------------
+# SSH listener
+# -----------------------------------------------------------------------------
+
+# @var warpgate_ssh_external_host
+# @var warpgate_ssh_external_host:type: string
+# @var warpgate_ssh_external_host:description: >
+# Public hostname advertised for the SSH listener (null = auto)
+warpgate_ssh_external_host: null
+
+# @var warpgate_ssh_external_port
+# @var warpgate_ssh_external_port:type: int
+# @var warpgate_ssh_external_port:description: >
+# Public port advertised for the SSH listener (null = auto)
+warpgate_ssh_external_port: null
+
+# @var warpgate_ssh_keys_path
+# @var warpgate_ssh_keys_path:type: string
+# @var warpgate_ssh_keys_path:description: >
+# Directory holding Warpgate's SSH host keys
+warpgate_ssh_keys_path: "{{ warpgate_data_path }}/ssh-keys"
+
+# @var warpgate_ssh_host_key_verification
+# @var warpgate_ssh_host_key_verification:type: string
+# @var warpgate_ssh_host_key_verification:description: >
+# SSH target host key verification mode (prompt, auto, strict)
+warpgate_ssh_host_key_verification: "prompt"
+
+# @var warpgate_ssh_inactivity_timeout
+# @var warpgate_ssh_inactivity_timeout:type: string
+# @var warpgate_ssh_inactivity_timeout:description: >
+# Idle timeout before an SSH session is closed
+warpgate_ssh_inactivity_timeout: "5m"
+
+# @var warpgate_ssh_keepalive_interval
+# @var warpgate_ssh_keepalive_interval:type: string
+# @var warpgate_ssh_keepalive_interval:description: >
+# Keepalive interval for SSH sessions (null disables keepalive)
+warpgate_ssh_keepalive_interval: null
+
+# -----------------------------------------------------------------------------
+# HTTP listener
+# -----------------------------------------------------------------------------
+
+# @var warpgate_http_external_host
+# @var warpgate_http_external_host:type: string
+# @var warpgate_http_external_host:description: >
+# Public hostname advertised for the HTTP listener (null = auto)
+warpgate_http_external_host: null
+
+# @var warpgate_http_external_port
+# @var warpgate_http_external_port:type: int
+# @var warpgate_http_external_port:description: >
+# Public port advertised for the HTTP listener (null = auto)
+warpgate_http_external_port: null
+
+# @var warpgate_http_certificate
+# @var warpgate_http_certificate:type: string
+# @var warpgate_http_certificate:description: >
+# TLS certificate path for the HTTP listener
+warpgate_http_certificate: "{{ warpgate_tls_certificate_path }}"
+
+# @var warpgate_http_key
+# @var warpgate_http_key:type: string
+# @var warpgate_http_key:description: >
+# TLS key path for the HTTP listener
+warpgate_http_key: "{{ warpgate_tls_key_path }}"
+
+# @var warpgate_http_trust_x_forwarded_headers
+# @var warpgate_http_trust_x_forwarded_headers:type: boolean
+# @var warpgate_http_trust_x_forwarded_headers:description: >
+# Trust X-Forwarded-* headers (enable only when running behind a trusted reverse proxy)
+warpgate_http_trust_x_forwarded_headers: false
+
+# @var warpgate_http_session_max_age
+# @var warpgate_http_session_max_age:type: string
+# @var warpgate_http_session_max_age:description: >
+# Maximum lifetime of an HTTP session
+warpgate_http_session_max_age: "30m"
+
+# @var warpgate_http_cookie_max_age
+# @var warpgate_http_cookie_max_age:type: string
+# @var warpgate_http_cookie_max_age:description: >
+# Maximum lifetime of the auth cookie
+warpgate_http_cookie_max_age: "1day"
+
+# @var warpgate_http_sni_certificates
+# @var warpgate_http_sni_certificates:type: list
+# @var warpgate_http_sni_certificates:description: >
+# Additional SNI certificates for the HTTP listener
+warpgate_http_sni_certificates: []
+
+# -----------------------------------------------------------------------------
+# Kubernetes listener
+# -----------------------------------------------------------------------------
+
+# @var warpgate_kubernetes_external_host
+# @var warpgate_kubernetes_external_host:type: string
+# @var warpgate_kubernetes_external_host:description: >
+# Public hostname advertised for the Kubernetes listener (null = auto)
+warpgate_kubernetes_external_host: null
+
+# @var warpgate_kubernetes_external_port
+# @var warpgate_kubernetes_external_port:type: int
+# @var warpgate_kubernetes_external_port:description: >
+# Public port advertised for the Kubernetes listener (null = auto)
+warpgate_kubernetes_external_port: null
+
+# @var warpgate_kubernetes_certificate
+# @var warpgate_kubernetes_certificate:type: string
+# @var warpgate_kubernetes_certificate:description: >
+# TLS certificate path for the Kubernetes listener
+warpgate_kubernetes_certificate: "{{ warpgate_tls_certificate_path }}"
+
+# @var warpgate_kubernetes_key
+# @var warpgate_kubernetes_key:type: string
+# @var warpgate_kubernetes_key:description: >
+# TLS key path for the Kubernetes listener
+warpgate_kubernetes_key: "{{ warpgate_tls_key_path }}"
+
+# @var warpgate_kubernetes_session_max_age
+# @var warpgate_kubernetes_session_max_age:type: string
+# @var warpgate_kubernetes_session_max_age:description: >
+# Maximum lifetime of a Kubernetes session
+warpgate_kubernetes_session_max_age: "30m"
+
+# -----------------------------------------------------------------------------
+# MySQL listener
+# -----------------------------------------------------------------------------
+
+# @var warpgate_mysql_external_host
+# @var warpgate_mysql_external_host:type: string
+# @var warpgate_mysql_external_host:description: >
+# Public hostname advertised for the MySQL listener (null = auto)
+warpgate_mysql_external_host: null
+
+# @var warpgate_mysql_external_port
+# @var warpgate_mysql_external_port:type: int
+# @var warpgate_mysql_external_port:description: >
+# Public port advertised for the MySQL listener (null = auto)
+warpgate_mysql_external_port: null
+
+# @var warpgate_mysql_certificate
+# @var warpgate_mysql_certificate:type: string
+# @var warpgate_mysql_certificate:description: >
+# TLS certificate path for the MySQL listener
+warpgate_mysql_certificate: "{{ warpgate_tls_certificate_path }}"
+
+# @var warpgate_mysql_key
+# @var warpgate_mysql_key:type: string
+# @var warpgate_mysql_key:description: >
+# TLS key path for the MySQL listener
+warpgate_mysql_key: "{{ warpgate_tls_key_path }}"
+
+# -----------------------------------------------------------------------------
+# PostgreSQL listener
+# -----------------------------------------------------------------------------
+
+# @var warpgate_postgres_external_host
+# @var warpgate_postgres_external_host:type: string
+# @var warpgate_postgres_external_host:description: >
+# Public hostname advertised for the PostgreSQL listener (null = auto)
+warpgate_postgres_external_host: null
+
+# @var warpgate_postgres_external_port
+# @var warpgate_postgres_external_port:type: int
+# @var warpgate_postgres_external_port:description: >
+# Public port advertised for the PostgreSQL listener (null = auto)
+warpgate_postgres_external_port: null
+
+# @var warpgate_postgres_certificate
+# @var warpgate_postgres_certificate:type: string
+# @var warpgate_postgres_certificate:description: >
+# TLS certificate path for the PostgreSQL listener
+warpgate_postgres_certificate: "{{ warpgate_tls_certificate_path }}"
+
+# @var warpgate_postgres_key
+# @var warpgate_postgres_key:type: string
+# @var warpgate_postgres_key:description: >
+# TLS key path for the PostgreSQL listener
+warpgate_postgres_key: "{{ warpgate_tls_key_path }}"
+
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+
+# @var warpgate_log_retention
+# @var warpgate_log_retention:type: string
+# @var warpgate_log_retention:description: >
+# Log retention duration
+warpgate_log_retention: "7days"
+
+# @var warpgate_log_audit_retention
+# @var warpgate_log_audit_retention:type: string
+# @var warpgate_log_audit_retention:description: >
+# Audit log retention duration
+warpgate_log_audit_retention: "11months 30days 3h 50m 24s"
+
+# @var warpgate_log_send_to
+# @var warpgate_log_send_to:type: string
+# @var warpgate_log_send_to:description: >
+# Remote log endpoint (null = log locally only)
+warpgate_log_send_to: null
+
+# @var warpgate_log_format
+# @var warpgate_log_format:type: string
+# @var warpgate_log_format:description: >
+# Log output format (text or json)
+warpgate_log_format: "text"
