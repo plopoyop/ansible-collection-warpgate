@@ -1,4 +1,4 @@
-# Config generated in version v0.21.1
+# Config generated in version v0.23.1-modified
 # yaml-language-server: $schema=https://raw.githubusercontent.com/warp-tech/warpgate/refs/heads/main/config-schema.json
 
 sso_providers: {{ warpgate_sso_providers }}
@@ -11,6 +11,7 @@ ssh:
   enable: {{ warpgate_ssh_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_ssh_port }}'
   external_port: null
+  external_host: null
   keys: {{ warpgate_data_path }}/ssh-keys
   host_key_verification: prompt
   inactivity_timeout: 5m
@@ -18,6 +19,7 @@ ssh:
 http:
   listen: '[::]:{{ warpgate_http_port }}'
   external_port: null
+  external_host: null
   certificate: {{ warpgate_data_path }}/tls.certificate.pem
   key: {{ warpgate_data_path }}/tls.key.pem
   trust_x_forwarded_headers: false
@@ -29,6 +31,7 @@ kubernetes:
   enable: {{ warpgate_kubernetes_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_kubernetes_port }}'
   external_port: null
+  external_host: null
   certificate: {{ warpgate_data_path }}/tls.certificate.pem
   key: {{ warpgate_data_path }}/tls.key.pem
   session_max_age: 30m
@@ -36,15 +39,18 @@ mysql:
   enable: {{ warpgate_mysql_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_mysql_port }}'
   external_port: null
+  external_host: null
   certificate: {{ warpgate_data_path }}/tls.certificate.pem
   key: {{ warpgate_data_path }}/tls.key.pem
 postgres:
   enable: {{ warpgate_postgres_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_postgres_port }}'
   external_port: null
+  external_host: null
   certificate: {{ warpgate_data_path }}/tls.certificate.pem
   key: {{ warpgate_data_path }}/tls.key.pem
 log:
   retention: 7days
+  audit_retention: 11months 30days 3h 50m 24s
   send_to: null
   format: text
