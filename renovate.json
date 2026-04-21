@@ -9,7 +9,7 @@
         "github-releases"
       ],
       "matchPackageNames": [
-        "stalwartlabs/stalwart"
+        "warp-tech/warpgate"
       ]
     }
   ],
@@ -21,10 +21,10 @@
         "roles/install/README.md"
       ],
       "matchStrings": [
-        "stalwart_version:\\s*(?<quote>\")?(?<currentValue>[0-9\\.]+)\"?"
+        "warpgate_version:\\s*(?<quote>\")?(?<currentValue>[0-9\\.]+)\"?"
       ],
-      "depNameTemplate": "stalwartlabs/stalwart",
-      "autoReplaceStringTemplate": "stalwart_version: {{#if quote}}\"{{newValue}}\"{{else}}{{newValue}}{{/if}}",
+      "depNameTemplate": "warp-tech/warpgate",
+      "autoReplaceStringTemplate": "warpgate_version: {{#if quote}}\"{{newValue}}\"{{else}}{{newValue}}{{/if}}",
       "datasourceTemplate": "github-releases"
     }
   ]
