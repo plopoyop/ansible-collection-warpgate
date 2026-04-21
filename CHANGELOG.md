@@ -1,8 +1,12 @@
 # Changelog
 
-## [1.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.1) (2026-04-19)
+## [1.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.1) (2026-04-21)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.0.0...1.0.1)
+
+## 🐛 Bug Fixes
+
+- Fix renovate config [\#25](https://github.com/plopoyop/ansible-collection-warpgate/pull/25) ([plopoyop](https://github.com/plopoyop))
 
 ## ⚙️ Dependencies
 
