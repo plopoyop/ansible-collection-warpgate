@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.2) (2026-04-22)
+
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.0.1...1.0.2)
+
+## ⚙️ Dependencies
+
+- feat\(deps\): update warp-tech/warpgate \(v0.21.1 → v0.23.1\) [\#26](https://github.com/plopoyop/ansible-collection-warpgate/pull/26) ([plopoyop](https://github.com/plopoyop))
+
 ## [1.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.1) (2026-04-21)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.0.0...1.0.1)
