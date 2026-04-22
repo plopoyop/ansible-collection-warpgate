@@ -952,6 +952,22 @@ def main():
                         rate_limit_bytes_per_second=rate_limit_bytes_per_second,
                     )
                     target_id = new_target.id
+
+                    if (
+                        rate_limit_bytes_per_second is not None
+                        and new_target.rate_limit_bytes_per_second
+                        != rate_limit_bytes_per_second
+                    ):
+                        new_target = update_target(
+                            client,
+                            target_id,
+                            name,
+                            description,
+                            group_id,
+                            target_options,
+                            rate_limit_bytes_per_second=rate_limit_bytes_per_second,
+                        )
+
                     result["id"] = target_id
                     result["description"] = new_target.description
                     result["group"] = group
