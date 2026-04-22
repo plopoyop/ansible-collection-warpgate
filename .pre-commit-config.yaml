@@ -20,15 +20,15 @@ repos:
         description: Run yamllint
         verbose: false
 
-  - repo: https://github.com/ansible/ansible-lint.git
-    rev: v26.4.0
+  - repo: local
     hooks:
       - id: ansible-lint
-        files: \.(yaml|yml)$
         name: ansible lint
-        description: Run configurations on .ansible-lint file
-        additional_dependencies:
-          - ansible
+        description: Run ansible-lint from the devbox-managed environment (avoids Nix/pre-commit venv collisions)
+        entry: ansible-lint
+        language: system
+        files: \.(yaml|yml)$
+        pass_filenames: false
         verbose: false
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
