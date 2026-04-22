@@ -9,6 +9,10 @@
 - Update plugins for 0.23 version [\#31](https://github.com/plopoyop/ansible-collection-warpgate/pull/31) ([plopoyop](https://github.com/plopoyop))
 - Remove hardcoded values [\#27](https://github.com/plopoyop/ansible-collection-warpgate/pull/27) ([plopoyop](https://github.com/plopoyop))
 
+## 🐛 Bug Fixes
+
+- Use local ansible-lint to avoid import errors [\#32](https://github.com/plopoyop/ansible-collection-warpgate/pull/32) ([plopoyop](https://github.com/plopoyop))
+
 ## ⚙️ Dependencies
 
 - fix\(deps\): update warp-tech/warpgate \(v0.23.1 → v0.23.2\) [\#30](https://github.com/plopoyop/ansible-collection-warpgate/pull/30) ([plopoyop](https://github.com/plopoyop))
