@@ -47,6 +47,44 @@
       loop_control:
         label: "{{ item.name }}"
 
+    # ---- Verify Admin Roles ----
+    - name: "Get all admin roles from API"
+      ansible.builtin.uri:
+        url: "{{ warpgate_api_host }}admin-roles"
+        method: GET
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        headers: "{{ _verify_auth_headers }}"
+        status_code: [200]
+        timeout: 10
+      register: _verify_admin_roles
+
+    - name: "Assert expected admin roles exist"
+      ansible.builtin.assert:
+        that:
+          - item.name in (_verify_admin_roles.json | map(attribute='name'))
+        fail_msg: "Admin role '{{ item.name }}' not found in Warpgate"
+        success_msg: "Admin role '{{ item.name }}' exists"
+      loop: "{{ warpgate_admin_roles | default([]) }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "Assert every declared admin-role permission is applied"
+      ansible.builtin.assert:
+        that:
+          - >-
+            (_verify_admin_roles.json | selectattr('name', 'equalto', item.name) | first)
+              | dict2items
+              | selectattr('key', 'in', (item.permissions | default({}) | list))
+              | items2dict
+              == (item.permissions | default({}))
+        fail_msg: >-
+          Admin role '{{ item.name }}' permissions do not match declared values
+          (expected {{ item.permissions | default({}) }})
+        success_msg: "Admin role '{{ item.name }}' permissions match"
+      loop: "{{ warpgate_admin_roles | default([]) | selectattr('permissions', 'defined') }}"
+      loop_control:
+        label: "{{ item.name }}"
+
     # ---- Verify Users ----
     - name: "Get all users from API"
       ansible.builtin.uri:
@@ -65,6 +103,30 @@
         fail_msg: "User '{{ item.name }}' not found in Warpgate"
         success_msg: "User '{{ item.name }}' exists"
       loop: "{{ warpgate_users }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "Assert user rate_limit_bytes_per_second when configured"
+      ansible.builtin.assert:
+        that:
+          - (_verify_users.json | selectattr('username', 'equalto', item.name) | first).rate_limit_bytes_per_second == item.rate_limit_bytes_per_second
+        fail_msg: >-
+          User '{{ item.name }}' rate_limit mismatch
+          (expected {{ item.rate_limit_bytes_per_second }})
+        success_msg: "User '{{ item.name }}' has rate_limit={{ item.rate_limit_bytes_per_second }}"
+      loop: "{{ warpgate_users | selectattr('rate_limit_bytes_per_second', 'defined') }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "Assert user allowed_ip_ranges when configured"
+      ansible.builtin.assert:
+        that:
+          - ((_verify_users.json | selectattr('username', 'equalto', item.name) | first).allowed_ip_ranges | default([])) | sort == (item.allowed_ip_ranges | sort)
+        fail_msg: >-
+          User '{{ item.name }}' allowed_ip_ranges mismatch
+          (expected {{ item.allowed_ip_ranges }})
+        success_msg: "User '{{ item.name }}' has expected allowed_ip_ranges"
+      loop: "{{ warpgate_users | selectattr('allowed_ip_ranges', 'defined') }}"
       loop_control:
         label: "{{ item.name }}"
 
@@ -110,6 +172,18 @@
       loop_control:
         label: "{{ item.name }}"
 
+    - name: "Assert target rate_limit_bytes_per_second when configured"
+      ansible.builtin.assert:
+        that:
+          - (_verify_targets.json | selectattr('name', 'equalto', item.name) | first).rate_limit_bytes_per_second == item.rate_limit_bytes_per_second
+        fail_msg: >-
+          Target '{{ item.name }}' rate_limit mismatch
+          (expected {{ item.rate_limit_bytes_per_second }})
+        success_msg: "Target '{{ item.name }}' has rate_limit={{ item.rate_limit_bytes_per_second }}"
+      loop: "{{ warpgate_targets | selectattr('rate_limit_bytes_per_second', 'defined') }}"
+      loop_control:
+        label: "{{ item.name }}"
+
     # ---- Verify User Role Assignments ----
     - name: "Build user ID map"
       ansible.builtin.set_fact:
@@ -140,6 +214,30 @@
         fail_msg: "User '{{ item.0.item.name }}' is not assigned role '{{ item.1 }}'"
         success_msg: "User '{{ item.0.item.name }}' has role '{{ item.1 }}'"
       loop: "{{ _verify_user_roles.results | subelements('item.roles') }}"
+      loop_control:
+        label: "{{ item.0.item.name }} -> {{ item.1 }}"
+
+    # ---- Verify User Admin-Role Assignments ----
+    - name: "Get admin roles for each expected user"
+      ansible.builtin.uri:
+        url: "{{ warpgate_api_host }}users/{{ _verify_user_map[item.name] }}/admin-roles"
+        method: GET
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        headers: "{{ _verify_auth_headers }}"
+        status_code: [200]
+        timeout: 10
+      register: _verify_user_admin_roles
+      loop: "{{ warpgate_users | selectattr('admin_roles', 'defined') }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "Assert user admin-role assignments"
+      ansible.builtin.assert:
+        that:
+          - item.1 in (item.0.json | map(attribute='name'))
+        fail_msg: "User '{{ item.0.item.name }}' is not granted admin role '{{ item.1 }}'"
+        success_msg: "User '{{ item.0.item.name }}' has admin role '{{ item.1 }}'"
+      loop: "{{ _verify_user_admin_roles.results | subelements('item.admin_roles') }}"
       loop_control:
         label: "{{ item.0.item.name }} -> {{ item.1 }}"
 

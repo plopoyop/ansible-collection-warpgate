@@ -42,9 +42,22 @@ warpgate_api_insecure: false
 #     description: "Role for ops team"
 warpgate_roles: []
 
+# @var warpgate_admin_roles:type: list
+# @var warpgate_admin_roles:description: >
+# Warpgate admin roles (v0.23+). Permissions default to false when omitted.
+# @var warpgate_admin_roles: example:
+# warpgate_admin_roles:
+#   - name: "auditor"
+#     description: "Read-only admin used by auditors"
+#     permissions:
+#       sessions_view: true
+#       recordings_view: true
+warpgate_admin_roles: []
+
 # @var warpgate_users:type: list
 # @var warpgate_users:description: >
-# Warpgate users
+# Warpgate users. Optional per-user fields (v0.23+):
+# rate_limit_bytes_per_second, allowed_ip_ranges, admin_roles.
 # @var warpgate_users: example:
 # warpgate_users:
 #   - name: "test"
@@ -55,6 +68,11 @@ warpgate_roles: []
 #     description: "test2"
 #     roles:
 #       - "ops"
+#     admin_roles:
+#       - "auditor"
+#     rate_limit_bytes_per_second: 1048576
+#     allowed_ip_ranges:
+#       - "10.0.0.0/8"
 #     password_credentials:
 #       - "test"
 #       - "test2"
@@ -75,12 +93,15 @@ warpgate_target_groups: []
 
 # @var warpgate_targets:type: list
 # @var warpgate_targets:description: >
-# Warpgate targets
+# Warpgate targets. Optional v0.23+ fields: rate_limit_bytes_per_second,
+# default_database_name / idle_timeout on mysql_options / postgres_options,
+# iam_role on mysql/postgres options (mutually exclusive with password).
 # @var warpgate_targets: example:
 # warpgate_targets:
 #   - name: "test"
 #     description: "test"
 #     group: "production"
+#     rate_limit_bytes_per_second: 5242880
 #     ssh_options:
 #       host: "localhost"
 #       port: 22
