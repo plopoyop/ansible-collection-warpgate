@@ -1,11 +1,16 @@
 # Changelog
 
-## [1.0.2](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.2) (2026-04-22)
+## [1.1.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.1.0) (2026-04-22)
 
-[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.0.1...1.0.2)
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.0.1...1.1.0)
+
+## 🚀 New Features
+
+- Remove hardcoded values [\#27](https://github.com/plopoyop/ansible-collection-warpgate/pull/27) ([plopoyop](https://github.com/plopoyop))
 
 ## ⚙️ Dependencies
 
+- fix\(deps\): update warp-tech/warpgate \(v0.23.1 → v0.23.2\) [\#30](https://github.com/plopoyop/ansible-collection-warpgate/pull/30) ([plopoyop](https://github.com/plopoyop))
 - feat\(deps\): update warp-tech/warpgate \(v0.21.1 → v0.23.1\) [\#26](https://github.com/plopoyop/ansible-collection-warpgate/pull/26) ([plopoyop](https://github.com/plopoyop))
 
 ## [1.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.0.1) (2026-04-21)
