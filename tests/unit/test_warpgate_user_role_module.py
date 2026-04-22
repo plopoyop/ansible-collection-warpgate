@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 
 
 import warpgate_user_role  # noqa: E402
-from warpgate_client.role import Role
+from warpgate_client.role import Role, UserRoleAssignment
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +77,9 @@ class TestUserRoleAssign:
         assert result["diff"]["before"]["roles"] == []
 
     def test_assign_role_already_assigned_is_noop(self):
-        existing = [Role(id="r1", name="dev")]
+        # get_user_roles returns UserRoleAssignment objects since v0.23 —
+        # the module reads .expires_at on the existing assignment.
+        existing = [UserRoleAssignment(id="r1", name="dev")]
         params = _base_params()
         with patch("warpgate_user_role.get_user_roles", return_value=existing):
             result, mod = _run_module(params)

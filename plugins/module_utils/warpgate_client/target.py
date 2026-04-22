@@ -38,6 +38,7 @@ class Target:
         group_id: str = "",
         allow_roles: Optional[List[str]] = None,
         options: Optional[Dict[str, Any]] = None,
+        rate_limit_bytes_per_second: Optional[int] = None,
     ):
         self.id = id
         self.name = name
@@ -45,6 +46,7 @@ class Target:
         self.group_id = group_id
         self.allow_roles = allow_roles or []
         self.options = options or {}
+        self.rate_limit_bytes_per_second = rate_limit_bytes_per_second
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Target":
@@ -56,6 +58,7 @@ class Target:
             group_id=data.get("group_id", ""),
             allow_roles=data.get("allow_roles", []),
             options=data.get("options", {}),
+            rate_limit_bytes_per_second=data.get("rate_limit_bytes_per_second"),
         )
 
 
@@ -104,6 +107,7 @@ def create_target(
     description: str = "",
     group_id: str = "",
     options: Optional[Dict[str, Any]] = None,
+    rate_limit_bytes_per_second: Optional[int] = None,
 ) -> Target:
     """
     Creates a new target in Warpgate with the provided name, description, and configuration options.
@@ -114,13 +118,20 @@ def create_target(
         description: Optional description
         group_id: Optional target group ID
         options: Target options (SSH, HTTP, MySQL, or PostgreSQL configuration)
+        rate_limit_bytes_per_second: Optional upstream bandwidth limit
 
     Returns:
         Created Target object
     """
-    body = {"name": name, "description": description, "options": options or {}}
+    body: Dict[str, Any] = {
+        "name": name,
+        "description": description,
+        "options": options or {},
+    }
     if group_id and group_id.strip():
         body["group_id"] = group_id
+    if rate_limit_bytes_per_second is not None:
+        body["rate_limit_bytes_per_second"] = rate_limit_bytes_per_second
     response = client._request("POST", "/targets", body)
     return Target.from_dict(response)
 
@@ -132,6 +143,7 @@ def update_target(
     description: str = "",
     group_id: str = "",
     options: Optional[Dict[str, Any]] = None,
+    rate_limit_bytes_per_second: Optional[int] = None,
 ) -> Target:
     """
     Updates an existing target's information including name, description, and configuration options.
@@ -143,13 +155,20 @@ def update_target(
         description: Updated description
         group_id: Updated target group ID
         options: Updated target options
+        rate_limit_bytes_per_second: Optional upstream bandwidth limit
 
     Returns:
         Updated Target object
     """
-    body = {"name": name, "description": description, "options": options or {}}
+    body: Dict[str, Any] = {
+        "name": name,
+        "description": description,
+        "options": options or {},
+    }
     if group_id and group_id.strip():
         body["group_id"] = group_id
+    if rate_limit_bytes_per_second is not None:
+        body["rate_limit_bytes_per_second"] = rate_limit_bytes_per_second
     response = client._request("PUT", f"/targets/{target_id}", body)
     return Target.from_dict(response)
 

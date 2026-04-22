@@ -60,6 +60,20 @@ options:
         type: str
         required: false
         default: ""
+    rate_limit_bytes_per_second:
+        description:
+            - Optional per-user upstream bandwidth limit in bytes/second (v0.23+).
+            - When not provided, no bandwidth cap is applied.
+        type: int
+        required: false
+    allowed_ip_ranges:
+        description:
+            - Optional list of CIDR ranges authorized to authenticate as this user (v0.23+).
+            - Pass C([]) to explicitly clear the allow-list.
+            - When not provided, the current list on the server is left unchanged.
+        type: list
+        elements: str
+        required: false
     credential_policy:
         description:
             - Credential policy for the user
@@ -145,6 +159,15 @@ options:
         type: list
         elements: str
         required: false
+    admin_roles:
+        description:
+            - List of admin role IDs or names to grant to the user (v0.23+).
+            - The module ensures the user holds exactly these admin roles
+              (adds missing, removes extras). Empty list = revoke all.
+            - When not provided, existing admin-role assignments are left unchanged.
+        type: list
+        elements: str
+        required: false
     state:
         description:
             - Desired state of the user
@@ -225,6 +248,14 @@ credential_policy:
     description: Credential policy
     type: dict
     returned: when available
+rate_limit_bytes_per_second:
+    description: Per-user bandwidth limit in bytes/second (v0.23+)
+    type: int
+    returned: when available
+allowed_ip_ranges:
+    description: Authorized CIDR ranges for this user (v0.23+)
+    type: list
+    returned: when available
 password_credentials:
     description: List of password credentials managed
     type: list
@@ -237,6 +268,10 @@ roles:
     description: List of role IDs assigned to the user
     type: list
     returned: when roles parameter is provided
+admin_roles:
+    description: List of admin-role IDs granted to the user (v0.23+)
+    type: list
+    returned: when admin_roles parameter is provided
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -270,6 +305,12 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.
     get_user_roles,
     add_user_role,
     delete_user_role,
+)
+from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.admin_role import (
+    get_user_admin_roles,
+    add_user_admin_role,
+    delete_user_admin_role,
+    resolve_admin_role_ids,
 )
 
 
@@ -592,6 +633,58 @@ def manage_user_roles(client, user_id, desired_role_ids, module):
     return changed, final_role_ids
 
 
+def manage_user_admin_roles(client, user_id, desired_admin_role_ids, module):
+    """Ensure the user holds exactly the given admin-role IDs.
+
+    ``desired_admin_role_ids`` is a list of already-resolved admin-role
+    UUIDs. An empty list revokes all admin roles from the user.
+    """
+    if desired_admin_role_ids is None:
+        desired_admin_role_ids = []
+
+    changed = False
+    try:
+        current_roles = get_user_admin_roles(client, user_id)
+    except WarpgateAPIError as e:
+        module.fail_json(
+            msg=f"Failed to get user admin roles: {e.message}",
+            status_code=e.status_code,
+        )
+
+    current_ids = {r.id for r in current_roles}
+    desired_ids = set(desired_admin_role_ids)
+
+    to_add = desired_ids - current_ids
+    to_remove = current_ids - desired_ids
+
+    if to_add:
+        if not module.check_mode:
+            for role_id in to_add:
+                try:
+                    add_user_admin_role(client, user_id, role_id)
+                except WarpgateAPIError as e:
+                    if e.status_code == 409:
+                        continue  # already assigned
+                    module.fail_json(
+                        msg=f"Failed to grant admin role {role_id}: {e.message}",
+                        status_code=e.status_code,
+                    )
+        changed = True
+    if to_remove:
+        if not module.check_mode:
+            for role_id in to_remove:
+                try:
+                    delete_user_admin_role(client, user_id, role_id)
+                except WarpgateAPIError as e:
+                    module.fail_json(
+                        msg=f"Failed to revoke admin role {role_id}: {e.message}",
+                        status_code=e.status_code,
+                    )
+        changed = True
+
+    return changed, list(desired_ids)
+
+
 def main():
     module_args = dict(
         host=dict(type="str", required=True),
@@ -601,6 +694,8 @@ def main():
         id=dict(type="str", required=False),
         username=dict(type="str", required=True),
         description=dict(type="str", required=False, default=""),
+        rate_limit_bytes_per_second=dict(type="int", required=False),
+        allowed_ip_ranges=dict(type="list", elements="str", required=False),
         credential_policy=dict(type="dict", required=False),
         password_credentials=dict(
             type="list", elements="str", required=False, no_log=True
@@ -621,6 +716,7 @@ def main():
             ),
         ),
         roles=dict(type="list", elements="str", required=False),
+        admin_roles=dict(type="list", elements="str", required=False),
         state=dict(type="str", choices=["present", "absent"], default="present"),
         insecure=dict(type="bool", default=False),
         timeout=dict(type="int", default=30),
@@ -643,11 +739,14 @@ def main():
     user_id = module.params["id"]
     username = module.params["username"]
     description = module.params["description"]
+    rate_limit_bytes_per_second = module.params.get("rate_limit_bytes_per_second")
+    allowed_ip_ranges = module.params.get("allowed_ip_ranges")
     credential_policy = module.params["credential_policy"]
     password_credentials = module.params["password_credentials"]
     update_password = module.params["update_password"]
     public_key_credentials = module.params["public_key_credentials"]
     roles = module.params["roles"]
+    admin_roles = module.params.get("admin_roles")
     state = module.params["state"]
     insecure = module.params["insecure"]
     timeout = module.params["timeout"]
@@ -657,10 +756,13 @@ def main():
         "id": None,
         "username": username,
         "description": description,
+        "rate_limit_bytes_per_second": rate_limit_bytes_per_second,
+        "allowed_ip_ranges": allowed_ip_ranges if allowed_ip_ranges is not None else [],
         "credential_policy": credential_policy,
         "password_credentials": password_credentials if password_credentials else [],
         "public_key_credentials": [],
         "roles": [],
+        "admin_roles": [],
     }
 
     try:
@@ -717,10 +819,18 @@ def main():
                 diff_before = {
                     "username": existing_user.username,
                     "description": existing_user.description or "",
+                    "rate_limit_bytes_per_second": existing_user.rate_limit_bytes_per_second,
+                    "allowed_ip_ranges": list(existing_user.allowed_ip_ranges or []),
                 }
                 diff_after = {
                     "username": username,
                     "description": description,
+                    "rate_limit_bytes_per_second": rate_limit_bytes_per_second,
+                    "allowed_ip_ranges": (
+                        list(allowed_ip_ranges)
+                        if allowed_ip_ranges is not None
+                        else list(existing_user.allowed_ip_ranges or [])
+                    ),
                 }
 
                 # Check if modifications are needed
@@ -728,6 +838,16 @@ def main():
                 if existing_user.username != username:
                     needs_update = True
                 if existing_user.description != description:
+                    needs_update = True
+                if (
+                    rate_limit_bytes_per_second is not None
+                    and existing_user.rate_limit_bytes_per_second
+                    != rate_limit_bytes_per_second
+                ):
+                    needs_update = True
+                if allowed_ip_ranges is not None and list(
+                    existing_user.allowed_ip_ranges or []
+                ) != list(allowed_ip_ranges):
                     needs_update = True
 
                 # Compare credential policies (only when a policy was explicitly provided)
@@ -745,10 +865,22 @@ def main():
                 if needs_update:
                     if not module.check_mode:
                         updated_user = update_user(
-                            client, user_id, username, description, normalized_policy
+                            client,
+                            user_id,
+                            username,
+                            description,
+                            normalized_policy,
+                            rate_limit_bytes_per_second=rate_limit_bytes_per_second,
+                            allowed_ip_ranges=allowed_ip_ranges,
                         )
                         result["id"] = updated_user.id
                         result["description"] = updated_user.description
+                        result["rate_limit_bytes_per_second"] = (
+                            updated_user.rate_limit_bytes_per_second
+                        )
+                        result["allowed_ip_ranges"] = list(
+                            updated_user.allowed_ip_ranges or []
+                        )
                         if updated_user.credential_policy:
                             policy_dict = updated_user.credential_policy.to_dict()
                             result["credential_policy"] = (
@@ -760,6 +892,12 @@ def main():
                 else:
                     result["id"] = existing_user.id
                     result["description"] = existing_user.description
+                    result["rate_limit_bytes_per_second"] = (
+                        existing_user.rate_limit_bytes_per_second
+                    )
+                    result["allowed_ip_ranges"] = list(
+                        existing_user.allowed_ip_ranges or []
+                    )
                     if existing_user.credential_policy:
                         policy_dict = existing_user.credential_policy.to_dict()
                         result["credential_policy"] = (
@@ -827,6 +965,38 @@ def main():
                     except WarpgateAPIError:
                         result["roles"] = []
 
+                # Manage admin role assignments
+                if admin_roles is not None:
+                    try:
+                        resolved_admin_role_ids = resolve_admin_role_ids(
+                            client, admin_roles
+                        )
+                    except ValueError as e:
+                        module.fail_json(msg=str(e))
+
+                    try:
+                        current_admin_before = get_user_admin_roles(client, user_id)
+                        diff_before["admin_roles"] = [
+                            r.id for r in current_admin_before
+                        ]
+                    except WarpgateAPIError:
+                        diff_before["admin_roles"] = []
+                    diff_after["admin_roles"] = resolved_admin_role_ids
+
+                    admin_changed, final_admin_ids = manage_user_admin_roles(
+                        client, user_id, resolved_admin_role_ids, module
+                    )
+                    if admin_changed:
+                        result["changed"] = True
+                    result["admin_roles"] = final_admin_ids
+                else:
+                    try:
+                        result["admin_roles"] = [
+                            r.id for r in get_user_admin_roles(client, user_id)
+                        ]
+                    except WarpgateAPIError:
+                        result["admin_roles"] = []
+
                 if result["changed"]:
                     result["diff"] = {"before": diff_before, "after": diff_after}
 
@@ -836,10 +1006,23 @@ def main():
                     new_user = create_user(client, username, description)
                     user_id = new_user.id
 
-                    # If a credential policy is specified, update it
-                    if normalized_policy:
+                    # POST /users only accepts username + description. Apply
+                    # the remaining fields (credential_policy, rate limit,
+                    # allowed_ip_ranges) through a follow-up PUT /users/{id}
+                    # whenever at least one of them was provided.
+                    if (
+                        normalized_policy
+                        or rate_limit_bytes_per_second is not None
+                        or allowed_ip_ranges is not None
+                    ):
                         updated_user = update_user(
-                            client, user_id, username, description, normalized_policy
+                            client,
+                            user_id,
+                            username,
+                            description,
+                            normalized_policy,
+                            rate_limit_bytes_per_second=rate_limit_bytes_per_second,
+                            allowed_ip_ranges=allowed_ip_ranges,
                         )
                         if updated_user.credential_policy:
                             policy_dict = updated_user.credential_policy.to_dict()
@@ -848,8 +1031,20 @@ def main():
                             )
                         else:
                             result["credential_policy"] = None
+                        result["rate_limit_bytes_per_second"] = (
+                            updated_user.rate_limit_bytes_per_second
+                        )
+                        result["allowed_ip_ranges"] = list(
+                            updated_user.allowed_ip_ranges or []
+                        )
                     else:
                         result["credential_policy"] = None
+                        result["rate_limit_bytes_per_second"] = (
+                            new_user.rate_limit_bytes_per_second
+                        )
+                        result["allowed_ip_ranges"] = list(
+                            new_user.allowed_ip_ranges or []
+                        )
 
                     result["id"] = user_id
                     result["description"] = new_user.description
@@ -889,6 +1084,23 @@ def main():
                         result["roles"] = final_role_ids
                     else:
                         result["roles"] = []
+
+                    # Manage admin-role assignments
+                    if admin_roles is not None:
+                        try:
+                            resolved_admin_role_ids = resolve_admin_role_ids(
+                                client, admin_roles
+                            )
+                        except ValueError as e:
+                            module.fail_json(msg=str(e))
+                        admin_changed, final_admin_ids = manage_user_admin_roles(
+                            client, user_id, resolved_admin_role_ids, module
+                        )
+                        if admin_changed:
+                            result["changed"] = True
+                        result["admin_roles"] = final_admin_ids
+                    else:
+                        result["admin_roles"] = []
                 else:
                     result["id"] = "new-user-id"  # Placeholder for check_mode
                     # In check mode, return the desired keys (or empty list if None)
@@ -908,6 +1120,12 @@ def main():
                         result["roles"] = _resolve_role_ids(client, roles or [])
                     except (ValueError, WarpgateAPIError):
                         result["roles"] = roles or []
+                    try:
+                        result["admin_roles"] = resolve_admin_role_ids(
+                            client, admin_roles or []
+                        )
+                    except (ValueError, WarpgateAPIError):
+                        result["admin_roles"] = admin_roles or []
 
                 result["changed"] = True
                 result["diff"] = {
@@ -915,7 +1133,10 @@ def main():
                     "after": {
                         "username": username,
                         "description": description,
+                        "rate_limit_bytes_per_second": rate_limit_bytes_per_second,
+                        "allowed_ip_ranges": allowed_ip_ranges or [],
                         "roles": roles or [],
+                        "admin_roles": admin_roles or [],
                     },
                 }
 

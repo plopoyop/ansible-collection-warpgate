@@ -15,10 +15,12 @@ DOCUMENTATION = """
 ---
 module: warpgate_user_role
 
-short_description: Manages associations between users and roles in Warpgate
+short_description: Manages associations between users and access roles in Warpgate
 
 description:
-    - This module allows to assign and remove roles from users.
+    - This module allows to assign and remove access roles from users.
+    - Since Warpgate v0.23, assignments can carry an C(expires_at)
+      timestamp; this module also manages updates to an existing expiry.
 
 version_added: "1.0.0"
 
@@ -53,6 +55,16 @@ options:
             - Role ID
         type: str
         required: true
+    expires_at:
+        description:
+            - Optional ISO-8601 expiry timestamp for the assignment (v0.23+).
+            - When omitted on a new assignment, the role is permanent.
+            - When set and the role is already assigned with a different
+              expiry, the assignment is updated.
+            - Pass the string C("never") to explicitly clear an existing
+              expiry (make the assignment permanent).
+        type: str
+        required: false
     state:
         description:
             - Desired state of the association
@@ -75,12 +87,21 @@ author:
 """
 
 EXAMPLES = """
-- name: Assign a role to a user
+- name: Assign a role to a user (permanent)
   plopoyop.warpgate.warpgate_user_role:
     host: "https://warpgate.example.com"
     token: "{{ warpgate_api_token }}"
     user_id: "user-uuid"
     role_id: "role-uuid"
+    state: present
+
+- name: Assign a role with expiry
+  plopoyop.warpgate.warpgate_user_role:
+    host: "https://warpgate.example.com"
+    token: "{{ warpgate_api_token }}"
+    user_id: "user-uuid"
+    role_id: "role-uuid"
+    expires_at: "2026-12-31T23:59:59Z"
     state: present
 
 - name: Remove a role from a user
@@ -105,6 +126,10 @@ role_id:
     description: Role ID
     type: str
     returned: always
+expires_at:
+    description: Assignment expiry timestamp (null when permanent, v0.23+)
+    type: str
+    returned: when available
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -117,8 +142,26 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client 
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.role import (
     get_user_roles,
     add_user_role,
+    update_user_role,
     delete_user_role,
 )
+
+
+_NEVER_SENTINEL = "never"
+
+
+def _normalize_expires(expires_at):
+    """Translate the module-facing ``expires_at`` into the value to send.
+
+    - ``None`` / empty → no expiry change intended
+    - literal string ``"never"`` → explicit clear (send ``null``)
+    - any other string → ISO-8601 timestamp to set
+    """
+    if expires_at is None or expires_at == "":
+        return None, False
+    if expires_at == _NEVER_SENTINEL:
+        return None, True
+    return expires_at, True
 
 
 def main():
@@ -129,6 +172,7 @@ def main():
         api_password=dict(type="str", required=False, no_log=True),
         user_id=dict(type="str", required=True),
         role_id=dict(type="str", required=True),
+        expires_at=dict(type="str", required=False),
         state=dict(type="str", choices=["present", "absent"], default="present"),
         insecure=dict(type="bool", default=False),
         timeout=dict(type="int", default=30),
@@ -150,15 +194,19 @@ def main():
         )
     user_id = module.params["user_id"]
     role_id = module.params["role_id"]
+    expires_at_param = module.params.get("expires_at")
     state = module.params["state"]
     insecure = module.params["insecure"]
     timeout = module.params["timeout"]
+
+    desired_expires_at, expires_at_explicit = _normalize_expires(expires_at_param)
 
     result = {
         "changed": False,
         "id": f"{user_id}:{role_id}",
         "user_id": user_id,
         "role_id": role_id,
+        "expires_at": None,
     }
 
     try:
@@ -171,23 +219,46 @@ def main():
             insecure=insecure,
         )
 
-        # Check if the role is already assigned
+        # Find the existing assignment (if any). ``get_user_roles`` returns
+        # UserRoleAssignment objects since v0.23 — with id/name/expires_at.
         user_roles = get_user_roles(client, user_id)
-        role_assigned = any(role.id == role_id for role in user_roles)
-
-        current_role_ids = [role.id for role in user_roles]
+        existing_assignment = next((r for r in user_roles if r.id == role_id), None)
+        current_role_ids = [r.id for r in user_roles]
 
         if state == "present":
-            if not role_assigned:
+            if existing_assignment is None:
                 if not module.check_mode:
-                    add_user_role(client, user_id, role_id)
+                    new_assignment = add_user_role(
+                        client, user_id, role_id, expires_at=desired_expires_at
+                    )
+                    if new_assignment is not None:
+                        result["expires_at"] = new_assignment.expires_at or None
+                else:
+                    result["expires_at"] = desired_expires_at
                 result["changed"] = True
                 result["diff"] = {
                     "before": {"roles": current_role_ids},
                     "after": {"roles": current_role_ids + [role_id]},
                 }
+            elif expires_at_explicit and (
+                (existing_assignment.expires_at or None) != desired_expires_at
+            ):
+                if not module.check_mode:
+                    updated = update_user_role(
+                        client, user_id, role_id, expires_at=desired_expires_at
+                    )
+                    result["expires_at"] = updated.expires_at or None
+                else:
+                    result["expires_at"] = desired_expires_at
+                result["changed"] = True
+                result["diff"] = {
+                    "before": {"expires_at": existing_assignment.expires_at or None},
+                    "after": {"expires_at": desired_expires_at},
+                }
+            else:
+                result["expires_at"] = existing_assignment.expires_at or None
         else:  # state == 'absent'
-            if role_assigned:
+            if existing_assignment is not None:
                 if not module.check_mode:
                     delete_user_role(client, user_id, role_id)
                 result["changed"] = True
