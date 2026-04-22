@@ -53,12 +53,22 @@ options:
         required: false
     username:
         description:
-            - Username for the ticket
+            - Username for the ticket (alternative to C(user_id)).
+        type: str
+        required: false
+    user_id:
+        description:
+            - User UUID for the ticket (alternative to C(username), v0.23+).
         type: str
         required: false
     target_name:
         description:
-            - Target name for the ticket
+            - Target name for the ticket (alternative to C(target_id)).
+        type: str
+        required: false
+    target_id:
+        description:
+            - Target UUID for the ticket (alternative to C(target_name), v0.23+).
         type: str
         required: false
     expiry:
@@ -68,10 +78,11 @@ options:
         required: false
     number_of_uses:
         description:
-            - Number of allowed uses
+            - Maximum number of allowed uses. When not set (the default), the
+              ticket has no usage cap. Values ``<= 0`` are treated as "unlimited"
+              and are not sent to the server.
         type: int
         required: false
-        default: 0
     description:
         description:
             - Ticket description
@@ -135,8 +146,16 @@ username:
     description: Ticket username
     type: str
     returned: when available
+user_id:
+    description: Ticket user UUID (v0.23+)
+    type: str
+    returned: when available
 target:
     description: Target name
+    type: str
+    returned: when available
+target_id:
+    description: Ticket target UUID (v0.23+)
     type: str
     returned: when available
 expiry:
@@ -145,7 +164,7 @@ expiry:
     returned: when available
 uses_left:
     description: Number of uses remaining
-    type: str
+    type: int
     returned: when available
 description:
     description: Ticket description
@@ -174,9 +193,11 @@ def main():
         api_password=dict(type="str", required=False, no_log=True),
         id=dict(type="str", required=False),
         username=dict(type="str", required=False),
+        user_id=dict(type="str", required=False),
         target_name=dict(type="str", required=False),
+        target_id=dict(type="str", required=False),
         expiry=dict(type="str", required=False),
-        number_of_uses=dict(type="int", required=False, default=0),
+        number_of_uses=dict(type="int", required=False),
         description=dict(type="str", required=False),
         state=dict(type="str", choices=["present", "absent"], default="present"),
         insecure=dict(type="bool", default=False),
@@ -200,7 +221,9 @@ def main():
         )
     ticket_id = module.params["id"]
     username = module.params["username"]
+    user_id = module.params.get("user_id")
     target_name = module.params["target_name"]
+    target_id_param = module.params.get("target_id")
     expiry = module.params["expiry"]
     number_of_uses = module.params["number_of_uses"]
     description = module.params["description"]
@@ -238,6 +261,8 @@ def main():
                     client,
                     username=username or "",
                     target_name=target_name or "",
+                    user_id=user_id or "",
+                    target_id=target_id_param or "",
                     expiry=expiry or "",
                     number_of_uses=number_of_uses,
                     description=description or "",
@@ -246,7 +271,9 @@ def main():
                 result["id"] = ticket_and_secret.ticket.id
                 result["secret"] = ticket_and_secret.secret
                 result["username"] = ticket_and_secret.ticket.username
+                result["user_id"] = ticket_and_secret.ticket.user_id
                 result["target"] = ticket_and_secret.ticket.target
+                result["target_id"] = ticket_and_secret.ticket.target_id
                 result["expiry"] = ticket_and_secret.ticket.expiry
                 result["uses_left"] = ticket_and_secret.ticket.uses_left
                 result["description"] = ticket_and_secret.ticket.description
@@ -258,7 +285,9 @@ def main():
                 "before": {},
                 "after": {
                     "username": username,
+                    "user_id": user_id,
                     "target": target_name,
+                    "target_id": target_id_param,
                     "expiry": expiry,
                 },
             }

@@ -99,7 +99,23 @@ class TestBuildTargetOptions:
         )
         opts = warpgate_target.build_target_options(mod)
         assert opts["kind"] == "MySql"
-        assert opts["password"] == "pass"
+        # v0.23+: the module emits the new ``auth`` structure instead of the
+        # deprecated flat ``password`` field.
+        assert "password" not in opts
+        assert opts["auth"] == {"kind": "Password", "password": "pass"}
+
+    def test_mysql_options_iam_role(self):
+        mod = self._make_module(
+            mysql_options={
+                "host": "db.local",
+                "port": 3306,
+                "username": "root",
+                "iam_role": True,
+                "tls": {"mode": "Disabled", "verify": False},
+            }
+        )
+        opts = warpgate_target.build_target_options(mod)
+        assert opts["auth"] == {"kind": "IamRole"}
 
     def test_postgres_options(self):
         mod = self._make_module(
@@ -113,6 +129,7 @@ class TestBuildTargetOptions:
         opts = warpgate_target.build_target_options(mod)
         assert opts["kind"] == "Postgres"
         assert "password" not in opts
+        assert "auth" not in opts  # no password, no iam_role → auth omitted
 
     def test_kubernetes_token_auth(self):
         mod = self._make_module(

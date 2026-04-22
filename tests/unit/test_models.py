@@ -137,14 +137,14 @@ class TestRole:
 
 class TestPasswordCredential:
     def test_from_dict(self):
+        # The admin API's ExistingPasswordCredential only returns the id;
+        # a ``password`` key in the payload is ignored by design.
         c = PasswordCredential.from_dict({"id": "c1", "password": "secret"})
         assert c.id == "c1"
-        assert c.password == "secret"
 
     def test_from_dict_defaults(self):
         c = PasswordCredential.from_dict({})
         assert c.id == ""
-        assert c.password == ""
 
 
 class TestPublicKeyCredential:

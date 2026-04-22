@@ -68,6 +68,12 @@ options:
         type: str
         required: false
         default: ""
+    rate_limit_bytes_per_second:
+        description:
+            - Optional per-target upstream bandwidth limit in bytes/second.
+            - When not provided, the target has no bandwidth cap.
+        type: int
+        required: false
     ssh_options:
         description:
             - Options for an SSH target
@@ -150,8 +156,14 @@ options:
                 type: str
                 required: true
             password:
-                description: MySQL password
+                description:
+                    - "MySQL password. When provided, the module emits the v0.23+ auth structure (kind=Password) on the wire; the deprecated flat password field is no longer sent."
                 type: str
+            iam_role:
+                description:
+                    - "Use AWS IAM role authentication instead of a password (emits auth kind=IamRole). Mutually exclusive with C(password)."
+                type: bool
+                default: false
             tls:
                 description: TLS configuration
                 type: dict
@@ -166,6 +178,9 @@ options:
                         description: Verify TLS certificates
                         type: bool
                         required: true
+            default_database_name:
+                description: Default database name to connect to on the upstream.
+                type: str
     postgres_options:
         description:
             - Options for a PostgreSQL target
@@ -185,8 +200,14 @@ options:
                 type: str
                 required: true
             password:
-                description: PostgreSQL password
+                description:
+                    - "PostgreSQL password. When provided, the module emits the v0.23+ auth structure (kind=Password) on the wire; the deprecated flat password field is no longer sent."
                 type: str
+            iam_role:
+                description:
+                    - "Use AWS IAM role authentication instead of a password (emits auth kind=IamRole). Mutually exclusive with C(password)."
+                type: bool
+                default: false
             tls:
                 description: TLS configuration
                 type: dict
@@ -201,6 +222,14 @@ options:
                         description: Verify TLS certificates
                         type: bool
                         required: true
+            default_database_name:
+                description: Default database name to connect to on the upstream.
+                type: str
+            idle_timeout:
+                description:
+                    - Idle timeout for upstream PostgreSQL connections, as a
+                      human-readable duration (e.g. ``30s``, ``5m``).
+                type: str
     kubernetes_options:
         description:
             - Options for a Kubernetes target (experimental, requires Warpgate >= 0.21.0)
@@ -381,6 +410,10 @@ group:
     description: Target group name
     type: str
     returned: when available
+rate_limit_bytes_per_second:
+    description: Upstream bandwidth limit in bytes/second (null = no limit)
+    type: int
+    returned: when available
 allow_roles:
     description: List of allowed roles
     type: list
@@ -416,6 +449,25 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.target_group import (
     get_target_groups,
 )
+
+
+def _build_database_auth(module, db_options, context_label):
+    """Builds the ``auth`` structure for MySQL / PostgreSQL targets.
+
+    Returns None when neither ``password`` nor ``iam_role`` is set (caller
+    will simply omit the ``auth`` field).
+    """
+    password = db_options.get("password")
+    iam_role = bool(db_options.get("iam_role"))
+    if password and iam_role:
+        module.fail_json(
+            msg=f"{context_label}: password and iam_role are mutually exclusive"
+        )
+    if iam_role:
+        return {"kind": "IamRole"}
+    if password:
+        return {"kind": "Password", "password": password}
+    return None
 
 
 def build_target_options(module):
@@ -481,9 +533,9 @@ def build_target_options(module):
             },
         }
 
-        if "headers" in http_options:
+        if http_options.get("headers"):
             options["headers"] = http_options["headers"]
-        if "external_host" in http_options:
+        if http_options.get("external_host"):
             options["external_host"] = http_options["external_host"]
 
         return options
@@ -500,8 +552,11 @@ def build_target_options(module):
             },
         }
 
-        if "password" in mysql_options:
-            options["password"] = mysql_options["password"]
+        db_auth = _build_database_auth(module, mysql_options, "mysql_options")
+        if db_auth is not None:
+            options["auth"] = db_auth
+        if mysql_options.get("default_database_name"):
+            options["default_database_name"] = mysql_options["default_database_name"]
 
         return options
 
@@ -517,8 +572,13 @@ def build_target_options(module):
             },
         }
 
-        if "password" in postgres_options:
-            options["password"] = postgres_options["password"]
+        db_auth = _build_database_auth(module, postgres_options, "postgres_options")
+        if db_auth is not None:
+            options["auth"] = db_auth
+        if postgres_options.get("default_database_name"):
+            options["default_database_name"] = postgres_options["default_database_name"]
+        if postgres_options.get("idle_timeout"):
+            options["idle_timeout"] = postgres_options["idle_timeout"]
 
         return options
 
@@ -692,6 +752,7 @@ def main():
         name=dict(type="str", required=True),
         description=dict(type="str", required=False, default=""),
         group=dict(type="str", required=False, default=""),
+        rate_limit_bytes_per_second=dict(type="int", required=False),
         ssh_options=dict(type="dict", required=False),
         http_options=dict(type="dict", required=False),
         mysql_options=dict(type="dict", required=False),
@@ -721,6 +782,7 @@ def main():
     name = module.params["name"]
     description = module.params["description"]
     group = module.params["group"]
+    rate_limit_bytes_per_second = module.params.get("rate_limit_bytes_per_second")
     roles = module.params["roles"]
     state = module.params["state"]
     insecure = module.params["insecure"]
@@ -732,6 +794,7 @@ def main():
         "name": name,
         "description": description,
         "group": group,
+        "rate_limit_bytes_per_second": rate_limit_bytes_per_second,
         "roles": [],
     }
 
@@ -792,12 +855,14 @@ def main():
                     "description": existing_target.description or "",
                     "group_id": existing_target.group_id or "",
                     "options": existing_target.options or {},
+                    "rate_limit_bytes_per_second": existing_target.rate_limit_bytes_per_second,
                 }
                 diff_after = {
                     "name": name,
                     "description": description,
                     "group_id": group_id or "",
                     "options": target_options or {},
+                    "rate_limit_bytes_per_second": rate_limit_bytes_per_second,
                 }
 
                 # Check if modifications are needed
@@ -807,6 +872,12 @@ def main():
                 if existing_target.description != description:
                     needs_update = True
                 if (existing_target.group_id or "") != (group_id or ""):
+                    needs_update = True
+                if (
+                    rate_limit_bytes_per_second is not None
+                    and existing_target.rate_limit_bytes_per_second
+                    != rate_limit_bytes_per_second
+                ):
                     needs_update = True
 
                 # Compare options (simplified - basic comparison)
@@ -823,16 +894,23 @@ def main():
                             description,
                             group_id,
                             target_options,
+                            rate_limit_bytes_per_second=rate_limit_bytes_per_second,
                         )
                         result["id"] = updated_target.id
                         result["description"] = updated_target.description
                         result["group"] = group
+                        result["rate_limit_bytes_per_second"] = (
+                            updated_target.rate_limit_bytes_per_second
+                        )
                         result["allow_roles"] = updated_target.allow_roles
                     result["changed"] = True
                 else:
                     result["id"] = existing_target.id
                     result["description"] = existing_target.description
                     result["group"] = group
+                    result["rate_limit_bytes_per_second"] = (
+                        existing_target.rate_limit_bytes_per_second
+                    )
                     result["allow_roles"] = existing_target.allow_roles
 
                 # Manage roles (use target.allow_roles as source of truth for current state)
@@ -866,12 +944,36 @@ def main():
                 # Create a new target
                 if not module.check_mode:
                     new_target = create_target(
-                        client, name, description, group_id, target_options
+                        client,
+                        name,
+                        description,
+                        group_id,
+                        target_options,
+                        rate_limit_bytes_per_second=rate_limit_bytes_per_second,
                     )
                     target_id = new_target.id
+
+                    if (
+                        rate_limit_bytes_per_second is not None
+                        and new_target.rate_limit_bytes_per_second
+                        != rate_limit_bytes_per_second
+                    ):
+                        new_target = update_target(
+                            client,
+                            target_id,
+                            name,
+                            description,
+                            group_id,
+                            target_options,
+                            rate_limit_bytes_per_second=rate_limit_bytes_per_second,
+                        )
+
                     result["id"] = target_id
                     result["description"] = new_target.description
                     result["group"] = group
+                    result["rate_limit_bytes_per_second"] = (
+                        new_target.rate_limit_bytes_per_second
+                    )
                     result["allow_roles"] = new_target.allow_roles
 
                     # Manage roles (new target has allow_roles from create response)
@@ -913,6 +1015,7 @@ def main():
                         "name": name,
                         "description": description,
                         "group": group,
+                        "rate_limit_bytes_per_second": rate_limit_bytes_per_second,
                         "options": target_options or {},
                         "roles": roles or [],
                     },

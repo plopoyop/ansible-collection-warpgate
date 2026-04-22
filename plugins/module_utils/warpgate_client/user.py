@@ -60,11 +60,17 @@ class User:
         username: str,
         description: str = "",
         credential_policy: Optional[UserRequireCredentialsPolicy] = None,
+        rate_limit_bytes_per_second: Optional[int] = None,
+        ldap_server_id: str = "",
+        allowed_ip_ranges: Optional[List[str]] = None,
     ):
         self.id = id
         self.username = username
         self.description = description
         self.credential_policy = credential_policy
+        self.rate_limit_bytes_per_second = rate_limit_bytes_per_second
+        self.ldap_server_id = ldap_server_id
+        self.allowed_ip_ranges = allowed_ip_ranges or []
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "User":
@@ -84,6 +90,9 @@ class User:
             username=data["username"],
             description=data.get("description", ""),
             credential_policy=policy,
+            rate_limit_bytes_per_second=data.get("rate_limit_bytes_per_second"),
+            ldap_server_id=data.get("ldap_server_id", ""),
+            allowed_ip_ranges=data.get("allowed_ip_ranges") or [],
         )
 
 
@@ -149,9 +158,12 @@ def update_user(
     username: str,
     description: str = "",
     credential_policy: Optional[UserRequireCredentialsPolicy] = None,
+    rate_limit_bytes_per_second: Optional[int] = None,
+    allowed_ip_ranges: Optional[List[str]] = None,
 ) -> User:
     """
-    Updates an existing user's information including username, description, and credential policy.
+    Updates an existing user's information including username, description,
+    credential policy, bandwidth limit and IP allow-list.
 
     Args:
         client: WarpgateClient instance
@@ -159,15 +171,24 @@ def update_user(
         username: Updated username
         description: Updated description
         credential_policy: Optional credential policy
+        rate_limit_bytes_per_second: Optional upstream bandwidth limit. Passing
+            ``None`` leaves the field unset in the request body (no change).
+        allowed_ip_ranges: Optional list of CIDR ranges allowed to authenticate
+            as this user. Passing ``None`` leaves the field unset in the
+            request body (no change); pass ``[]`` to explicitly clear it.
 
     Returns:
         Updated User object
     """
-    body = {"username": username, "description": description}
+    body: Dict[str, Any] = {"username": username, "description": description}
     if credential_policy:
         policy_dict = credential_policy.to_dict()
         if policy_dict:
             body["credential_policy"] = policy_dict
+    if rate_limit_bytes_per_second is not None:
+        body["rate_limit_bytes_per_second"] = rate_limit_bytes_per_second
+    if allowed_ip_ranges is not None:
+        body["allowed_ip_ranges"] = list(allowed_ip_ranges)
 
     response = client._request("PUT", f"/users/{user_id}", body)
     return User.from_dict(response)

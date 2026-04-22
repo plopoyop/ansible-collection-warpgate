@@ -10,16 +10,15 @@ from .client import WarpgateAPIError
 
 
 class PasswordCredential:
-    """Represents a password credential for a user"""
+    """Represents a password credential for a user (the password itself is never returned)"""
 
-    def __init__(self, id: str = "", password: str = ""):
+    def __init__(self, id: str = ""):
         self.id = id
-        self.password = password
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "PasswordCredential":
         """Create a PasswordCredential from a dictionary"""
-        return cls(id=data.get("id", ""), password=data.get("password", ""))
+        return cls(id=data.get("id", ""))
 
 
 class PublicKeyCredential:
@@ -210,7 +209,7 @@ def get_sso_credentials(client, user_id: str) -> List[SsoCredential]:
 
 
 def add_sso_credential(
-    client, user_id: str, provider: str, email: str
+    client, user_id: str, email: str, provider: str = ""
 ) -> SsoCredential:
     """
     Adds an SSO credential to the specified user.
@@ -218,19 +217,21 @@ def add_sso_credential(
     Args:
         client: WarpgateClient instance
         user_id: User ID
-        provider: SSO provider name
-        email: Email address for SSO
+        email: Email address for SSO (required)
+        provider: Optional SSO provider name (omitted from payload when empty)
 
     Returns:
         Created SsoCredential object
     """
-    body = {"provider": provider, "email": email}
+    body: Dict[str, Any] = {"email": email}
+    if provider:
+        body["provider"] = provider
     response = client._request("POST", f"/users/{user_id}/credentials/sso", body)
     return SsoCredential.from_dict(response)
 
 
 def update_sso_credential(
-    client, user_id: str, credential_id: str, provider: str, email: str
+    client, user_id: str, credential_id: str, email: str, provider: str = ""
 ) -> SsoCredential:
     """
     Updates an existing SSO credential.
@@ -239,13 +240,15 @@ def update_sso_credential(
         client: WarpgateClient instance
         user_id: User ID
         credential_id: Credential ID to update
-        provider: Updated SSO provider name
-        email: Updated email address
+        email: Updated email address (required)
+        provider: Optional updated SSO provider name
 
     Returns:
         Updated SsoCredential object
     """
-    body = {"provider": provider, "email": email}
+    body: Dict[str, Any] = {"email": email}
+    if provider:
+        body["provider"] = provider
     response = client._request(
         "PUT", f"/users/{user_id}/credentials/sso/{credential_id}", body
     )

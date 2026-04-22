@@ -4,7 +4,7 @@ Ticket management for the Warpgate API
 This module provides functions to manage Warpgate access tickets.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class Ticket:
@@ -13,16 +13,20 @@ class Ticket:
     def __init__(
         self,
         id: str = "",
+        user_id: str = "",
         username: str = "",
         description: str = "",
+        target_id: str = "",
         target: str = "",
-        uses_left: str = "",
+        uses_left: Optional[int] = None,
         expiry: str = "",
         created: str = "",
     ):
         self.id = id
+        self.user_id = user_id
         self.username = username
         self.description = description
+        self.target_id = target_id
         self.target = target
         self.uses_left = uses_left
         self.expiry = expiry
@@ -33,10 +37,12 @@ class Ticket:
         """Create a Ticket from a dictionary"""
         return cls(
             id=data.get("id", ""),
+            user_id=data.get("user_id", ""),
             username=data.get("username", ""),
             description=data.get("description", ""),
+            target_id=data.get("target_id", ""),
             target=data.get("target", ""),
-            uses_left=data.get("uses_left", ""),
+            uses_left=data.get("uses_left"),
             expiry=data.get("expiry", ""),
             created=data.get("created", ""),
         )
@@ -60,31 +66,45 @@ def create_ticket(
     client,
     username: str = "",
     target_name: str = "",
+    user_id: str = "",
+    target_id: str = "",
     expiry: str = "",
-    number_of_uses: int = 0,
+    number_of_uses: Optional[int] = None,
     description: str = "",
 ) -> TicketAndSecret:
     """
-    Creates a new ticket in Warpgate with the provided parameters.
+    Creates a new ticket in Warpgate.
+
+    The user can be identified either by ``username`` or by ``user_id`` (UUID).
+    Same for the target: ``target_name`` or ``target_id``. Since v0.23, the API
+    accepts any combination; omitted fields are not sent.
 
     Args:
         client: WarpgateClient instance
-        username: Username for the ticket
-        target_name: Target name for the ticket
+        username: Username for the ticket (alternative to user_id)
+        target_name: Target name for the ticket (alternative to target_id)
+        user_id: User UUID (alternative to username)
+        target_id: Target UUID (alternative to target_name)
         expiry: Expiry date (ISO 8601 format)
-        number_of_uses: Number of allowed uses
+        number_of_uses: Maximum number of uses. ``None`` or a non-positive
+            value means unlimited and the field is not sent.
         description: Optional description
 
     Returns:
         TicketAndSecret object containing the ticket and its secret
     """
-    body = {
-        "username": username or "",
-        "target_name": target_name or "",
-    }
+    body: Dict[str, Any] = {}
+    if username:
+        body["username"] = username
+    if target_name:
+        body["target_name"] = target_name
+    if user_id:
+        body["user_id"] = user_id
+    if target_id:
+        body["target_id"] = target_id
     if expiry:
         body["expiry"] = expiry
-    if number_of_uses is not None:
+    if number_of_uses is not None and number_of_uses > 0:
         body["number_of_uses"] = number_of_uses
     if description:
         body["description"] = description

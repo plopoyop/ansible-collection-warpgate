@@ -36,6 +36,7 @@ for _sub in (
     "client",
     "user",
     "role",
+    "admin_role",
     "credential",
     "target",
     "target_group",

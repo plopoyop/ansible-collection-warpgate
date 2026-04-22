@@ -1,7 +1,11 @@
 """
 Role management for the Warpgate API
 
-This module provides functions to manage Warpgate roles and role assignments.
+This module provides functions to manage Warpgate access roles and their
+assignments to users and targets. Since v0.23, user-role assignments can
+carry an ``expires_at`` timestamp; this is exposed through the new
+:class:`UserRoleAssignment` type and the ``update_user_role`` /
+``get_user_role`` helpers.
 """
 
 import urllib.parse
@@ -11,7 +15,7 @@ from .client import WarpgateAPIError
 
 
 class Role:
-    """Represents a Warpgate role"""
+    """Represents a Warpgate access role"""
 
     def __init__(self, id: str, name: str, description: str = ""):
         self.id = id
@@ -23,6 +27,46 @@ class Role:
         """Create a Role from a dictionary"""
         return cls(
             id=data["id"], name=data["name"], description=data.get("description", "")
+        )
+
+
+class UserRoleAssignment:
+    """Represents a single user-to-role assignment (with optional expiry).
+
+    Returned by ``GET /users/{id}/roles`` (list) and ``GET /users/{id}/roles/{role_id}``
+    since Warpgate v0.23. Has the same ``id`` / ``name`` / ``description`` as
+    :class:`Role` so it can be used interchangeably where only those fields
+    are needed.
+    """
+
+    def __init__(
+        self,
+        id: str,
+        name: str,
+        description: str = "",
+        granted_at: str = "",
+        expires_at: str = "",
+        is_expired: bool = False,
+        is_active: bool = True,
+    ):
+        self.id = id
+        self.name = name
+        self.description = description
+        self.granted_at = granted_at
+        self.expires_at = expires_at
+        self.is_expired = is_expired
+        self.is_active = is_active
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "UserRoleAssignment":
+        return cls(
+            id=data["id"],
+            name=data.get("name", ""),
+            description=data.get("description", ""),
+            granted_at=data.get("granted_at", "") or "",
+            expires_at=data.get("expires_at", "") or "",
+            is_expired=bool(data.get("is_expired", False)),
+            is_active=bool(data.get("is_active", True)),
         )
 
 
@@ -111,31 +155,68 @@ def delete_role(client, role_id: str) -> None:
     client._request("DELETE", f"/role/{role_id}")
 
 
-def get_user_roles(client, user_id: str) -> List[Role]:
+def get_user_roles(client, user_id: str) -> List[UserRoleAssignment]:
     """
-    Retrieves all roles assigned to a specific user.
+    Retrieves all roles assigned to a specific user, including assignment
+    metadata (granted_at, expires_at, is_expired, is_active).
 
-    Args:
-        client: WarpgateClient instance
-        user_id: User ID
-
-    Returns:
-        List of Role objects assigned to the user
+    Since Warpgate v0.23 this endpoint returns ``UserRoleAssignmentResponse``
+    objects instead of bare roles. Callers that only need ``.id`` can use the
+    returned :class:`UserRoleAssignment` unchanged.
     """
     response = client._request("GET", f"/users/{user_id}/roles")
-    return [Role.from_dict(role) for role in response]
+    return [UserRoleAssignment.from_dict(r) for r in response]
 
 
-def add_user_role(client, user_id: str, role_id: str) -> None:
+def get_user_role(client, user_id: str, role_id: str) -> Optional[UserRoleAssignment]:
+    """Retrieves a single user-role assignment (v0.23+)."""
+    try:
+        response = client._request("GET", f"/users/{user_id}/roles/{role_id}")
+        return UserRoleAssignment.from_dict(response)
+    except WarpgateAPIError as e:
+        if e.status_code == 404:
+            return None
+        raise
+
+
+def add_user_role(
+    client, user_id: str, role_id: str, expires_at: Optional[str] = None
+) -> Optional[UserRoleAssignment]:
     """
-    Assigns a role to a user in Warpgate.
+    Assigns a role to a user, optionally with an expiry timestamp (v0.23+).
 
     Args:
         client: WarpgateClient instance
         user_id: User ID
         role_id: Role ID to assign
+        expires_at: Optional ISO-8601 expiry timestamp. ``None`` = permanent.
+
+    Returns:
+        The created :class:`UserRoleAssignment` when the server returns one,
+        otherwise ``None`` (older server builds return an empty 201).
     """
-    client._request("POST", f"/users/{user_id}/roles/{role_id}")
+    body: Dict[str, Any] = {}
+    if expires_at:
+        body["expires_at"] = expires_at
+    response = client._request(
+        "POST", f"/users/{user_id}/roles/{role_id}", body if body else None
+    )
+    if isinstance(response, dict) and response.get("id"):
+        return UserRoleAssignment.from_dict(response)
+    return None
+
+
+def update_user_role(
+    client, user_id: str, role_id: str, expires_at: Optional[str] = None
+) -> UserRoleAssignment:
+    """Updates the expiry of an existing user-role assignment (v0.23+).
+
+    Pass ``expires_at=None`` to clear the expiry and make the assignment
+    permanent; pass an ISO-8601 string to set a new expiry.
+    """
+    body: Dict[str, Any] = {"expires_at": expires_at}
+    response = client._request("PUT", f"/users/{user_id}/roles/{role_id}", body)
+    return UserRoleAssignment.from_dict(response)
 
 
 def delete_user_role(client, user_id: str, role_id: str) -> None:

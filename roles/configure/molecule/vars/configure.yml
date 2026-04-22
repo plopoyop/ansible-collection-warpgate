@@ -10,15 +10,37 @@ warpgate_roles:
   - name: "ops"
     description: "Role for ops team"
 
+warpgate_admin_roles:
+  - name: "auditor"
+    description: "Read-only admin used by auditors"
+    permissions:
+      sessions_view: true
+      recordings_view: true
+  - name: "ops-admin"
+    description: "Ops admin with target + user management"
+    permissions:
+      targets_create: true
+      targets_edit: true
+      targets_delete: true
+      users_create: true
+      users_edit: true
+
 warpgate_users:
   - name: "Dave lopper"
     description: "Lead developer"
     roles:
       - "developers"
+    rate_limit_bytes_per_second: 1048576
+    allowed_ip_ranges:
+      - "10.0.0.0/8"
+      - "192.168.0.0/16"
   - name: "Amin Nistrator"
     description: "Administrator for production environment"
     roles:
       - "ops"
+    admin_roles:
+      - "ops-admin"
+      - "auditor"
 
 warpgate_target_groups:
   - name: "production"
@@ -32,6 +54,7 @@ warpgate_targets:
   - name: "localhost-prod"
     description: "Production server"
     group: "production"
+    rate_limit_bytes_per_second: 5242880
     roles:
       - "developers"
       - "ops"
