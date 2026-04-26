@@ -79,6 +79,9 @@ warpgate_admin_roles: []
 #     public_key_credentials:
 #       - label: "Work Laptop"
 #         public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPybWSk9tjp8btUNrHjLbVxSLD+Wopno8cpbJyTp5wlr"
+#     sso_credentials:
+#       - provider: "microsoft"
+#         email: "test@example.com"
 warpgate_users: []
 
 # @var warpgate_target_groups:type: list

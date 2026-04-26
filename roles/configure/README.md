@@ -7,6 +7,7 @@ Configure warpgate via API (roles, users, targets, groups)
 - [Requirements](#requirements)
 - [Default Variables](#default-variables)
   - [warpgate_admin_password](#warpgate_admin_password)
+  - [warpgate_admin_roles](#warpgate_admin_roles)
   - [warpgate_admin_username](#warpgate_admin_username)
   - [warpgate_api_host](#warpgate_api_host)
   - [warpgate_api_insecure](#warpgate_api_insecure)
@@ -32,6 +33,24 @@ Configure warpgate via API (roles, users, targets, groups)
 Warpgate admin password
 
 **_Type:_** string<br />
+
+### warpgate_admin_roles
+
+Warpgate admin roles (v0.23+). Permissions default to false when omitted.
+
+**_Type:_** list<br />
+
+#### Default value
+
+```YAML
+warpgate_admin_roles: []
+```
+
+#### Example usage
+
+```YAML
+
+```
 
 ### warpgate_admin_username
 
@@ -114,7 +133,9 @@ warpgate_target_groups: []
 
 ### warpgate_targets
 
-Warpgate targets
+Warpgate targets. Optional v0.23+ fields: rate_limit_bytes_per_second,
+default_database_name / idle_timeout on mysql_options / postgres_options,
+iam_role on mysql/postgres options (mutually exclusive with password).
 
 **_Type:_** list<br />
 
@@ -132,7 +153,8 @@ warpgate_targets: []
 
 ### warpgate_users
 
-Warpgate users
+Warpgate users. Optional per-user fields (v0.23+):
+rate_limit_bytes_per_second, allowed_ip_ranges, admin_roles.
 
 **_Type:_** list<br />
 

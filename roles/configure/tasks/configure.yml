@@ -47,6 +47,7 @@
       kubernetes: "{{ warpgate_current_user.credential_policy.kubernetes | default([]) }}"
     password_credentials: "{{ warpgate_current_user.password_credentials | default([]) }}"
     public_key_credentials: "{{ warpgate_current_user.public_key_credentials | default([]) }}"
+    sso_credentials: "{{ warpgate_current_user.sso_credentials | default(omit) }}"
     roles: "{{ warpgate_current_user.roles | default([]) }}"
     admin_roles: "{{ warpgate_current_user.admin_roles | default(omit) }}"
     state: "{{ warpgate_current_user.state | default('present') }}"

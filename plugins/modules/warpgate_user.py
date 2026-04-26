@@ -149,6 +149,30 @@ options:
                     - OpenSSH public key
                 type: str
                 required: true
+    sso_credentials:
+        description:
+            - List of SSO credentials to manage for the user.
+            - Each item is a dict with C(email) (required) and optional C(provider).
+            - The module enforces the exact list (adds missing, updates changed, removes extras).
+            - An empty list removes all SSO credentials. If not provided, existing ones are left unchanged.
+            - Identity is matched on C(email) + C(provider). Two credentials with the same email but
+              different providers are treated as distinct.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+            email:
+                description:
+                    - Email used by the SSO identity (must match the C(email) claim returned by the IdP).
+                type: str
+                required: true
+            provider:
+                description:
+                    - Name of the configured SSO provider (as declared in Warpgate's C(sso_providers)).
+                    - Leave empty to accept any provider.
+                type: str
+                required: false
+                default: ""
     roles:
         description:
             - List of role IDs or role names to assign to the user
@@ -208,6 +232,9 @@ EXAMPLES = """
         public_key: "ssh-rsa AAAAB3NzaC1yc2E... email@example.com"
       - label: "Home Desktop"
         public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5... email@example.com"
+    sso_credentials:
+      - provider: "microsoft"
+        email: "eugene@example.com"
     roles:
       - "developers"
       - "admin"
@@ -264,6 +291,10 @@ public_key_credentials:
     description: List of public key credentials managed
     type: list
     returned: when public_key_credentials parameter is provided
+sso_credentials:
+    description: List of SSO credentials managed
+    type: list
+    returned: when sso_credentials parameter is provided
 roles:
     description: List of role IDs assigned to the user
     type: list
@@ -300,6 +331,9 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.
     add_public_key_credential,
     update_public_key_credential,
     delete_public_key_credential,
+    get_sso_credentials,
+    add_sso_credential,
+    delete_sso_credential,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.role import (
     get_user_roles,
@@ -566,6 +600,87 @@ def manage_public_key_credentials(client, user_id, desired_keys, module):
     return changed, managed_creds
 
 
+def manage_sso_credentials(client, user_id, desired_creds, module):
+    """
+    Manages SSO credentials for a user.
+    Ensures the user has exactly the specified (provider, email) pairs
+    (adds missing, updates changed, removes extras).
+    Passing an empty list removes every SSO credential.
+    Returns tuple (changed, list of managed credentials).
+    """
+    if desired_creds is None:
+        desired_creds = []
+
+    changed = False
+    managed_creds = []
+
+    existing_creds = []
+    try:
+        existing_creds = get_sso_credentials(client, user_id)
+        module.debug(f"Found {len(existing_creds)} existing SSO credentials")
+    except WarpgateAPIError as e:
+        module.debug(f"Could not get existing SSO credentials: {e.message}")
+        existing_creds = []
+
+    # Index existing credentials by (provider, email) for deterministic matching.
+    # Warpgate treats a null provider as a wildcard, so normalize "" → "" and keep it as a key.
+    def _key(provider, email):
+        return ((provider or "").strip(), (email or "").strip())
+
+    existing_by_key = {_key(cred.provider, cred.email): cred for cred in existing_creds}
+    desired_by_key = {
+        _key(spec.get("provider"), spec["email"]): spec for spec in desired_creds
+    }
+
+    keys_to_remove = set(existing_by_key) - set(desired_by_key)
+    if keys_to_remove:
+        if not module.check_mode:
+            for key in keys_to_remove:
+                cred = existing_by_key[key]
+                try:
+                    delete_sso_credential(client, user_id, cred.id)
+                except WarpgateAPIError as e:
+                    module.fail_json(
+                        msg=f"Failed to delete SSO credential (provider={cred.provider}, email={cred.email}): {e.message}",
+                        status_code=e.status_code,
+                    )
+        changed = True
+
+    for key, spec in desired_by_key.items():
+        email = spec["email"]
+        provider = (spec.get("provider") or "").strip()
+        if key in existing_by_key:
+            # (provider, email) already matches — nothing to update.
+            cred = existing_by_key[key]
+            managed_creds.append(
+                {"id": cred.id, "provider": cred.provider, "email": cred.email}
+            )
+            continue
+
+        if not module.check_mode:
+            try:
+                new_cred = add_sso_credential(client, user_id, email, provider)
+                managed_creds.append(
+                    {
+                        "id": new_cred.id,
+                        "provider": new_cred.provider,
+                        "email": new_cred.email,
+                    }
+                )
+            except WarpgateAPIError as e:
+                module.fail_json(
+                    msg=f"Failed to add SSO credential (provider={provider}, email={email}): {e.message}",
+                    status_code=e.status_code,
+                )
+        else:
+            managed_creds.append(
+                {"id": "new-sso-credential-id", "provider": provider, "email": email}
+            )
+        changed = True
+
+    return changed, managed_creds
+
+
 def manage_user_roles(client, user_id, desired_role_ids, module):
     """
     Manages user roles to match the desired list exactly.
@@ -715,6 +830,15 @@ def main():
                 public_key=dict(type="str", required=True),
             ),
         ),
+        sso_credentials=dict(
+            type="list",
+            elements="dict",
+            required=False,
+            options=dict(
+                email=dict(type="str", required=True),
+                provider=dict(type="str", required=False, default=""),
+            ),
+        ),
         roles=dict(type="list", elements="str", required=False),
         admin_roles=dict(type="list", elements="str", required=False),
         state=dict(type="str", choices=["present", "absent"], default="present"),
@@ -745,6 +869,7 @@ def main():
     password_credentials = module.params["password_credentials"]
     update_password = module.params["update_password"]
     public_key_credentials = module.params["public_key_credentials"]
+    sso_credentials = module.params["sso_credentials"]
     roles = module.params["roles"]
     admin_roles = module.params.get("admin_roles")
     state = module.params["state"]
@@ -761,6 +886,7 @@ def main():
         "credential_policy": credential_policy,
         "password_credentials": password_credentials if password_credentials else [],
         "public_key_credentials": [],
+        "sso_credentials": [],
         "roles": [],
         "admin_roles": [],
     }
@@ -938,6 +1064,28 @@ def main():
                     except WarpgateAPIError:
                         result["public_key_credentials"] = []
 
+                # Manage sso_credentials (None = leave untouched, [] = remove all)
+                if sso_credentials is not None:
+                    sso_changed, managed_sso = manage_sso_credentials(
+                        client, user_id, sso_credentials, module
+                    )
+                    if sso_changed:
+                        result["changed"] = True
+                    result["sso_credentials"] = managed_sso
+                else:
+                    try:
+                        existing_sso = get_sso_credentials(client, user_id)
+                        result["sso_credentials"] = [
+                            {
+                                "id": cred.id,
+                                "provider": cred.provider,
+                                "email": cred.email,
+                            }
+                            for cred in existing_sso
+                        ]
+                    except WarpgateAPIError:
+                        result["sso_credentials"] = []
+
                 # Manage roles (None is treated as empty list, meaning remove all)
                 if roles is not None:
                     # Resolve role names/IDs to actual role IDs
@@ -1072,6 +1220,17 @@ def main():
                     else:
                         result["public_key_credentials"] = []
 
+                    # Manage sso_credentials
+                    if sso_credentials is not None:
+                        sso_changed, managed_sso = manage_sso_credentials(
+                            client, user_id, sso_credentials, module
+                        )
+                        if sso_changed:
+                            result["changed"] = True
+                        result["sso_credentials"] = managed_sso
+                    else:
+                        result["sso_credentials"] = []
+
                     # Manage roles (None is treated as empty list, meaning remove all)
                     if roles is not None:
                         # Resolve role names/IDs to actual role IDs
@@ -1115,6 +1274,17 @@ def main():
                         ]
                     else:
                         result["public_key_credentials"] = []
+                    if sso_credentials:
+                        result["sso_credentials"] = [
+                            {
+                                "id": "new-sso-credential-id",
+                                "provider": c.get("provider") or "",
+                                "email": c["email"],
+                            }
+                            for c in sso_credentials
+                        ]
+                    else:
+                        result["sso_credentials"] = []
                     # In check mode, resolve roles but don't actually assign them
                     try:
                         result["roles"] = _resolve_role_ids(client, roles or [])

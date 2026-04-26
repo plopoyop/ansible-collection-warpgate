@@ -7,7 +7,11 @@ import pytest
 # Import module-level functions — conftest.py wires up ansible.module_utils
 import warpgate_user  # noqa: E402
 from warpgate_client.client import WarpgateAPIError
-from warpgate_client.credential import PasswordCredential, PublicKeyCredential
+from warpgate_client.credential import (
+    PasswordCredential,
+    PublicKeyCredential,
+    SsoCredential,
+)
 from warpgate_client.role import Role
 
 # ---------------------------------------------------------------------------
@@ -292,6 +296,147 @@ class TestManagePublicKeyCredentials:
                 mock_module,
             )
         assert changed is False
+
+
+# ---------------------------------------------------------------------------
+# manage_sso_credentials
+# ---------------------------------------------------------------------------
+
+
+class TestManageSsoCredentials:
+    def _make_sso(self, id, provider, email):
+        return SsoCredential(id=id, provider=provider, email=email)
+
+    def test_none_desired_no_existing_no_change(self, mock_client, mock_module):
+        with patch("warpgate_user.get_sso_credentials", return_value=[]):
+            changed, creds = warpgate_user.manage_sso_credentials(
+                mock_client, "u1", None, mock_module
+            )
+        assert changed is False
+        assert creds == []
+
+    def test_empty_desired_removes_all(self, mock_client, mock_module):
+        existing = [self._make_sso("s1", "microsoft", "user@example.com")]
+        with (
+            patch("warpgate_user.get_sso_credentials", return_value=existing),
+            patch("warpgate_user.delete_sso_credential") as mock_del,
+        ):
+            changed, creds = warpgate_user.manage_sso_credentials(
+                mock_client, "u1", [], mock_module
+            )
+        assert changed is True
+        mock_del.assert_called_once_with(mock_client, "u1", "s1")
+        assert creds == []
+
+    def test_add_missing_credential(self, mock_client, mock_module):
+        new_cred = self._make_sso("s1", "microsoft", "user@example.com")
+        with (
+            patch("warpgate_user.get_sso_credentials", return_value=[]),
+            patch(
+                "warpgate_user.add_sso_credential", return_value=new_cred
+            ) as mock_add,
+        ):
+            changed, creds = warpgate_user.manage_sso_credentials(
+                mock_client,
+                "u1",
+                [{"email": "user@example.com", "provider": "microsoft"}],
+                mock_module,
+            )
+        assert changed is True
+        mock_add.assert_called_once_with(
+            mock_client, "u1", "user@example.com", "microsoft"
+        )
+        assert creds == [
+            {"id": "s1", "provider": "microsoft", "email": "user@example.com"}
+        ]
+
+    def test_existing_matching_credential_no_change(self, mock_client, mock_module):
+        existing = [self._make_sso("s1", "microsoft", "user@example.com")]
+        with (
+            patch("warpgate_user.get_sso_credentials", return_value=existing),
+            patch("warpgate_user.add_sso_credential") as mock_add,
+            patch("warpgate_user.delete_sso_credential") as mock_del,
+        ):
+            changed, creds = warpgate_user.manage_sso_credentials(
+                mock_client,
+                "u1",
+                [{"email": "user@example.com", "provider": "microsoft"}],
+                mock_module,
+            )
+        assert changed is False
+        mock_add.assert_not_called()
+        mock_del.assert_not_called()
+        assert creds[0]["id"] == "s1"
+
+    def test_mismatched_email_deletes_and_recreates(self, mock_client, mock_module):
+        existing = [self._make_sso("s1", "microsoft", "old@example.com")]
+        new_cred = self._make_sso("s2", "microsoft", "new@example.com")
+        with (
+            patch("warpgate_user.get_sso_credentials", return_value=existing),
+            patch("warpgate_user.delete_sso_credential") as mock_del,
+            patch(
+                "warpgate_user.add_sso_credential", return_value=new_cred
+            ) as mock_add,
+        ):
+            changed, _ = warpgate_user.manage_sso_credentials(
+                mock_client,
+                "u1",
+                [{"email": "new@example.com", "provider": "microsoft"}],
+                mock_module,
+            )
+        assert changed is True
+        mock_del.assert_called_once_with(mock_client, "u1", "s1")
+        mock_add.assert_called_once_with(
+            mock_client, "u1", "new@example.com", "microsoft"
+        )
+
+    def test_provider_empty_defaults_to_wildcard(self, mock_client, mock_module):
+        """Provider "" is kept as-is and POSTed without the field (done in client lib)."""
+        new_cred = self._make_sso("s1", "", "user@example.com")
+        with (
+            patch("warpgate_user.get_sso_credentials", return_value=[]),
+            patch(
+                "warpgate_user.add_sso_credential", return_value=new_cred
+            ) as mock_add,
+        ):
+            changed, _ = warpgate_user.manage_sso_credentials(
+                mock_client, "u1", [{"email": "user@example.com"}], mock_module
+            )
+        assert changed is True
+        mock_add.assert_called_once_with(mock_client, "u1", "user@example.com", "")
+
+    def test_check_mode_no_api_calls(self, mock_client, mock_module):
+        mock_module.check_mode = True
+        with (
+            patch("warpgate_user.get_sso_credentials", return_value=[]),
+            patch("warpgate_user.add_sso_credential") as mock_add,
+        ):
+            changed, creds = warpgate_user.manage_sso_credentials(
+                mock_client,
+                "u1",
+                [{"email": "user@example.com", "provider": "microsoft"}],
+                mock_module,
+            )
+        assert changed is True
+        mock_add.assert_not_called()
+        assert creds[0]["id"] == "new-sso-credential-id"
+
+    def test_api_error_on_list_continues(self, mock_client, mock_module):
+        new_cred = self._make_sso("s1", "microsoft", "user@example.com")
+        with (
+            patch(
+                "warpgate_user.get_sso_credentials",
+                side_effect=WarpgateAPIError(500, "fail"),
+            ),
+            patch("warpgate_user.add_sso_credential", return_value=new_cred),
+        ):
+            changed, _ = warpgate_user.manage_sso_credentials(
+                mock_client,
+                "u1",
+                [{"email": "user@example.com", "provider": "microsoft"}],
+                mock_module,
+            )
+        assert changed is True
 
 
 # ---------------------------------------------------------------------------
