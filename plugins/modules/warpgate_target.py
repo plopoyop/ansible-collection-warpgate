@@ -432,6 +432,7 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client 
     WarpgateAPIError,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
+    find_id_by_exact_name,
     resolve_role_ids as _resolve_role_ids,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.target import (
@@ -617,19 +618,33 @@ def build_target_options(module):
 
 
 def options_equal(opts1, opts2):
-    """Compares two option dictionaries ignoring certain fields"""
+    """Compares two option dictionaries ignoring certain fields.
 
-    # Normalize dictionaries for comparison
-    def normalize(d):
-        if not d:
-            return {}
-        normalized = d.copy()
-        # Ignore fields that may vary
-        normalized.pop("id", None)
-        normalized.pop("allow_roles", None)
-        return normalized
+    The Warpgate API echoes optional fields (``external_host``, ``headers``,
+    …) as ``null`` even when they were never set, while
+    :func:`build_target_options` only emits them when truthy. To keep the
+    comparison idempotent we drop any key whose value is ``None``/empty
+    container before comparing.
+    """
 
-    return normalize(opts1) == normalize(opts2)
+    def normalize(value):
+        if isinstance(value, dict):
+            cleaned = {}
+            for k, v in value.items():
+                if k in {"id", "allow_roles"}:
+                    continue
+                norm_v = normalize(v)
+                if norm_v in (None, {}, []):
+                    # Drop optional fields that the server reports as null /
+                    # empty so they don't trigger spurious diffs.
+                    continue
+                cleaned[k] = norm_v
+            return cleaned
+        if isinstance(value, list):
+            return [normalize(v) for v in value]
+        return value
+
+    return normalize(opts1 or {}) == normalize(opts2 or {})
 
 
 def resolve_group_id(client, group_name: str, module) -> str:
@@ -640,10 +655,9 @@ def resolve_group_id(client, group_name: str, module) -> str:
     if not group_name or not str(group_name).strip():
         return ""
 
-    groups = get_target_groups(client, search=group_name)
-    for g in groups:
-        if g.name == group_name:
-            return g.id
+    group_id = find_id_by_exact_name(get_target_groups, client, group_name)
+    if group_id is not None:
+        return group_id
 
     module.fail_json(msg=f"Target group '{group_name}' not found")
 
@@ -810,21 +824,13 @@ def main():
 
         # Search for target by name if ID is not provided
         if not target_id and state == "present":
-            targets = get_targets(client, search=name)
-            for target in targets:
-                if target.name == name:
-                    target_id = target.id
-                    break
+            target_id = find_id_by_exact_name(get_targets, client, name)
 
         # If state=absent, delete the target
         if state == "absent":
             if not target_id:
                 # Search for target by name
-                targets = get_targets(client, search=name)
-                for target in targets:
-                    if target.name == name:
-                        target_id = target.id
-                        break
+                target_id = find_id_by_exact_name(get_targets, client, name)
 
             if target_id:
                 if not module.check_mode:
@@ -913,14 +919,27 @@ def main():
                     )
                     result["allow_roles"] = existing_target.allow_roles
 
-                # Manage roles (use target.allow_roles as source of truth for current state)
+                # Manage roles. existing_target.allow_roles is unreliable on
+                # some Warpgate versions (often returned empty on GET /targets),
+                # so fetch the authoritative list from /targets/{id}/roles for
+                # the diff and let manage_target_roles re-use it.
                 if roles is not None:
                     # Resolve role names/IDs to actual role IDs
                     resolved_role_ids = _resolve_role_ids(client, roles)
+
                     current_from_target = (
-                        (existing_target.allow_roles or []) if existing_target else None
+                        (existing_target.allow_roles or []) if existing_target else []
                     )
-                    diff_before["roles"] = list(current_from_target or [])
+                    if not current_from_target:
+                        try:
+                            current_from_target = [
+                                getattr(r, "id", r)
+                                for r in get_target_roles(client, target_id)
+                            ]
+                        except WarpgateAPIError:
+                            current_from_target = []
+
+                    diff_before["roles"] = list(current_from_target)
                     diff_after["roles"] = resolved_role_ids
 
                     roles_changed, final_role_ids = manage_target_roles(

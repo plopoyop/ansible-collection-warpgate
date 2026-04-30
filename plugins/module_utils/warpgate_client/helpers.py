@@ -3,12 +3,73 @@ Shared helpers for Warpgate Ansible modules.
 
 Provides common functionality used across multiple modules:
 - Role resolution (name or UUID to role ID)
+- Robust by-name lookup with search-then-list-all fallback
 """
 
-from typing import List
+from typing import Any, Callable, List, Optional
 
 from .client import WarpgateAPIError
 from .role import get_role, get_roles
+
+
+def find_by_exact_name(
+    list_fn: Callable[..., List[Any]],
+    client: Any,
+    name: str,
+) -> Optional[Any]:
+    """
+    Robustly look up an entity by its exact name.
+
+    Warpgate's ``?search=`` filter on collection endpoints (targets, users,
+    roles, groups, …) can miss matches when the name contains characters
+    that the API tokenizes (notably spaces). When the search-based pass
+    returns no exact match, this helper falls back to listing the full
+    collection and re-scanning client-side. Both attempts compare on the
+    full ``name`` (or ``username`` for users) string for equality.
+
+    Args:
+        list_fn: collection getter accepting ``(client, search=…)``
+            (e.g. ``get_targets``, ``get_users``, ``get_roles``).
+        client: WarpgateClient instance.
+        name: The exact name to match.
+
+    Returns:
+        The matching entity object, or ``None`` if no exact match exists.
+    """
+
+    def _scan(items: List[Any]) -> Optional[Any]:
+        for item in items:
+            if (
+                getattr(item, "name", None) == name
+                or getattr(item, "username", None) == name
+            ):
+                return item
+        return None
+
+    try:
+        match = _scan(list_fn(client, search=name))
+    except WarpgateAPIError:
+        match = None
+
+    if match is not None:
+        return match
+
+    # Fallback: full listing — the search filter sometimes misses entries
+    # whose name contains spaces or other tokenized characters.
+    try:
+        return _scan(list_fn(client))
+    except WarpgateAPIError:
+        return None
+
+
+def find_id_by_exact_name(
+    list_fn: Callable[..., List[Any]],
+    client: Any,
+    name: str,
+) -> Optional[str]:
+    """Convenience wrapper around :func:`find_by_exact_name` returning the ID."""
+    item = find_by_exact_name(list_fn, client, name)
+    return getattr(item, "id", None) if item is not None else None
 
 
 def resolve_role_ids(client, role_specs: List[str]) -> List[str]:

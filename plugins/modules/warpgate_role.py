@@ -128,6 +128,7 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client 
     WarpgateClient,
     WarpgateClientError,
     WarpgateAPIError,
+    find_id_by_exact_name,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.role import (
     get_roles,
@@ -187,21 +188,13 @@ def main():
 
         # Search for role by name if ID is not provided
         if not role_id and state == "present":
-            roles = get_roles(client, search=name)
-            for role in roles:
-                if role.name == name:
-                    role_id = role.id
-                    break
+            role_id = find_id_by_exact_name(get_roles, client, name)
 
         # If state=absent, delete the role
         if state == "absent":
             if not role_id:
                 # Search for role by name
-                roles = get_roles(client, search=name)
-                for role in roles:
-                    if role.name == name:
-                        role_id = role.id
-                        break
+                role_id = find_id_by_exact_name(get_roles, client, name)
 
             if role_id:
                 if not module.check_mode:

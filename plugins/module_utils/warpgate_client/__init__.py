@@ -6,11 +6,13 @@ The client is organized by entity type, similar to the Terraform provider struct
 """
 
 from .client import WarpgateAPIError, WarpgateClient, WarpgateClientError
-from .helpers import resolve_role_ids
+from .helpers import find_by_exact_name, find_id_by_exact_name, resolve_role_ids
 
 __all__ = [
     "WarpgateClient",
     "WarpgateClientError",
     "WarpgateAPIError",
+    "find_by_exact_name",
+    "find_id_by_exact_name",
     "resolve_role_ids",
 ]
