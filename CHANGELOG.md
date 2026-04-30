@@ -4,6 +4,10 @@
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.1.1...1.1.2)
 
+## 🐛 Bug Fixes
+
+- Fix idempotence on existing object [\#40](https://github.com/plopoyop/ansible-collection-warpgate/pull/40) ([plopoyop](https://github.com/plopoyop))
+
 ## ⚙️ Dependencies
 
 - fix\(ci\): update renovatebot/github-action action \(v46.1.10 → v46.1.11\) [\#35](https://github.com/plopoyop/ansible-collection-warpgate/pull/35) ([plopoyop](https://github.com/plopoyop))
