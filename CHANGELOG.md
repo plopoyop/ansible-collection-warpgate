@@ -10,6 +10,7 @@
 
 ## ⚙️ Dependencies
 
+- fix\(deps\): update warp-tech/warpgate \(v0.23.2 → v0.23.3\) [\#38](https://github.com/plopoyop/ansible-collection-warpgate/pull/38) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.10 → v46.1.11\) [\#35](https://github.com/plopoyop/ansible-collection-warpgate/pull/35) ([plopoyop](https://github.com/plopoyop))
 
 **Merged pull requests:**
