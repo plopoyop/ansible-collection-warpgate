@@ -130,6 +130,7 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client 
     WarpgateClient,
     WarpgateClientError,
     WarpgateAPIError,
+    find_by_exact_name,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.target_group import (
     get_target_groups,
@@ -200,12 +201,9 @@ def main():
         if group_id:
             existing = get_target_group(client, group_id)
         else:
-            groups = get_target_groups(client, search=name)
-            for g in groups:
-                if g.name == name:
-                    existing = g
-                    group_id = g.id
-                    break
+            existing = find_by_exact_name(get_target_groups, client, name)
+            if existing is not None:
+                group_id = existing.id
 
         if state == "absent":
             if not existing:

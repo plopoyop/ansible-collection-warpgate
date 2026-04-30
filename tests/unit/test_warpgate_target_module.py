@@ -206,6 +206,37 @@ class TestOptionsEqual:
         assert warpgate_target.options_equal(None, None) is True
         assert warpgate_target.options_equal(None, {"kind": "Ssh"}) is False
 
+    def test_null_optional_fields_ignored(self):
+        """Warpgate echoes optional HTTP fields as null; ignore them."""
+        from_api = {
+            "kind": "Http",
+            "url": "https://example.com/",
+            "tls": {"mode": "Required", "verify": True},
+            "external_host": None,
+            "headers": None,
+        }
+        from_module = {
+            "kind": "Http",
+            "url": "https://example.com/",
+            "tls": {"mode": "Required", "verify": True},
+        }
+        assert warpgate_target.options_equal(from_api, from_module) is True
+
+    def test_explicit_null_vs_real_value_differs(self):
+        """A real value must still beat a null one."""
+        a = {"kind": "Http", "url": "u", "external_host": "host.example"}
+        b = {"kind": "Http", "url": "u", "external_host": None}
+        assert warpgate_target.options_equal(a, b) is False
+
+    def test_nested_null_fields_ignored(self):
+        a = {
+            "kind": "Ssh",
+            "host": "h",
+            "auth": {"kind": "publickey", "password": None},
+        }
+        b = {"kind": "Ssh", "host": "h", "auth": {"kind": "publickey"}}
+        assert warpgate_target.options_equal(a, b) is True
+
 
 # ---------------------------------------------------------------------------
 # resolve_group_id

@@ -313,6 +313,7 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client 
     WarpgateAPIError,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
+    find_id_by_exact_name,
     resolve_role_ids as _resolve_role_ids,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.user import (
@@ -903,21 +904,13 @@ def main():
 
         # Search for user by username if ID is not provided
         if not user_id and state == "present":
-            users = get_users(client, search=username)
-            for user in users:
-                if user.username == username:
-                    user_id = user.id
-                    break
+            user_id = find_id_by_exact_name(get_users, client, username)
 
         # If state=absent, delete the user
         if state == "absent":
             if not user_id:
                 # Search for user by username
-                users = get_users(client, search=username)
-                for user in users:
-                    if user.username == username:
-                        user_id = user.id
-                        break
+                user_id = find_id_by_exact_name(get_users, client, username)
 
             if user_id:
                 if not module.check_mode:
