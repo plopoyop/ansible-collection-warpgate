@@ -11,6 +11,7 @@
 **Merged pull requests:**
 
 - fix\(deps\): update python313packages.ruff \(0.15.11 → 0.15.12\) [\#43](https://github.com/plopoyop/ansible-collection-warpgate/pull/43) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update podman \(5.8.1 → 5.8.2\) [\#42](https://github.com/plopoyop/ansible-collection-warpgate/pull/42) ([plopoyop](https://github.com/plopoyop))
 
 ## [1.1.2](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.1.2) (2026-04-30)
 
