@@ -10,7 +10,7 @@
     "python313Packages.ansible@13.5.0",
     "python313Packages.molecule@26.4.0",
     "python313Packages.molecule-plugins@23.5.3",
-    "python313Packages.pytest@9.0.2",
+    "python313Packages.pytest@9.0.3",
     "python313Packages.pytest-ansible@26.4.0",
     "python313Packages.ruff@0.15.12",
     "yamllint@1.37.1"
