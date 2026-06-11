@@ -1,11 +1,12 @@
 # Changelog
 
-## [1.1.3](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.1.3) (2026-05-14)
+## [1.1.3](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.1.3) (2026-06-11)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.1.2...1.1.3)
 
 ## ⚙️ Dependencies
 
+- fix\(ci\): update renovatebot/github-action action \(v46.1.14 → v46.1.15\) [\#54](https://github.com/plopoyop/ansible-collection-warpgate/pull/54) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.13 → v46.1.14\) [\#47](https://github.com/plopoyop/ansible-collection-warpgate/pull/47) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.12 → v46.1.13\) [\#44](https://github.com/plopoyop/ansible-collection-warpgate/pull/44) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.11 → v46.1.12\) [\#41](https://github.com/plopoyop/ansible-collection-warpgate/pull/41) ([plopoyop](https://github.com/plopoyop))
