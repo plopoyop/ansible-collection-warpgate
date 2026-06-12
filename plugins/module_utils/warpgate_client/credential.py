@@ -4,9 +4,39 @@ Credential management for the Warpgate API
 This module provides functions to manage user credentials (password, public key, SSO, certificate).
 """
 
-from typing import Any, Dict, List
+import json
+from typing import Any, Dict, List, Optional
 
 from .client import WarpgateAPIError
+
+# Human-readable labels for the PasswordPolicyViolation enum returned by the
+# API (HTTP 422) when a password does not satisfy the password policy
+# (Warpgate >= 0.25).
+PASSWORD_POLICY_VIOLATION_LABELS = {
+    "TooShort": "password is too short",
+    "MissingUppercase": "missing an uppercase character",
+    "MissingLowercase": "missing a lowercase character",
+    "MissingDigit": "missing a digit",
+    "MissingSpecial": "missing a special character",
+}
+
+
+def format_password_policy_error(error: WarpgateAPIError) -> Optional[str]:
+    """Formats a 422 password-policy violation response into a readable message.
+
+    Returns ``None`` when the error is not a password policy violation, so the
+    caller can fall back to its generic error handling.
+    """
+    if getattr(error, "status_code", None) != 422:
+        return None
+    try:
+        violations = json.loads(error.message)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(violations, list) or not violations:
+        return None
+    labels = [PASSWORD_POLICY_VIOLATION_LABELS.get(str(v), str(v)) for v in violations]
+    return "Password rejected by the server password policy: " + ", ".join(labels)
 
 
 class PasswordCredential:
