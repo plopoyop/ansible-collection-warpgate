@@ -31,15 +31,37 @@ warpgate_admin_username: "admin"
 # Warpgate API insecure
 warpgate_api_insecure: false
 
+# @var warpgate_parameters:type: dict
+# @var warpgate_parameters:description: >
+# Warpgate global parameters (v0.24+). Only the keys you set are changed;
+# the other parameters keep their current server-side value.
+# See the warpgate_parameters module documentation for the full key list.
+# @var warpgate_parameters: example:
+# warpgate_parameters:
+#   allow_own_credential_management: true
+#   show_session_menu: true
+#   target_click_action: "Connect"
+#   password_policy:
+#     min_length: 12
+#     require_uppercase: true
+#     require_lowercase: true
+#     require_digits: true
+#     require_special: false
+warpgate_parameters: {}
+
 # @var warpgate_roles:type: list
 # @var warpgate_roles:description: >
-# Warpgate roles
+# Warpgate roles. Optional per-role field (v0.24+): is_default
+# (auto-assign the role to newly created users).
 # @var warpgate_roles: example:
 # warpgate_roles:
 #   - name: "developers"
 #     description: "Role for development team"
 #   - name: "ops"
 #     description: "Role for ops team"
+#   - name: "everyone"
+#     description: "Baseline access"
+#     is_default: true
 warpgate_roles: []
 
 # @var warpgate_admin_roles:type: list
@@ -99,6 +121,8 @@ warpgate_target_groups: []
 # Warpgate targets. Optional v0.23+ fields: rate_limit_bytes_per_second,
 # default_database_name / idle_timeout on mysql_options / postgres_options,
 # iam_role on mysql/postgres options (mutually exclusive with password).
+# Optional v0.25+ fields: jump_host / iam_role on ssh_options,
+# iam_role on kubernetes_options, protocol_version on postgres_options.
 # @var warpgate_targets: example:
 # warpgate_targets:
 #   - name: "test"

@@ -1,4 +1,30 @@
 ---
+- name: Handle Warpgate global parameters
+  warpgate_parameters:
+    host: "{{ warpgate_api_host }}"
+    token: "{{ warpgate_api_token if (warpgate_api_token is defined and warpgate_api_token | length > 0) else omit }}"
+    api_username: "{{ warpgate_admin_username | default(omit) }}"
+    api_password: "{{ warpgate_admin_password | default(omit) }}"
+    insecure: "{{ warpgate_api_insecure }}"
+    allow_own_credential_management: "{{ warpgate_parameters.allow_own_credential_management | default(omit) }}"
+    rate_limit_bytes_per_second: "{{ warpgate_parameters.rate_limit_bytes_per_second | default(omit) }}"
+    ssh_client_auth_publickey: "{{ warpgate_parameters.ssh_client_auth_publickey | default(omit) }}"
+    ssh_client_auth_password: "{{ warpgate_parameters.ssh_client_auth_password | default(omit) }}"
+    ssh_client_auth_keyboard_interactive: "{{ warpgate_parameters.ssh_client_auth_keyboard_interactive | default(omit) }}"
+    minimize_password_login: "{{ warpgate_parameters.minimize_password_login | default(omit) }}"
+    ticket_self_service_enabled: "{{ warpgate_parameters.ticket_self_service_enabled | default(omit) }}"
+    ticket_auto_approve_existing_access: "{{ warpgate_parameters.ticket_auto_approve_existing_access | default(omit) }}"
+    ticket_max_duration_seconds: "{{ warpgate_parameters.ticket_max_duration_seconds | default(omit) }}"
+    ticket_max_uses: "{{ warpgate_parameters.ticket_max_uses | default(omit) }}"
+    ticket_require_description: "{{ warpgate_parameters.ticket_require_description | default(omit) }}"
+    ticket_request_show_all_targets: "{{ warpgate_parameters.ticket_request_show_all_targets | default(omit) }}"
+    target_click_action: "{{ warpgate_parameters.target_click_action | default(omit) }}"
+    show_session_menu: "{{ warpgate_parameters.show_session_menu | default(omit) }}"
+    password_policy: "{{ warpgate_parameters.password_policy | default(omit) }}"
+    max_api_token_duration_seconds: "{{ warpgate_parameters.max_api_token_duration_seconds | default(omit) }}"
+    record_scp: "{{ warpgate_parameters.record_scp | default(omit) }}"
+  when: warpgate_parameters | length > 0
+
 - name: Handle Warpgate roles
   warpgate_role:
     host: "{{ warpgate_api_host }}"
@@ -8,6 +34,7 @@
     insecure: "{{ warpgate_api_insecure }}"
     name: "{{ warpgate_current_role.name }}"
     description: "{{ warpgate_current_role.description | default('') }}"
+    is_default: "{{ warpgate_current_role.is_default | default(omit) }}"
     state: "{{ warpgate_current_role.state | default('present') }}"
   loop: "{{ warpgate_roles }}"
   loop_control:
