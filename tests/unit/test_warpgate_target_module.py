@@ -167,6 +167,96 @@ class TestBuildTargetOptions:
         with pytest.raises(SystemExit):
             warpgate_target.build_target_options(mod)
 
+    def test_ssh_iam_role_auth(self):
+        mod = self._make_module(
+            ssh_options={
+                "host": "10.0.0.1",
+                "port": 22,
+                "username": "admin",
+                "iam_role": True,
+            }
+        )
+        opts = warpgate_target.build_target_options(mod)
+        assert opts["auth"] == {"kind": "IamRole"}
+
+    def test_ssh_iam_role_exclusive_with_password_auth(self):
+        mod = self._make_module(
+            ssh_options={
+                "host": "10.0.0.1",
+                "port": 22,
+                "username": "admin",
+                "iam_role": True,
+                "password_auth": {"password": "secret"},
+            }
+        )
+        with pytest.raises(SystemExit):
+            warpgate_target.build_target_options(mod)
+        mod.fail_json.assert_called_once()
+
+    def test_ssh_jump_host_passthrough(self):
+        mod = self._make_module(
+            ssh_options={
+                "host": "10.0.0.1",
+                "port": 22,
+                "username": "admin",
+                "public_key_auth": {},
+                "jump_host": "bastion-internal",
+            }
+        )
+        opts = warpgate_target.build_target_options(mod)
+        assert opts["jump_host"] == "bastion-internal"
+
+    def test_kubernetes_iam_role_auth(self):
+        mod = self._make_module(
+            kubernetes_options={
+                "cluster_url": "https://k8s.local:6443",
+                "tls": {"mode": "Required", "verify": True},
+                "iam_role": True,
+            }
+        )
+        opts = warpgate_target.build_target_options(mod)
+        assert opts["auth"] == {"kind": "IamRole"}
+
+    def test_kubernetes_iam_role_exclusive_with_token_auth(self):
+        mod = self._make_module(
+            kubernetes_options={
+                "cluster_url": "https://k8s.local:6443",
+                "tls": {"mode": "Required", "verify": True},
+                "iam_role": True,
+                "token_auth": {"token": "my-token"},
+            }
+        )
+        with pytest.raises(SystemExit):
+            warpgate_target.build_target_options(mod)
+        mod.fail_json.assert_called_once()
+
+    def test_postgres_protocol_version(self):
+        mod = self._make_module(
+            postgres_options={
+                "host": "pg.local",
+                "port": 5432,
+                "username": "postgres",
+                "tls": {"mode": "Preferred", "verify": True},
+                "protocol_version": "3.2",
+            }
+        )
+        opts = warpgate_target.build_target_options(mod)
+        assert opts["protocol_version"] == "3.2"
+
+    def test_postgres_protocol_version_invalid_fails(self):
+        mod = self._make_module(
+            postgres_options={
+                "host": "pg.local",
+                "port": 5432,
+                "username": "postgres",
+                "tls": {"mode": "Preferred", "verify": True},
+                "protocol_version": "2.0",
+            }
+        )
+        with pytest.raises(SystemExit):
+            warpgate_target.build_target_options(mod)
+        mod.fail_json.assert_called_once()
+
     def test_no_options_fails(self):
         mod = self._make_module()
         with pytest.raises(SystemExit):
@@ -260,6 +350,36 @@ class TestResolveGroupId:
         with patch("warpgate_target.get_target_groups", return_value=[]):
             with pytest.raises(SystemExit):
                 warpgate_target.resolve_group_id(
+                    mock_client, "nonexistent", mock_module
+                )
+        mock_module.fail_json.assert_called_once()
+
+
+class TestResolveJumpHostId:
+    def test_empty_value_returns_empty(self, mock_client, mock_module):
+        assert warpgate_target.resolve_jump_host_id(mock_client, "", mock_module) == ""
+
+    def test_uuid_passed_through_without_lookup(self, mock_client, mock_module):
+        uuid = "123e4567-e89b-12d3-a456-426614174000"
+        with patch("warpgate_target.get_targets") as mock_get:
+            resolved = warpgate_target.resolve_jump_host_id(
+                mock_client, uuid, mock_module
+            )
+        mock_get.assert_not_called()
+        assert resolved == uuid
+
+    def test_resolves_target_name(self, mock_client, mock_module):
+        targets = [Target(id="t-bastion", name="bastion-internal")]
+        with patch("warpgate_target.get_targets", return_value=targets):
+            resolved = warpgate_target.resolve_jump_host_id(
+                mock_client, "bastion-internal", mock_module
+            )
+        assert resolved == "t-bastion"
+
+    def test_unknown_jump_host_fails(self, mock_client, mock_module):
+        with patch("warpgate_target.get_targets", return_value=[]):
+            with pytest.raises(SystemExit):
+                warpgate_target.resolve_jump_host_id(
                     mock_client, "nonexistent", mock_module
                 )
         mock_module.fail_json.assert_called_once()
