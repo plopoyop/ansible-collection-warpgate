@@ -1,8 +1,8 @@
 # Changelog
 
-## [1.2.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.2.0) (2026-06-12)
+## [Unreleased](https://github.com/plopoyop/ansible-collection-warpgate/tree/HEAD)
 
-[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.1.2...1.2.0)
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.1.2...HEAD)
 
 ## 🚀 New Features
 
