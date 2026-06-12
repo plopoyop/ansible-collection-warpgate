@@ -12,6 +12,7 @@ Configure warpgate via API (roles, users, targets, groups)
   - [warpgate_api_host](#warpgate_api_host)
   - [warpgate_api_insecure](#warpgate_api_insecure)
   - [warpgate_api_token](#warpgate_api_token)
+  - [warpgate_parameters](#warpgate_parameters)
   - [warpgate_roles](#warpgate_roles)
   - [warpgate_target_groups](#warpgate_target_groups)
   - [warpgate_targets](#warpgate_targets)
@@ -95,9 +96,30 @@ Warpgate API token. If unset, the role will try to obtain one via user API
 
 **_Type:_** string<br />
 
+### warpgate_parameters
+
+Warpgate global parameters (v0.24+). Only the keys you set are changed;
+the other parameters keep their current server-side value.
+See the warpgate_parameters module documentation for the full key list.
+
+**_Type:_** dict<br />
+
+#### Default value
+
+```YAML
+warpgate_parameters: {}
+```
+
+#### Example usage
+
+```YAML
+
+```
+
 ### warpgate_roles
 
-Warpgate roles
+Warpgate roles. Optional per-role field (v0.24+): is_default
+(auto-assign the role to newly created users).
 
 **_Type:_** list<br />
 
@@ -136,6 +158,8 @@ warpgate_target_groups: []
 Warpgate targets. Optional v0.23+ fields: rate_limit_bytes_per_second,
 default_database_name / idle_timeout on mysql_options / postgres_options,
 iam_role on mysql/postgres options (mutually exclusive with password).
+Optional v0.25+ fields: jump_host / iam_role on ssh_options,
+iam_role on kubernetes_options, protocol_version on postgres_options.
 
 **_Type:_** list<br />
 

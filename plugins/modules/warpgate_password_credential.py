@@ -132,6 +132,7 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client 
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.credential import (
     add_password_credential,
+    format_password_policy_error,
     get_password_credentials,
     delete_password_credential,
 )
@@ -223,7 +224,13 @@ def main():
                             if cred.id:
                                 delete_password_credential(client, user_id, cred.id)
 
-                    cred = add_password_credential(client, user_id, password)
+                    try:
+                        cred = add_password_credential(client, user_id, password)
+                    except WarpgateAPIError as e:
+                        policy_msg = format_password_policy_error(e)
+                        if policy_msg:
+                            module.fail_json(msg=policy_msg, status_code=e.status_code)
+                        raise
                     result["id"] = f"{user_id}:{cred.id}"
                     result["credential_id"] = cred.id
                 else:

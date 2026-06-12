@@ -326,6 +326,7 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.credential import (
     add_password_credential,
+    format_password_policy_error,
     get_password_credentials,
     delete_password_credential,
     get_public_key_credentials,
@@ -421,8 +422,9 @@ def manage_password_credentials(
                 add_password_credential(client, user_id, password)
                 module.debug("Added password credential")
             except WarpgateAPIError as e:
+                policy_msg = format_password_policy_error(e)
                 module.fail_json(
-                    msg=f"Failed to add password credential: {e.message}",
+                    msg=policy_msg or f"Failed to add password credential: {e.message}",
                     status_code=e.status_code,
                 )
 

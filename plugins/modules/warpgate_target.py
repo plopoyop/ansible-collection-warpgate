@@ -107,6 +107,16 @@ options:
             public_key_auth:
                 description: Public key authentication
                 type: dict
+            iam_role:
+                description:
+                    - "Use AWS IAM role authentication (emits auth kind=IamRole, Warpgate >= 0.25). Mutually exclusive with C(password_auth) and C(public_key_auth)."
+                type: bool
+                default: false
+            jump_host:
+                description:
+                    - Name or UUID of another SSH target to use as a jump host
+                      for indirect access (Warpgate >= 0.25).
+                type: str
     http_options:
         description:
             - Options for an HTTP target
@@ -230,6 +240,11 @@ options:
                     - Idle timeout for upstream PostgreSQL connections, as a
                       human-readable duration (e.g. ``30s``, ``5m``).
                 type: str
+            protocol_version:
+                description:
+                    - PostgreSQL wire protocol version to use upstream (Warpgate >= 0.25).
+                type: str
+                choices: ["3.0", "3.2"]
     kubernetes_options:
         description:
             - Options for a Kubernetes target (experimental, requires Warpgate >= 0.21.0)
@@ -278,6 +293,11 @@ options:
                         description: Private key PEM for mTLS to upstream
                         type: str
                         required: true
+            iam_role:
+                description:
+                    - "Use AWS IAM role authentication (emits auth kind=IamRole, Warpgate >= 0.25). Mutually exclusive with C(token_auth) and C(certificate_auth)."
+                type: bool
+                default: false
     roles:
         description:
             - List of role IDs or role names to assign to the target.
@@ -424,6 +444,8 @@ roles:
     returned: when roles parameter is provided
 """
 
+import re
+
 from ansible.module_utils.basic import AnsibleModule
 
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
@@ -509,6 +531,14 @@ def build_target_options(module):
             "allow_insecure_algos": ssh_options.get("allow_insecure_algos", False),
         }
 
+        if bool(ssh_options.get("iam_role")) and (
+            ssh_options.get("password_auth") or "public_key_auth" in ssh_options
+        ):
+            module.fail_json(
+                msg="ssh_options: iam_role is mutually exclusive with "
+                "password_auth and public_key_auth"
+            )
+
         if "password_auth" in ssh_options and ssh_options["password_auth"]:
             options["auth"] = {
                 "kind": "Password",
@@ -517,10 +547,17 @@ def build_target_options(module):
         elif "public_key_auth" in ssh_options:
             # public_key_auth can be {} (empty dict) meaning "use public key auth"
             options["auth"] = {"kind": "PublicKey"}
+        elif ssh_options.get("iam_role"):
+            options["auth"] = {"kind": "IamRole"}
         else:
             module.fail_json(
-                msg="SSH target requires either password_auth or public_key_auth"
+                msg="SSH target requires one of password_auth, public_key_auth "
+                "or iam_role"
             )
+
+        if ssh_options.get("jump_host"):
+            # Name or UUID of another target; resolved to a UUID in main().
+            options["jump_host"] = ssh_options["jump_host"]
 
         return options
 
@@ -580,6 +617,13 @@ def build_target_options(module):
             options["default_database_name"] = postgres_options["default_database_name"]
         if postgres_options.get("idle_timeout"):
             options["idle_timeout"] = postgres_options["idle_timeout"]
+        if postgres_options.get("protocol_version"):
+            protocol_version = str(postgres_options["protocol_version"])
+            if protocol_version not in ("3.0", "3.2"):
+                module.fail_json(
+                    msg="postgres_options: protocol_version must be one of '3.0', '3.2'"
+                )
+            options["protocol_version"] = protocol_version
 
         return options
 
@@ -592,6 +636,15 @@ def build_target_options(module):
                 "verify": kubernetes_options["tls"]["verify"],
             },
         }
+
+        if bool(kubernetes_options.get("iam_role")) and (
+            kubernetes_options.get("token_auth")
+            or kubernetes_options.get("certificate_auth")
+        ):
+            module.fail_json(
+                msg="kubernetes_options: iam_role is mutually exclusive with "
+                "token_auth and certificate_auth"
+            )
 
         if "token_auth" in kubernetes_options and kubernetes_options["token_auth"]:
             options["auth"] = {
@@ -607,9 +660,12 @@ def build_target_options(module):
                 "certificate": kubernetes_options["certificate_auth"]["certificate"],
                 "private_key": kubernetes_options["certificate_auth"]["private_key"],
             }
+        elif kubernetes_options.get("iam_role"):
+            options["auth"] = {"kind": "IamRole"}
         else:
             module.fail_json(
-                msg="Kubernetes target requires either token_auth or certificate_auth"
+                msg="Kubernetes target requires one of token_auth, "
+                "certificate_auth or iam_role"
             )
 
         return options
@@ -645,6 +701,30 @@ def options_equal(opts1, opts2):
         return value
 
     return normalize(opts1 or {}) == normalize(opts2 or {})
+
+
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}"
+    r"-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+
+
+def resolve_jump_host_id(client, jump_host: str, module) -> str:
+    """
+    Resolves an SSH jump host reference (target name or UUID) to a target UUID.
+    Returns the value unchanged when it is already a UUID.
+    """
+    value = (jump_host or "").strip()
+    if not value:
+        return ""
+    if _UUID_RE.match(value):
+        return value
+
+    target_id = find_id_by_exact_name(get_targets, client, value)
+    if target_id is not None:
+        return target_id
+
+    module.fail_json(msg=f"Jump host target '{value}' not found")
 
 
 def resolve_group_id(client, group_name: str, module) -> str:
@@ -849,6 +929,12 @@ def main():
         else:
             target_options = build_target_options(module)
             group_id = resolve_group_id(client, group, module)
+
+            # SSH jump host can be given as a target name; the API wants a UUID.
+            if target_options and target_options.get("jump_host"):
+                target_options["jump_host"] = resolve_jump_host_id(
+                    client, target_options["jump_host"], module
+                )
 
             if target_id:
                 # Update an existing target

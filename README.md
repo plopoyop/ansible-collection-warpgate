@@ -61,7 +61,7 @@ See the [install role documentation](roles/install/README.md) and [roles/install
 
 ### `plopoyop.warpgate.configure`
 
-Manages Warpgate resources (roles, users, target groups, targets) via the admin API. Supports both API token and username/password authentication.
+Manages Warpgate resources (global parameters, roles, users, target groups, targets) via the admin API. Supports both API token and username/password authentication.
 
 ```yaml
 - hosts: bastions
@@ -118,6 +118,7 @@ Key variables:
 | `warpgate_admin_password` | *(required)* | Admin password |
 | `warpgate_api_token` | *(optional)* | API token (skips login if set) |
 | `warpgate_api_insecure` | `false` | Disable TLS verification |
+| `warpgate_parameters` | `{}` | Global parameters to enforce (Warpgate >= 0.24) |
 | `warpgate_roles` | `[]` | Roles to manage |
 | `warpgate_users` | `[]` | Users to manage |
 | `warpgate_target_groups` | `[]` | Target groups to manage |
@@ -131,7 +132,8 @@ All modules support `check_mode` and `diff` mode (`--diff`).
 
 | Module | Description |
 |---|---|
-| `plopoyop.warpgate.warpgate_role` | Manage Warpgate roles |
+| `plopoyop.warpgate.warpgate_parameters` | Manage global parameters (singleton, Warpgate >= 0.24) |
+| `plopoyop.warpgate.warpgate_role` | Manage Warpgate roles (incl. `is_default` auto-assignment, Warpgate >= 0.24) |
 | `plopoyop.warpgate.warpgate_user` | Manage users, credential policies, passwords, SSH keys, and role assignments |
 | `plopoyop.warpgate.warpgate_group` | Manage target groups |
 | `plopoyop.warpgate.warpgate_target` | Manage targets (SSH, HTTP, MySQL, PostgreSQL, Kubernetes) with role assignments |

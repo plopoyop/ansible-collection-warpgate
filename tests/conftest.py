@@ -38,6 +38,7 @@ for _sub in (
     "role",
     "admin_role",
     "credential",
+    "parameters",
     "target",
     "target_group",
     "ticket",
