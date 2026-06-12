@@ -17,16 +17,23 @@ from .client import WarpgateAPIError
 class Role:
     """Represents a Warpgate access role"""
 
-    def __init__(self, id: str, name: str, description: str = ""):
+    def __init__(
+        self, id: str, name: str, description: str = "", is_default: bool = False
+    ):
         self.id = id
         self.name = name
         self.description = description
+        # Warpgate >= 0.24: default roles are auto-assigned to new users.
+        self.is_default = is_default
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Role":
         """Create a Role from a dictionary"""
         return cls(
-            id=data["id"], name=data["name"], description=data.get("description", "")
+            id=data["id"],
+            name=data["name"],
+            description=data.get("description", ""),
+            is_default=bool(data.get("is_default", False)),
         )
 
 
@@ -109,7 +116,9 @@ def get_role(client, role_id: str) -> Optional[Role]:
         raise
 
 
-def create_role(client, name: str, description: str = "") -> Role:
+def create_role(
+    client, name: str, description: str = "", is_default: Optional[bool] = None
+) -> Role:
     """
     Creates a new role in Warpgate with the provided name and description.
 
@@ -117,16 +126,26 @@ def create_role(client, name: str, description: str = "") -> Role:
         client: WarpgateClient instance
         name: Role name
         description: Optional description
+        is_default: Auto-assign this role to new users (Warpgate >= 0.24).
+            ``None`` omits the field for compatibility with older servers.
 
     Returns:
         Created Role object
     """
-    body = {"name": name, "description": description}
+    body: Dict[str, Any] = {"name": name, "description": description}
+    if is_default is not None:
+        body["is_default"] = is_default
     response = client._request("POST", "/roles", body)
     return Role.from_dict(response)
 
 
-def update_role(client, role_id: str, name: str, description: str = "") -> Role:
+def update_role(
+    client,
+    role_id: str,
+    name: str,
+    description: str = "",
+    is_default: Optional[bool] = None,
+) -> Role:
     """
     Updates an existing role's information including name and description.
 
@@ -135,11 +154,15 @@ def update_role(client, role_id: str, name: str, description: str = "") -> Role:
         role_id: Role ID
         name: Updated role name
         description: Updated description
+        is_default: Auto-assign this role to new users (Warpgate >= 0.24).
+            ``None`` omits the field for compatibility with older servers.
 
     Returns:
         Updated Role object
     """
-    body = {"name": name, "description": description}
+    body: Dict[str, Any] = {"name": name, "description": description}
+    if is_default is not None:
+        body["is_default"] = is_default
     response = client._request("PUT", f"/role/{role_id}", body)
     return Role.from_dict(response)
 

@@ -59,6 +59,12 @@ options:
         type: str
         required: false
         default: ""
+    is_default:
+        description:
+            - Automatically assign this role to newly created users (Warpgate >= 0.24).
+            - When unset, the existing server-side value is preserved.
+        type: bool
+        required: false
     state:
         description:
             - Desired state of the role
@@ -87,6 +93,15 @@ EXAMPLES = """
     token: "{{ warpgate_api_token }}"
     name: "developers"
     description: "Role for development team"
+    state: present
+
+- name: Create a default role (auto-assigned to new users)
+  plopoyop.warpgate.warpgate_role:
+    host: "https://warpgate.example.com"
+    token: "{{ warpgate_api_token }}"
+    name: "everyone"
+    description: "Baseline access"
+    is_default: true
     state: present
 
 - name: Update a role
@@ -120,6 +135,10 @@ description:
     description: Role description
     type: str
     returned: when available
+is_default:
+    description: Whether the role is auto-assigned to new users
+    type: bool
+    returned: when available
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -148,6 +167,7 @@ def main():
         id=dict(type="str", required=False),
         name=dict(type="str", required=True),
         description=dict(type="str", required=False, default=""),
+        is_default=dict(type="bool", required=False),
         state=dict(type="str", choices=["present", "absent"], default="present"),
         insecure=dict(type="bool", default=False),
         timeout=dict(type="int", default=30),
@@ -170,6 +190,7 @@ def main():
     role_id = module.params["id"]
     name = module.params["name"]
     description = module.params["description"]
+    is_default = module.params.get("is_default")
     state = module.params["state"]
     insecure = module.params["insecure"]
     timeout = module.params["timeout"]
@@ -217,11 +238,17 @@ def main():
                 if not existing_role:
                     module.fail_json(msg=f"Role with ID {role_id} not found")
 
-                # Check if modifications are needed
+                # Check if modifications are needed. When is_default is not
+                # provided, preserve the existing server-side value.
+                effective_is_default = (
+                    is_default if is_default is not None else existing_role.is_default
+                )
                 needs_update = False
                 if existing_role.name != name:
                     needs_update = True
                 if existing_role.description != description:
+                    needs_update = True
+                if existing_role.is_default != effective_is_default:
                     needs_update = True
 
                 if needs_update:
@@ -229,32 +256,50 @@ def main():
                         "before": {
                             "name": existing_role.name,
                             "description": existing_role.description,
+                            "is_default": existing_role.is_default,
                         },
-                        "after": {"name": name, "description": description},
+                        "after": {
+                            "name": name,
+                            "description": description,
+                            "is_default": effective_is_default,
+                        },
                     }
                     if not module.check_mode:
-                        updated_role = update_role(client, role_id, name, description)
+                        updated_role = update_role(
+                            client,
+                            role_id,
+                            name,
+                            description,
+                            is_default=effective_is_default,
+                        )
                         result["id"] = updated_role.id
                         result["description"] = updated_role.description
+                        result["is_default"] = updated_role.is_default
                     result["changed"] = True
                 else:
                     result["id"] = existing_role.id
                     result["description"] = existing_role.description
+                    result["is_default"] = existing_role.is_default
 
             else:
                 # Create a new role
                 if not module.check_mode:
-                    new_role = create_role(client, name, description)
+                    new_role = create_role(client, name, description, is_default)
                     role_id = new_role.id
                     result["id"] = role_id
                     result["description"] = new_role.description
+                    result["is_default"] = new_role.is_default
                 else:
                     result["id"] = "new-role-id"  # Placeholder for check_mode
 
                 result["changed"] = True
                 result["diff"] = {
                     "before": {},
-                    "after": {"name": name, "description": description},
+                    "after": {
+                        "name": name,
+                        "description": description,
+                        "is_default": bool(is_default),
+                    },
                 }
 
         module.exit_json(**result)

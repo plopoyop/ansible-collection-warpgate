@@ -21,6 +21,7 @@ def _base_params(**overrides):
         id=None,
         name="developers",
         description="Dev team",
+        is_default=None,
         state="present",
         insecure=False,
         timeout=30,
@@ -134,6 +135,73 @@ class TestRoleUpdate:
             result, mod = _run_module(params, check_mode=True)
         mock_update.assert_not_called()
         assert result["changed"] is True
+
+
+# ---------------------------------------------------------------------------
+# is_default (Warpgate >= 0.24)
+# ---------------------------------------------------------------------------
+
+
+class TestRoleIsDefault:
+    def test_create_with_is_default(self):
+        new_role = Role(
+            id="r1", name="developers", description="Dev team", is_default=True
+        )
+        params = _base_params(is_default=True)
+        with (
+            patch("warpgate_role.get_roles", return_value=[]),
+            patch("warpgate_role.create_role", return_value=new_role) as mock_create,
+        ):
+            result, mod = _run_module(params)
+        assert result["changed"] is True
+        assert result["is_default"] is True
+        assert mock_create.call_args[0][3] is True
+
+    def test_update_sets_is_default(self):
+        existing = Role(
+            id="r1", name="developers", description="Dev team", is_default=False
+        )
+        updated = Role(
+            id="r1", name="developers", description="Dev team", is_default=True
+        )
+        params = _base_params(is_default=True)
+        with (
+            patch("warpgate_role.get_roles", return_value=[existing]),
+            patch("warpgate_role.get_role", return_value=existing),
+            patch("warpgate_role.update_role", return_value=updated) as mock_update,
+        ):
+            result, mod = _run_module(params)
+        assert result["changed"] is True
+        assert result["diff"]["before"]["is_default"] is False
+        assert result["diff"]["after"]["is_default"] is True
+        assert mock_update.call_args.kwargs["is_default"] is True
+
+    def test_is_default_unset_preserves_existing(self):
+        existing = Role(
+            id="r1", name="developers", description="Dev team", is_default=True
+        )
+        params = _base_params(is_default=None)
+        with (
+            patch("warpgate_role.get_roles", return_value=[existing]),
+            patch("warpgate_role.get_role", return_value=existing),
+            patch("warpgate_role.update_role") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        mock_update.assert_not_called()
+        assert result["changed"] is False
+        assert result["is_default"] is True
+
+    def test_no_change_when_is_default_matches(self):
+        existing = Role(
+            id="r1", name="developers", description="Dev team", is_default=True
+        )
+        params = _base_params(is_default=True)
+        with (
+            patch("warpgate_role.get_roles", return_value=[existing]),
+            patch("warpgate_role.get_role", return_value=existing),
+        ):
+            result, mod = _run_module(params)
+        assert result["changed"] is False
 
 
 # ---------------------------------------------------------------------------
