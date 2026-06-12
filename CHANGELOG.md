@@ -1,18 +1,22 @@
 # Changelog
 
-## [1.1.3](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.1.3) (2026-06-11)
+## [1.1.3](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.1.3) (2026-06-12)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.1.2...1.1.3)
 
 ## ⚙️ Dependencies
 
 - fix\(ci\): update renovatebot/github-action action \(v46.1.14 → v46.1.15\) [\#54](https://github.com/plopoyop/ansible-collection-warpgate/pull/54) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.15.12 → v0.15.13\) [\#48](https://github.com/plopoyop/ansible-collection-warpgate/pull/48) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.13 → v46.1.14\) [\#47](https://github.com/plopoyop/ansible-collection-warpgate/pull/47) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update warp-tech/warpgate \(v0.23.3 → v0.23.4\) [\#46](https://github.com/plopoyop/ansible-collection-warpgate/pull/46) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.12 → v46.1.13\) [\#44](https://github.com/plopoyop/ansible-collection-warpgate/pull/44) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.11 → v46.1.12\) [\#41](https://github.com/plopoyop/ansible-collection-warpgate/pull/41) ([plopoyop](https://github.com/plopoyop))
 
 **Merged pull requests:**
 
+- fix\(deps\): update python313packages.ruff \(0.15.12 → 0.15.13\) [\#50](https://github.com/plopoyop/ansible-collection-warpgate/pull/50) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update ansible-doctor \(8.3.0 → 8.3.1\) [\#49](https://github.com/plopoyop/ansible-collection-warpgate/pull/49) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update prek \(0.3.10 → 0.3.11\) [\#45](https://github.com/plopoyop/ansible-collection-warpgate/pull/45) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update python313packages.ruff \(0.15.11 → 0.15.12\) [\#43](https://github.com/plopoyop/ansible-collection-warpgate/pull/43) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update podman \(5.8.1 → 5.8.2\) [\#42](https://github.com/plopoyop/ansible-collection-warpgate/pull/42) ([plopoyop](https://github.com/plopoyop))
