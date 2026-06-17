@@ -9,7 +9,7 @@
     "prek@0.3.11",
     "python313Packages.ansible@13.7.0",
     "python313Packages.molecule@26.4.0",
-    "python313Packages.molecule-plugins@23.5.3",
+    "python313Packages.molecule-plugins@25.8.12",
     "python313Packages.pytest@9.0.3",
     "python313Packages.pytest-ansible@26.4.0",
     "python313Packages.ruff@0.15.15",
