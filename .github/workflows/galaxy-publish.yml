@@ -10,7 +10,7 @@ jobs:
   deploy:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Deploy the collection
         uses: artis3n/ansible_galaxy_collection@v3
@@ -18,7 +18,7 @@ jobs:
           api_key: ${{ secrets.GALAXY_TOKEN }}
           galaxy_version: ${{ github.event.release.tag_name }}
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
 
