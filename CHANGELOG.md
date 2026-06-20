@@ -7,6 +7,7 @@
 ## ⚙️ Dependencies
 
 - feat\(ci\)!: Update actions/checkout action \(v6.0.3 → v7.0.0\) [\#64](https://github.com/plopoyop/ansible-collection-warpgate/pull/64) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update warp-tech/warpgate \(v0.25.4 → v0.25.5\) [\#63](https://github.com/plopoyop/ansible-collection-warpgate/pull/63) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.15.17 → v0.15.18\) [\#62](https://github.com/plopoyop/ansible-collection-warpgate/pull/62) ([plopoyop](https://github.com/plopoyop))
 
 **Merged pull requests:**
