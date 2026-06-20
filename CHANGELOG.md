@@ -11,6 +11,7 @@
 
 **Merged pull requests:**
 
+- feat\(deps\)!: Update python313Packages.molecule-plugins \(23.5.3 → 25.8.12\) [\#61](https://github.com/plopoyop/ansible-collection-warpgate/pull/61) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update python313packages.ruff \(0.15.15 → 0.15.16\) [\#60](https://github.com/plopoyop/ansible-collection-warpgate/pull/60) ([plopoyop](https://github.com/plopoyop))
 
 ## [1.2.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.2.0) (2026-06-12)
