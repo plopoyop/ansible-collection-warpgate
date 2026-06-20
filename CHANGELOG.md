@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.2.1) (2026-06-20)
+
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.2.0...1.2.1)
+
+## ⚙️ Dependencies
+
+- feat\(ci\)!: Update actions/checkout action \(v6.0.3 → v7.0.0\) [\#64](https://github.com/plopoyop/ansible-collection-warpgate/pull/64) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.15.17 → v0.15.18\) [\#62](https://github.com/plopoyop/ansible-collection-warpgate/pull/62) ([plopoyop](https://github.com/plopoyop))
+
+**Merged pull requests:**
+
+- fix\(deps\): update python313packages.ruff \(0.15.15 → 0.15.16\) [\#60](https://github.com/plopoyop/ansible-collection-warpgate/pull/60) ([plopoyop](https://github.com/plopoyop))
+
 ## [1.2.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.2.0) (2026-06-12)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.1.2...1.2.0)
