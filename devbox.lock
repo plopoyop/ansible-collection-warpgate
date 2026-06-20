@@ -433,67 +433,67 @@
         }
       }
     },
-    "python313Packages.molecule-plugins@23.5.3": {
-      "last_modified": "2026-03-21T07:29:51Z",
-      "resolved": "github:NixOS/nixpkgs/09061f748ee21f68a089cd5d91ec1859cd93d0be#python313Packages.molecule-plugins",
+    "python313Packages.molecule-plugins@25.8.12": {
+      "last_modified": "2026-06-11T01:27:03Z",
+      "resolved": "github:NixOS/nixpkgs/b503dde361500433ca25a32e8f4d218bf58fb659#python313Packages.molecule-plugins",
       "source": "devbox-search",
-      "version": "23.5.3",
+      "version": "25.8.12",
       "systems": {
         "aarch64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/k5z820az9mfm7rra44jwbbn3i3z04ig1-python3.13-molecule-plugins-23.5.3",
+              "path": "/nix/store/rqifd28w8xhj0akdqv5qz4c4p3frpdmn-python3.13-molecule-plugins-25.8.12",
               "default": true
             },
             {
               "name": "dist",
-              "path": "/nix/store/c8ic4ap931j7ldz8kkikhlz2c3d2iv5x-python3.13-molecule-plugins-23.5.3-dist"
+              "path": "/nix/store/nx5kgqz99w038wvhc66mzx6x43643llb-python3.13-molecule-plugins-25.8.12-dist"
             }
           ],
-          "store_path": "/nix/store/k5z820az9mfm7rra44jwbbn3i3z04ig1-python3.13-molecule-plugins-23.5.3"
+          "store_path": "/nix/store/rqifd28w8xhj0akdqv5qz4c4p3frpdmn-python3.13-molecule-plugins-25.8.12"
         },
         "aarch64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/ra9g3kkpd8vv48bx7k058f96hs11wkf5-python3.13-molecule-plugins-23.5.3",
+              "path": "/nix/store/lqvk91nmc8glg1znpmm4924yqhmydrjf-python3.13-molecule-plugins-25.8.12",
               "default": true
             },
             {
               "name": "dist",
-              "path": "/nix/store/qgxpdvrn4f4jrk3rinp567vw2y3q0n63-python3.13-molecule-plugins-23.5.3-dist"
+              "path": "/nix/store/1lg3v7ygqwf0r1pv8yj1p5di93bd652c-python3.13-molecule-plugins-25.8.12-dist"
             }
           ],
-          "store_path": "/nix/store/ra9g3kkpd8vv48bx7k058f96hs11wkf5-python3.13-molecule-plugins-23.5.3"
+          "store_path": "/nix/store/lqvk91nmc8glg1znpmm4924yqhmydrjf-python3.13-molecule-plugins-25.8.12"
         },
         "x86_64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/msw4fjs76jd3mk6scjdz8y19212p764z-python3.13-molecule-plugins-23.5.3",
+              "path": "/nix/store/i4gbs09hby22dysib03bn25a9j5ivhdx-python3.13-molecule-plugins-25.8.12",
               "default": true
             },
             {
               "name": "dist",
-              "path": "/nix/store/hcm9pyjw3fzx53jhr3m0fbi1l9m2fnm6-python3.13-molecule-plugins-23.5.3-dist"
+              "path": "/nix/store/4zs6a0nqs00kxjk9wg0krkzrkrqcfm28-python3.13-molecule-plugins-25.8.12-dist"
             }
           ],
-          "store_path": "/nix/store/msw4fjs76jd3mk6scjdz8y19212p764z-python3.13-molecule-plugins-23.5.3"
+          "store_path": "/nix/store/i4gbs09hby22dysib03bn25a9j5ivhdx-python3.13-molecule-plugins-25.8.12"
         },
         "x86_64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/9hzs4iy3hqk08yxqr7hkgznwyhxvas74-python3.13-molecule-plugins-23.5.3",
+              "path": "/nix/store/frv5vplnkpq1lq62ap4js0shw1a7wbrn-python3.13-molecule-plugins-25.8.12",
               "default": true
             },
             {
               "name": "dist",
-              "path": "/nix/store/rdcnmq7656mx6js3fzqq6ilwi6l0rr3x-python3.13-molecule-plugins-23.5.3-dist"
+              "path": "/nix/store/gadjdj1cc03lia6rj3fq98m7bwq39z2i-python3.13-molecule-plugins-25.8.12-dist"
             }
           ],
-          "store_path": "/nix/store/9hzs4iy3hqk08yxqr7hkgznwyhxvas74-python3.13-molecule-plugins-23.5.3"
+          "store_path": "/nix/store/frv5vplnkpq1lq62ap4js0shw1a7wbrn-python3.13-molecule-plugins-25.8.12"
         }
       }
     },
