@@ -16,6 +16,7 @@
 
 **Merged pull requests:**
 
+- fix\(deps\): update ansible-doctor \(8.3.1 → 8.3.2\) [\#68](https://github.com/plopoyop/ansible-collection-warpgate/pull/68) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update python313packages.ruff \(0.15.16 → 0.15.17\) [\#65](https://github.com/plopoyop/ansible-collection-warpgate/pull/65) ([plopoyop](https://github.com/plopoyop))
 
 ## [1.2.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.2.1) (2026-06-20)
