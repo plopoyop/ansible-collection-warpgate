@@ -69,7 +69,19 @@ options:
     minimize_password_login:
         description:
             - Hide username/password fields behind a link, emphasizing SSO buttons.
+            - Deprecated since Warpgate 0.26; superseded by O(password_login_mode).
+              When O(password_login_mode) is not set, V(true) maps to V(Minimized)
+              and V(false) maps to V(Enabled).
         type: bool
+    password_login_mode:
+        description:
+            - How the password login form is presented on the gateway login page
+              (Warpgate >= 0.26).
+            - V(Enabled) shows the password form alongside other methods,
+              V(Minimized) hides it behind a link, V(Disabled) removes password
+              login entirely (SSO only).
+        type: str
+        choices: ["Enabled", "Minimized", "Disabled"]
     ticket_self_service_enabled:
         description:
             - Enable the ticket self-service request system.
@@ -132,6 +144,80 @@ options:
         description:
             - Record SCP sessions.
         type: bool
+    login_protection_enabled:
+        description:
+            - Enable brute-force protection (IP blocking and user lockout,
+              Warpgate >= 0.26).
+        type: bool
+    login_protection_retention_seconds:
+        description:
+            - How long failed-login records are retained, in seconds.
+        type: int
+    lp_ip_max_attempts:
+        description:
+            - Number of failed attempts from an IP before it is blocked.
+        type: int
+    lp_ip_time_window_seconds:
+        description:
+            - Sliding window (seconds) over which per-IP failed attempts are counted.
+        type: int
+    lp_ip_base_block_duration_seconds:
+        description:
+            - Initial block duration (seconds) applied to an IP.
+        type: int
+    lp_ip_block_duration_multiplier:
+        description:
+            - Multiplier applied to the block duration on repeated offences.
+        type: float
+    lp_ip_max_block_duration_seconds:
+        description:
+            - Maximum block duration (seconds) for an IP.
+        type: int
+    lp_ip_cooldown_reset_seconds:
+        description:
+            - Time without offences (seconds) after which an IP's escalation resets.
+        type: int
+    lp_user_max_attempts:
+        description:
+            - Number of failed attempts against a user before it is locked out.
+        type: int
+    lp_user_time_window_seconds:
+        description:
+            - Sliding window (seconds) over which per-user failed attempts are counted.
+        type: int
+    lp_user_auto_unlock:
+        description:
+            - Automatically unlock a locked user after the lockout duration.
+        type: bool
+    lp_user_lockout_duration_seconds:
+        description:
+            - How long a user stays locked out, in seconds.
+        type: int
+    lp_user_exempt_admins:
+        description:
+            - Exempt administrators from user lockout.
+        type: bool
+    ssh_banner:
+        description:
+            - Custom banner displayed to SSH clients on connection
+              (Warpgate >= 0.26). Set to an empty string to disable.
+        type: str
+    web_ssh_enabled:
+        description:
+            - Enable the in-browser WebSSH terminal (Warpgate >= 0.26).
+        type: bool
+    analytics_consent:
+        description:
+            - Anonymous usage analytics reporting mode (Warpgate >= 0.26).
+            - V(Undecided) triggers the one-time admin opt-in prompt and reports
+              nothing until a choice is made.
+        type: str
+        choices: ["Undecided", "Off", "On"]
+    analytics_normal:
+        description:
+            - Report the richer ("normal") analytics payload instead of the
+              minimal one (Warpgate >= 0.26).
+        type: bool
     insecure:
         description:
             - Disables SSL certificate verification
@@ -169,6 +255,17 @@ EXAMPLES = """
       require_lowercase: true
       require_digits: true
       require_special: false
+
+- name: Harden a Warpgate 0.26 instance (SSO-only, brute-force protection)
+  plopoyop.warpgate.warpgate_parameters:
+    host: "https://warpgate.example.com"
+    token: "{{ warpgate_api_token }}"
+    password_login_mode: "Disabled"
+    web_ssh_enabled: false
+    ssh_banner: "Authorized access only."
+    login_protection_enabled: true
+    lp_ip_max_attempts: 5
+    lp_user_max_attempts: 10
 """
 
 RETURN = """
@@ -229,6 +326,12 @@ def main():
         ssh_client_auth_password=dict(type="bool", required=False, no_log=False),
         ssh_client_auth_keyboard_interactive=dict(type="bool", required=False),
         minimize_password_login=dict(type="bool", required=False, no_log=False),
+        password_login_mode=dict(
+            type="str",
+            required=False,
+            no_log=False,
+            choices=["Enabled", "Minimized", "Disabled"],
+        ),
         ticket_self_service_enabled=dict(type="bool", required=False),
         ticket_auto_approve_existing_access=dict(type="bool", required=False),
         ticket_max_duration_seconds=dict(type="int", required=False),
@@ -253,6 +356,25 @@ def main():
         ),
         max_api_token_duration_seconds=dict(type="int", required=False),
         record_scp=dict(type="bool", required=False),
+        login_protection_enabled=dict(type="bool", required=False),
+        login_protection_retention_seconds=dict(type="int", required=False),
+        lp_ip_max_attempts=dict(type="int", required=False),
+        lp_ip_time_window_seconds=dict(type="int", required=False),
+        lp_ip_base_block_duration_seconds=dict(type="int", required=False),
+        lp_ip_block_duration_multiplier=dict(type="float", required=False),
+        lp_ip_max_block_duration_seconds=dict(type="int", required=False),
+        lp_ip_cooldown_reset_seconds=dict(type="int", required=False),
+        lp_user_max_attempts=dict(type="int", required=False),
+        lp_user_time_window_seconds=dict(type="int", required=False),
+        lp_user_auto_unlock=dict(type="bool", required=False),
+        lp_user_lockout_duration_seconds=dict(type="int", required=False),
+        lp_user_exempt_admins=dict(type="bool", required=False),
+        ssh_banner=dict(type="str", required=False),
+        web_ssh_enabled=dict(type="bool", required=False),
+        analytics_consent=dict(
+            type="str", required=False, choices=["Undecided", "Off", "On"]
+        ),
+        analytics_normal=dict(type="bool", required=False),
         insecure=dict(type="bool", default=False),
         timeout=dict(type="int", default=30),
     )
@@ -271,6 +393,22 @@ def main():
         module.fail_json(
             msg="Provide either token or both api_username and api_password"
         )
+
+    # minimize_password_login was replaced by password_login_mode in Warpgate 0.26.
+    if (
+        module.params.get("password_login_mode") is None
+        and module.params.get("minimize_password_login") is not None
+    ):
+        module.deprecate(
+            "minimize_password_login is deprecated since Warpgate 0.26; "
+            "use password_login_mode instead.",
+            version="2.0.0",
+            collection_name="plopoyop.warpgate",
+        )
+        module.params["password_login_mode"] = (
+            "Minimized" if module.params["minimize_password_login"] else "Enabled"
+        )
+
     insecure = module.params["insecure"]
     timeout = module.params["timeout"]
 

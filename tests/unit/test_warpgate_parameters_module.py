@@ -16,7 +16,10 @@ CURRENT = {
     "ssh_client_auth_publickey": True,
     "ssh_client_auth_password": True,
     "ssh_client_auth_keyboard_interactive": True,
+    # Deprecated read-only field still returned by GET (Warpgate >= 0.26),
+    # derived from password_login_mode.
     "minimize_password_login": False,
+    "password_login_mode": "Enabled",
     "ticket_self_service_enabled": False,
     "ticket_auto_approve_existing_access": False,
     "ticket_require_description": False,
@@ -31,6 +34,15 @@ CURRENT = {
         "require_special": False,
     },
     "record_scp": False,
+    "login_protection_enabled": True,
+    "lp_ip_max_attempts": 5,
+    "lp_ip_block_duration_multiplier": 2.0,
+    "lp_user_max_attempts": 10,
+    "lp_user_exempt_admins": True,
+    "ssh_banner": "",
+    "web_ssh_enabled": True,
+    "analytics_consent": "Undecided",
+    "analytics_normal": False,
 }
 
 
@@ -46,6 +58,7 @@ def _base_params(**overrides):
         ssh_client_auth_password=None,
         ssh_client_auth_keyboard_interactive=None,
         minimize_password_login=None,
+        password_login_mode=None,
         ticket_self_service_enabled=None,
         ticket_auto_approve_existing_access=None,
         ticket_max_duration_seconds=None,
@@ -57,6 +70,23 @@ def _base_params(**overrides):
         password_policy=None,
         max_api_token_duration_seconds=None,
         record_scp=None,
+        login_protection_enabled=None,
+        login_protection_retention_seconds=None,
+        lp_ip_max_attempts=None,
+        lp_ip_time_window_seconds=None,
+        lp_ip_base_block_duration_seconds=None,
+        lp_ip_block_duration_multiplier=None,
+        lp_ip_max_block_duration_seconds=None,
+        lp_ip_cooldown_reset_seconds=None,
+        lp_user_max_attempts=None,
+        lp_user_time_window_seconds=None,
+        lp_user_auto_unlock=None,
+        lp_user_lockout_duration_seconds=None,
+        lp_user_exempt_admins=None,
+        ssh_banner=None,
+        web_ssh_enabled=None,
+        analytics_consent=None,
+        analytics_normal=None,
         insecure=False,
         timeout=30,
     )
@@ -113,6 +143,9 @@ class TestParametersClient:
         method, path, body = mock_client._request.call_args[0]
         assert (method, path) == ("PUT", "/parameters")
         assert "id" not in body
+        # Deprecated, read-only in 0.26: must not be sent back on PUT.
+        assert "minimize_password_login" not in body
+        assert body["password_login_mode"] == "Enabled"
         assert body["allow_own_credential_management"] is True
 
     def test_update_parameters_drops_none_values(self, mock_client):
@@ -197,4 +230,50 @@ class TestParametersModule:
             result, mod = _run_module(params)
         sent = mock_update.call_args[0][1]
         assert sent["target_click_action"] == "ShowInstructions"
+        assert result["changed"] is True
+
+    def test_password_login_mode_change(self):
+        params = _base_params(password_login_mode="Disabled")
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        sent = mock_update.call_args[0][1]
+        assert sent["password_login_mode"] == "Disabled"
+        assert result["changed"] is True
+
+    def test_minimize_password_login_maps_to_mode(self):
+        params = _base_params(minimize_password_login=True)
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        mod.deprecate.assert_called_once()
+        sent = mock_update.call_args[0][1]
+        assert sent["password_login_mode"] == "Minimized"
+        assert result["changed"] is True
+
+    def test_login_protection_field_change(self):
+        params = _base_params(lp_ip_max_attempts=3, web_ssh_enabled=False)
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        sent = mock_update.call_args[0][1]
+        assert sent["lp_ip_max_attempts"] == 3
+        assert sent["web_ssh_enabled"] is False
+        assert result["changed"] is True
+
+    def test_ssh_banner_set(self):
+        params = _base_params(ssh_banner="Authorized access only.")
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        sent = mock_update.call_args[0][1]
+        assert sent["ssh_banner"] == "Authorized access only."
         assert result["changed"] is True
