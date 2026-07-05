@@ -13,6 +13,10 @@
 - fix\(ci\): update renovatebot/github-action action \(v46.1.16 → v46.1.17\) [\#72](https://github.com/plopoyop/ansible-collection-warpgate/pull/72) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.15 → v46.1.16\) [\#67](https://github.com/plopoyop/ansible-collection-warpgate/pull/67) ([plopoyop](https://github.com/plopoyop))
 
+**Merged pull requests:**
+
+- fix\(deps\): update python313packages.ruff \(0.15.16 → 0.15.17\) [\#65](https://github.com/plopoyop/ansible-collection-warpgate/pull/65) ([plopoyop](https://github.com/plopoyop))
+
 ## [1.2.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.2.1) (2026-06-20)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.2.0...1.2.1)
