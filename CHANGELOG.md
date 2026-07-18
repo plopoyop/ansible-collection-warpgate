@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.3.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.3.1) (2026-07-16)
+## [1.3.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.3.1) (2026-07-18)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.3.0...1.3.1)
 
@@ -8,6 +8,10 @@
 
 - fix\(ci\): update renovatebot/github-action action \(v46.1.18 → v46.1.19\) [\#80](https://github.com/plopoyop/ansible-collection-warpgate/pull/80) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.1.17 → v46.1.18\) [\#78](https://github.com/plopoyop/ansible-collection-warpgate/pull/78) ([plopoyop](https://github.com/plopoyop))
+
+**Merged pull requests:**
+
+- fix\(deps\): update ansible-doctor \(8.3.2 → 8.3.3\) [\#74](https://github.com/plopoyop/ansible-collection-warpgate/pull/74) ([plopoyop](https://github.com/plopoyop))
 
 ## [1.3.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.3.0) (2026-07-05)
 
