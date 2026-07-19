@@ -12,6 +12,7 @@
 
 **Merged pull requests:**
 
+- feat\(deps\): update prek \(0.3.11 → 0.4.4\) [\#81](https://github.com/plopoyop/ansible-collection-warpgate/pull/81) ([plopoyop](https://github.com/plopoyop))
 - feat\(deps\): update python313packages.molecule \(26.4.0 → 26.6.0\) [\#79](https://github.com/plopoyop/ansible-collection-warpgate/pull/79) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update python313packages.ruff \(0.15.17 → 0.15.20\) [\#77](https://github.com/plopoyop/ansible-collection-warpgate/pull/77) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update podman \(5.8.3 → 5.8.4\) [\#75](https://github.com/plopoyop/ansible-collection-warpgate/pull/75) ([plopoyop](https://github.com/plopoyop))
