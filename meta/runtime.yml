@@ -1,2 +1,17 @@
 ---
 requires_ansible: ">=2.19.0"
+
+action_groups:
+  warpgate:
+    - warpgate_admin_role
+    - warpgate_group
+    - warpgate_parameters
+    - warpgate_password_credential
+    - warpgate_public_key_credential
+    - warpgate_role
+    - warpgate_target
+    - warpgate_ticket
+    - warpgate_user_admin_role
+    - warpgate_user_role
+    - warpgate_user
+
