@@ -1,8 +1,12 @@
 # Changelog
 
-## [1.3.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.3.1) (2026-07-23)
+## [1.4.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.4.0) (2026-07-25)
 
-[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.3.0...1.3.1)
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.3.0...1.4.0)
+
+## 🚀 New Features
+
+- Add support for module\_defaults feature [\#86](https://github.com/plopoyop/ansible-collection-warpgate/pull/86) ([konstantin-kelemen](https://github.com/konstantin-kelemen))
 
 ## ⚙️ Dependencies
 
