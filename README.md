@@ -181,6 +181,36 @@ All modules support `check_mode` and `diff` mode (`--diff`).
     msg: "Ticket: {{ ticket.secret }}"
 ```
 
+With ansible-core >= 2.12 it is possible to specify default parameters for all modules in this collection using [Module defaults groups](https://docs.ansible.com/ansible/latest/user_guide/playbooks_module_defaults.html#module-defaults-groups). Use it like this:
+
+```yaml
+- hosts: localhost
+
+  module_defaults:
+    group/plopoyop.warpgate.warpgate:
+      host: "https://bastion.example.com:8888/@warpgate/admin/api/"
+      api_username: admin
+      api_password: "{{ warpgate_admin_password }}"
+
+  tasks:
+    - name: Create a role
+      plopoyop.warpgate.warpgate_role:
+        name: developers
+        description: "Development team"
+
+    - name: Create an SSH target
+      plopoyop.warpgate.warpgate_target:
+        name: prod-web-01
+        group: production
+        roles: [developers]
+        ssh_options:
+          host: 10.0.1.10
+          port: 22
+          username: deploy
+          password_auth:
+            password: "{{ vault_ssh_password }}"
+```
+
 ## Authentication
 
 The modules and the `configure` role support two authentication methods:
