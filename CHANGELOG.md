@@ -10,6 +10,8 @@
 
 **Merged pull requests:**
 
+- feat\(deps\): update python313packages.pytest \(9.0.3 → 9.1.1\) [\#90](https://github.com/plopoyop/ansible-collection-warpgate/pull/90) ([plopoyop](https://github.com/plopoyop))
+- feat\(deps\): update git \(2.54.0 → 2.55.0\) [\#89](https://github.com/plopoyop/ansible-collection-warpgate/pull/89) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update python313packages.ruff \(0.15.20 → 0.15.22\) [\#88](https://github.com/plopoyop/ansible-collection-warpgate/pull/88) ([plopoyop](https://github.com/plopoyop))
 
 ## [1.4.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/1.4.0) (2026-07-25)
