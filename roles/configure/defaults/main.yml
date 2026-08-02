@@ -35,12 +35,20 @@ warpgate_api_insecure: false
 # @var warpgate_parameters:description: >
 # Warpgate global parameters (v0.24+). Only the keys you set are changed;
 # the other parameters keep their current server-side value.
-# See the warpgate_parameters module documentation for the full key list.
+# See the warpgate_parameters module documentation for the full key list,
+# including the login-protection (v0.26) and banner / web-client /
+# session-recording (v0.27) parameters.
 # @var warpgate_parameters: example:
 # warpgate_parameters:
 #   allow_own_credential_management: true
 #   show_session_menu: true
 #   target_click_action: "Connect"
+#   password_login_mode: "Minimized"
+#   ssh_host_key_verification: "AutoReject"
+#   login_protection_enabled: true
+#   web_clients_enabled: true
+#   banner: "Authorized access only."
+#   recordings_enable: true
 #   password_policy:
 #     min_length: 12
 #     require_uppercase: true

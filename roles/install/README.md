@@ -31,7 +31,6 @@ Install warpgate
   - [warpgate_log_format](#warpgate_log_format)
   - [warpgate_log_retention](#warpgate_log_retention)
   - [warpgate_log_send_to](#warpgate_log_send_to)
-  - [warpgate_minimize_password_login](#warpgate_minimize_password_login)
   - [warpgate_mysql_certificate](#warpgate_mysql_certificate)
   - [warpgate_mysql_enabled](#warpgate_mysql_enabled)
   - [warpgate_mysql_external_host](#warpgate_mysql_external_host)
@@ -366,19 +365,6 @@ Remote log endpoint (null = log locally only)
 
 ```YAML
 warpgate_log_send_to:
-```
-
-### warpgate_minimize_password_login
-
-When true, the password login form is collapsed behind a toggle on the login page.
-Useful for SSO-first environments where password login is only used by admins.
-
-**_Type:_** boolean<br />
-
-#### Default value
-
-```YAML
-warpgate_minimize_password_login: false
 ```
 
 ### warpgate_mysql_certificate
@@ -738,7 +724,7 @@ warpgate version to install
 #### Default value
 
 ```YAML
-warpgate_version: 0.26.0
+warpgate_version: 0.27.1
 ```
 
 ## Dependencies
