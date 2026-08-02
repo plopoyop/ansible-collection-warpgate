@@ -1,11 +1,9 @@
 """Tests for warpgate_ticket module."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-
-import warpgate_ticket  # noqa: E402
+import warpgate_ticket
 from warpgate_client.ticket import Ticket, TicketAndSecret
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -1,15 +1,13 @@
 """Tests for warpgate_target module: build_target_options, options_equal, resolve_group_id, manage_target_roles, and main()."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
-
-import warpgate_target  # noqa: E402
+import warpgate_target
 from warpgate_client.client import WarpgateAPIError
+from warpgate_client.role import Role
 from warpgate_client.target import Target
 from warpgate_client.target_group import TargetGroup
-from warpgate_client.role import Role
-
 
 # ---------------------------------------------------------------------------
 # build_target_options

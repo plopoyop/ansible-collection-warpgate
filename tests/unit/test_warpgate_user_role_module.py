@@ -1,11 +1,9 @@
 """Tests for warpgate_user_role module."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-
-import warpgate_user_role  # noqa: E402
+import warpgate_user_role
 from warpgate_client.role import Role, UserRoleAssignment
-
 
 # ---------------------------------------------------------------------------
 # Helpers

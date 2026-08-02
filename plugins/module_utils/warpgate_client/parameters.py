@@ -11,9 +11,16 @@ the ``password_login_mode`` enum and adds the login-protection (brute-force),
 SSH banner, WebSSH and analytics parameters. ``minimize_password_login`` is
 still returned by ``GET`` (deprecated, derived from ``password_login_mode``)
 but is no longer accepted by ``PUT``.
+
+Warpgate 0.27 renames ``ssh_banner`` to ``banner`` and ``web_ssh_enabled`` to
+``web_clients_enabled`` (``web_ssh_enabled`` stays as a deprecated read-only
+alias in ``GET``), and adds the ``ssh_host_key_verification`` mode, the web
+reauthentication settings (``web_auth_max_age_seconds``,
+``web_approval_grace_period_seconds``) and the session-recording parameters
+(``recordings_enable`` and the ``recordings_storage`` disk/S3 config).
 """
 
-from typing import Any, Dict
+from typing import Any
 
 # Fields accepted by the /parameters endpoint (ParameterUpdate schema).
 PARAMETER_FIELDS = (
@@ -22,6 +29,7 @@ PARAMETER_FIELDS = (
     "ssh_client_auth_publickey",
     "ssh_client_auth_password",
     "ssh_client_auth_keyboard_interactive",
+    "ssh_host_key_verification",
     "password_login_mode",
     "ticket_self_service_enabled",
     "ticket_auto_approve_existing_access",
@@ -47,10 +55,14 @@ PARAMETER_FIELDS = (
     "lp_user_auto_unlock",
     "lp_user_lockout_duration_seconds",
     "lp_user_exempt_admins",
-    "ssh_banner",
-    "web_ssh_enabled",
+    "banner",
+    "web_clients_enabled",
+    "web_auth_max_age_seconds",
+    "web_approval_grace_period_seconds",
     "analytics_consent",
     "analytics_normal",
+    "recordings_enable",
+    "recordings_storage",
 )
 
 # Sub-fields of the password_policy object (PasswordPolicy schema).
@@ -70,8 +82,11 @@ PASSWORD_LOGIN_MODES = ("Enabled", "Minimized", "Disabled")
 # analytics_consent enum (Warpgate >= 0.26).
 ANALYTICS_CONSENT_VALUES = ("Undecided", "Off", "On")
 
+# ssh_host_key_verification enum (Warpgate >= 0.27).
+SSH_HOST_KEY_VERIFICATION_MODES = ("Prompt", "AutoAccept", "AutoReject", "Ignore")
 
-def get_parameters(client) -> Dict[str, Any]:
+
+def get_parameters(client) -> dict[str, Any]:
     """
     Retrieves the global parameters from the Warpgate API.
 
@@ -84,7 +99,7 @@ def get_parameters(client) -> Dict[str, Any]:
     return client._request("GET", "/parameters")
 
 
-def update_parameters(client, values: Dict[str, Any]) -> None:
+def update_parameters(client, values: dict[str, Any]) -> None:
     """
     Updates the global parameters in Warpgate.
 

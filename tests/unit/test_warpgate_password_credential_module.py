@@ -1,11 +1,9 @@
 """Tests for warpgate_password_credential module."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-
-import warpgate_password_credential  # noqa: E402
+import warpgate_password_credential
 from warpgate_client.credential import PasswordCredential
-
 
 # ---------------------------------------------------------------------------
 # Helpers

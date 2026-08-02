@@ -1,9 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
 
 ANSIBLE_METADATA = {
     "metadata_version": "1.0",
@@ -125,19 +121,18 @@ color:
 """
 
 from ansible.module_utils.basic import AnsibleModule
-
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
+    WarpgateAPIError,
     WarpgateClient,
     WarpgateClientError,
-    WarpgateAPIError,
     find_by_exact_name,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.target_group import (
-    get_target_groups,
-    get_target_group,
     create_target_group,
-    update_target_group,
     delete_target_group,
+    get_target_group,
+    get_target_groups,
+    update_target_group,
 )
 
 
@@ -277,9 +272,9 @@ def main():
             msg=f"Warpgate API error: {e.message}", status_code=e.status_code
         )
     except WarpgateClientError as e:
-        module.fail_json(msg=f"Warpgate client error: {str(e)}")
+        module.fail_json(msg=f"Warpgate client error: {e!s}")
     except Exception as e:
-        module.fail_json(msg=f"Unexpected error: {str(e)}")
+        module.fail_json(msg=f"Unexpected error: {e!s}")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
 
 ANSIBLE_METADATA = {
     "metadata_version": "1.0",
@@ -197,15 +193,39 @@ options:
         description:
             - Exempt administrators from user lockout.
         type: bool
-    ssh_banner:
+    banner:
         description:
-            - Custom banner displayed to SSH clients on connection
-              (Warpgate >= 0.26). Set to an empty string to disable.
+            - Custom banner displayed to clients on connection (Warpgate >= 0.27).
+              Set to an empty string to disable.
+            - Renamed from O(ssh_banner) in Warpgate 0.27.
         type: str
-    web_ssh_enabled:
+        aliases: ["ssh_banner"]
+    web_clients_enabled:
         description:
-            - Enable the in-browser WebSSH terminal (Warpgate >= 0.26).
+            - Enable the in-browser clients (WebSSH terminal and web target
+              clients, Warpgate >= 0.27).
+            - Renamed from O(web_ssh_enabled) in Warpgate 0.27.
         type: bool
+        aliases: ["web_ssh_enabled"]
+    ssh_host_key_verification:
+        description:
+            - How Warpgate verifies upstream SSH host keys (Warpgate >= 0.27).
+            - V(Prompt) asks the user to trust the key then remembers it,
+              V(AutoAccept) trusts and remembers without asking, V(AutoReject)
+              refuses unknown hosts, V(Ignore) disables host key checking.
+        type: str
+        choices: ["Prompt", "AutoAccept", "AutoReject", "Ignore"]
+    web_auth_max_age_seconds:
+        description:
+            - Maximum age (seconds) of a web authentication before
+              reauthentication is required on critical endpoints
+              (Warpgate >= 0.27).
+        type: int
+    web_approval_grace_period_seconds:
+        description:
+            - Grace period (seconds) during which a cached web approval is reused
+              instead of prompting again (Warpgate >= 0.27).
+        type: int
     analytics_consent:
         description:
             - Anonymous usage analytics reporting mode (Warpgate >= 0.26).
@@ -218,6 +238,20 @@ options:
             - Report the richer ("normal") analytics payload instead of the
               minimal one (Warpgate >= 0.26).
         type: bool
+    recordings_enable:
+        description:
+            - Enable session recordings (Warpgate >= 0.27).
+        type: bool
+    recordings_storage:
+        description:
+            - Where session recordings are stored (Warpgate >= 0.27). A tagged
+              object whose C(kind) discriminator is either C(Disk) (with a
+              C(path)) or C(S3) (with the bucket configuration).
+            - The server never returns the stored S3 secret, so passing a
+              configuration that contains C(secret_access_key) makes the task
+              report C(changed) on every run; omit the secret to keep the
+              stored one.
+        type: dict
     insecure:
         description:
             - Disables SSL certificate verification
@@ -256,16 +290,27 @@ EXAMPLES = """
       require_digits: true
       require_special: false
 
-- name: Harden a Warpgate 0.26 instance (SSO-only, brute-force protection)
+- name: Harden a Warpgate 0.27 instance (SSO-only, brute-force protection)
   plopoyop.warpgate.warpgate_parameters:
     host: "https://warpgate.example.com"
     token: "{{ warpgate_api_token }}"
     password_login_mode: "Disabled"
-    web_ssh_enabled: false
-    ssh_banner: "Authorized access only."
+    web_clients_enabled: false
+    banner: "Authorized access only."
+    ssh_host_key_verification: "AutoReject"
     login_protection_enabled: true
     lp_ip_max_attempts: 5
     lp_user_max_attempts: 10
+
+- name: Enable session recordings on S3 (Warpgate 0.27)
+  plopoyop.warpgate.warpgate_parameters:
+    host: "https://warpgate.example.com"
+    token: "{{ warpgate_api_token }}"
+    recordings_enable: true
+    recordings_storage:
+      kind: "S3"
+      bucket: "warpgate-recordings"
+      region: "eu-west-1"
 """
 
 RETURN = """
@@ -276,11 +321,10 @@ parameters:
 """
 
 from ansible.module_utils.basic import AnsibleModule
-
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
+    WarpgateAPIError,
     WarpgateClient,
     WarpgateClientError,
-    WarpgateAPIError,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.parameters import (
     PARAMETER_FIELDS,
@@ -325,6 +369,11 @@ def main():
         ssh_client_auth_publickey=dict(type="bool", required=False),
         ssh_client_auth_password=dict(type="bool", required=False, no_log=False),
         ssh_client_auth_keyboard_interactive=dict(type="bool", required=False),
+        ssh_host_key_verification=dict(
+            type="str",
+            required=False,
+            choices=["Prompt", "AutoAccept", "AutoReject", "Ignore"],
+        ),
         minimize_password_login=dict(type="bool", required=False, no_log=False),
         password_login_mode=dict(
             type="str",
@@ -369,12 +418,18 @@ def main():
         lp_user_auto_unlock=dict(type="bool", required=False),
         lp_user_lockout_duration_seconds=dict(type="int", required=False),
         lp_user_exempt_admins=dict(type="bool", required=False),
-        ssh_banner=dict(type="str", required=False),
-        web_ssh_enabled=dict(type="bool", required=False),
+        banner=dict(type="str", required=False, aliases=["ssh_banner"]),
+        web_clients_enabled=dict(
+            type="bool", required=False, aliases=["web_ssh_enabled"]
+        ),
+        web_auth_max_age_seconds=dict(type="int", required=False),
+        web_approval_grace_period_seconds=dict(type="int", required=False),
         analytics_consent=dict(
             type="str", required=False, choices=["Undecided", "Off", "On"]
         ),
         analytics_normal=dict(type="bool", required=False),
+        recordings_enable=dict(type="bool", required=False),
+        recordings_storage=dict(type="dict", required=False),
         insecure=dict(type="bool", default=False),
         timeout=dict(type="int", default=30),
     )
@@ -441,9 +496,9 @@ def main():
             msg=f"Warpgate API error: {e.message}", status_code=e.status_code
         )
     except WarpgateClientError as e:
-        module.fail_json(msg=f"Warpgate client error: {str(e)}")
+        module.fail_json(msg=f"Warpgate client error: {e!s}")
     except Exception as e:
-        module.fail_json(msg=f"Unexpected error: {str(e)}")
+        module.fail_json(msg=f"Unexpected error: {e!s}")
 
 
 if __name__ == "__main__":

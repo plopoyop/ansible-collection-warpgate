@@ -9,7 +9,7 @@ carry an ``expires_at`` timestamp; this is exposed through the new
 """
 
 import urllib.parse
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .client import WarpgateAPIError
 
@@ -27,7 +27,7 @@ class Role:
         self.is_default = is_default
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Role":
+    def from_dict(cls, data: dict[str, Any]) -> "Role":
         """Create a Role from a dictionary"""
         return cls(
             id=data["id"],
@@ -65,7 +65,7 @@ class UserRoleAssignment:
         self.is_active = is_active
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "UserRoleAssignment":
+    def from_dict(cls, data: dict[str, Any]) -> "UserRoleAssignment":
         return cls(
             id=data["id"],
             name=data.get("name", ""),
@@ -77,7 +77,7 @@ class UserRoleAssignment:
         )
 
 
-def get_roles(client, search: str = "") -> List[Role]:
+def get_roles(client, search: str = "") -> list[Role]:
     """
     Retrieves all roles from the Warpgate API, optionally filtered by search term.
 
@@ -96,7 +96,7 @@ def get_roles(client, search: str = "") -> List[Role]:
     return [Role.from_dict(role) for role in response]
 
 
-def get_role(client, role_id: str) -> Optional[Role]:
+def get_role(client, role_id: str) -> Role | None:
     """
     Retrieves a specific role by ID from the Warpgate API.
 
@@ -117,7 +117,7 @@ def get_role(client, role_id: str) -> Optional[Role]:
 
 
 def create_role(
-    client, name: str, description: str = "", is_default: Optional[bool] = None
+    client, name: str, description: str = "", is_default: bool | None = None
 ) -> Role:
     """
     Creates a new role in Warpgate with the provided name and description.
@@ -132,7 +132,7 @@ def create_role(
     Returns:
         Created Role object
     """
-    body: Dict[str, Any] = {"name": name, "description": description}
+    body: dict[str, Any] = {"name": name, "description": description}
     if is_default is not None:
         body["is_default"] = is_default
     response = client._request("POST", "/roles", body)
@@ -144,7 +144,7 @@ def update_role(
     role_id: str,
     name: str,
     description: str = "",
-    is_default: Optional[bool] = None,
+    is_default: bool | None = None,
 ) -> Role:
     """
     Updates an existing role's information including name and description.
@@ -160,7 +160,7 @@ def update_role(
     Returns:
         Updated Role object
     """
-    body: Dict[str, Any] = {"name": name, "description": description}
+    body: dict[str, Any] = {"name": name, "description": description}
     if is_default is not None:
         body["is_default"] = is_default
     response = client._request("PUT", f"/role/{role_id}", body)
@@ -178,7 +178,7 @@ def delete_role(client, role_id: str) -> None:
     client._request("DELETE", f"/role/{role_id}")
 
 
-def get_user_roles(client, user_id: str) -> List[UserRoleAssignment]:
+def get_user_roles(client, user_id: str) -> list[UserRoleAssignment]:
     """
     Retrieves all roles assigned to a specific user, including assignment
     metadata (granted_at, expires_at, is_expired, is_active).
@@ -191,7 +191,7 @@ def get_user_roles(client, user_id: str) -> List[UserRoleAssignment]:
     return [UserRoleAssignment.from_dict(r) for r in response]
 
 
-def get_user_role(client, user_id: str, role_id: str) -> Optional[UserRoleAssignment]:
+def get_user_role(client, user_id: str, role_id: str) -> UserRoleAssignment | None:
     """Retrieves a single user-role assignment (v0.23+)."""
     try:
         response = client._request("GET", f"/users/{user_id}/roles/{role_id}")
@@ -203,8 +203,8 @@ def get_user_role(client, user_id: str, role_id: str) -> Optional[UserRoleAssign
 
 
 def add_user_role(
-    client, user_id: str, role_id: str, expires_at: Optional[str] = None
-) -> Optional[UserRoleAssignment]:
+    client, user_id: str, role_id: str, expires_at: str | None = None
+) -> UserRoleAssignment | None:
     """
     Assigns a role to a user, optionally with an expiry timestamp (v0.23+).
 
@@ -218,7 +218,7 @@ def add_user_role(
         The created :class:`UserRoleAssignment` when the server returns one,
         otherwise ``None`` (older server builds return an empty 201).
     """
-    body: Dict[str, Any] = {}
+    body: dict[str, Any] = {}
     if expires_at:
         body["expires_at"] = expires_at
     response = client._request(
@@ -230,14 +230,14 @@ def add_user_role(
 
 
 def update_user_role(
-    client, user_id: str, role_id: str, expires_at: Optional[str] = None
+    client, user_id: str, role_id: str, expires_at: str | None = None
 ) -> UserRoleAssignment:
     """Updates the expiry of an existing user-role assignment (v0.23+).
 
     Pass ``expires_at=None`` to clear the expiry and make the assignment
     permanent; pass an ISO-8601 string to set a new expiry.
     """
-    body: Dict[str, Any] = {"expires_at": expires_at}
+    body: dict[str, Any] = {"expires_at": expires_at}
     response = client._request("PUT", f"/users/{user_id}/roles/{role_id}", body)
     return UserRoleAssignment.from_dict(response)
 
@@ -254,7 +254,7 @@ def delete_user_role(client, user_id: str, role_id: str) -> None:
     client._request("DELETE", f"/users/{user_id}/roles/{role_id}")
 
 
-def get_target_roles(client, target_id: str) -> List[Role]:
+def get_target_roles(client, target_id: str) -> list[Role]:
     """
     Retrieves all roles assigned to a specific target.
 

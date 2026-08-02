@@ -1,5 +1,13 @@
 extend-exclude = ["tests/_vendor"]
 
+[lint]
+# Pin the rule set explicitly so linting stays independent of the ruff
+# version's shifting defaults (ruff 0.16 broadened the built-in selection).
+# This mirrors ruff's historical default (E4/E7/E9 + F).
+select = ["E4", "E7", "E9", "F"]
+
 [lint.per-file-ignores]
 # E402: module-level imports not at top — standard pattern for Ansible modules
 "plugins/modules/*.py" = ["E402"]
+# E402: imports intentionally follow the sys.path bootstrap
+"tests/conftest.py" = ["E402"]

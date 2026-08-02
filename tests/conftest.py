@@ -66,9 +66,9 @@ for _ns in (
 # Fixtures
 # ---------------------------------------------------------------------------
 
-from unittest.mock import MagicMock  # noqa: E402
+from unittest.mock import MagicMock
 
-from warpgate_client.client import WarpgateClient  # noqa: E402
+from warpgate_client.client import WarpgateClient
 
 
 @pytest.fixture
