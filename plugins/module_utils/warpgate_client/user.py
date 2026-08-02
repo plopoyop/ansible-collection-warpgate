@@ -5,7 +5,7 @@ This module provides functions to manage Warpgate users and their credential pol
 """
 
 import urllib.parse
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .client import WarpgateAPIError
 
@@ -23,11 +23,11 @@ class UserRequireCredentialsPolicy:
 
     def __init__(
         self,
-        http: Optional[List[str]] = None,
-        ssh: Optional[List[str]] = None,
-        mysql: Optional[List[str]] = None,
-        postgres: Optional[List[str]] = None,
-        kubernetes: Optional[List[str]] = None,
+        http: list[str] | None = None,
+        ssh: list[str] | None = None,
+        mysql: list[str] | None = None,
+        postgres: list[str] | None = None,
+        kubernetes: list[str] | None = None,
     ):
         self.http = http
         self.ssh = ssh
@@ -35,7 +35,7 @@ class UserRequireCredentialsPolicy:
         self.postgres = postgres
         self.kubernetes = kubernetes
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization. Returns empty dict if no policies set."""
         result = {}
         if self.http:
@@ -59,10 +59,10 @@ class User:
         id: str,
         username: str,
         description: str = "",
-        credential_policy: Optional[UserRequireCredentialsPolicy] = None,
-        rate_limit_bytes_per_second: Optional[int] = None,
+        credential_policy: UserRequireCredentialsPolicy | None = None,
+        rate_limit_bytes_per_second: int | None = None,
         ldap_server_id: str = "",
-        allowed_ip_ranges: Optional[List[str]] = None,
+        allowed_ip_ranges: list[str] | None = None,
     ):
         self.id = id
         self.username = username
@@ -73,10 +73,10 @@ class User:
         self.allowed_ip_ranges = allowed_ip_ranges or []
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "User":
+    def from_dict(cls, data: dict[str, Any]) -> "User":
         """Create a User from a dictionary"""
         policy = None
-        if "credential_policy" in data and data["credential_policy"]:
+        if data.get("credential_policy"):
             cp = data["credential_policy"]
             policy = UserRequireCredentialsPolicy(
                 http=cp.get("http"),
@@ -96,7 +96,7 @@ class User:
         )
 
 
-def get_users(client, search: str = "") -> List[User]:
+def get_users(client, search: str = "") -> list[User]:
     """
     Retrieves all users from the Warpgate API, optionally filtered by search term.
 
@@ -115,7 +115,7 @@ def get_users(client, search: str = "") -> List[User]:
     return [User.from_dict(user) for user in response]
 
 
-def get_user(client, user_id: str) -> Optional[User]:
+def get_user(client, user_id: str) -> User | None:
     """
     Retrieves a specific user by ID from the Warpgate API.
 
@@ -157,9 +157,9 @@ def update_user(
     user_id: str,
     username: str,
     description: str = "",
-    credential_policy: Optional[UserRequireCredentialsPolicy] = None,
-    rate_limit_bytes_per_second: Optional[int] = None,
-    allowed_ip_ranges: Optional[List[str]] = None,
+    credential_policy: UserRequireCredentialsPolicy | None = None,
+    rate_limit_bytes_per_second: int | None = None,
+    allowed_ip_ranges: list[str] | None = None,
 ) -> User:
     """
     Updates an existing user's information including username, description,
@@ -180,7 +180,7 @@ def update_user(
     Returns:
         Updated User object
     """
-    body: Dict[str, Any] = {"username": username, "description": description}
+    body: dict[str, Any] = {"username": username, "description": description}
     if credential_policy:
         policy_dict = credential_policy.to_dict()
         if policy_dict:

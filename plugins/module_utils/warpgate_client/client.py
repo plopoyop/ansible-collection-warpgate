@@ -6,7 +6,7 @@ This module provides the core HTTP client functionality for interacting with the
 
 import json
 import ssl
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -15,15 +15,12 @@ def _user_api_base(admin_base: str) -> str:
     """Derive user API base URL from admin API base (e.g. .../admin/api -> .../api/)."""
     base = admin_base.rstrip("/")
     admin_suffix = "/@warpgate/admin/api"
-    if base.endswith(admin_suffix):
-        base = base[: -len(admin_suffix)]
+    base = base.removesuffix(admin_suffix)
     return base + "/@warpgate/api/"
 
 
 class WarpgateClientError(Exception):
     """Base exception for Warpgate client errors"""
-
-    pass
 
 
 class WarpgateAPIError(WarpgateClientError):
@@ -48,9 +45,9 @@ class WarpgateClient:
     def __init__(
         self,
         host: str,
-        token: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        token: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
         timeout: int = 30,
         insecure: bool = False,
     ):
@@ -88,7 +85,7 @@ class WarpgateClient:
             self.ssl_context.verify_mode = ssl.CERT_NONE
 
     @property
-    def token(self) -> Optional[str]:
+    def token(self) -> str | None:
         return self._token
 
     def _login(self) -> None:
@@ -122,7 +119,7 @@ class WarpgateClient:
             raise WarpgateClientError(f"Login request failed: {e.reason}")
 
     def _request(
-        self, method: str, path: str, body: Optional[Dict[str, Any]] = None
+        self, method: str, path: str, body: dict[str, Any] | None = None
     ) -> Any:
         """
         Performs an HTTP request to the Warpgate API

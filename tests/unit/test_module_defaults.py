@@ -2,15 +2,14 @@
 
 import json
 import os
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 import shutil
 import subprocess
 import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 import pytest
 import yaml
-
 
 COLLECTION_ROOT = Path(__file__).parents[2]
 ACTION_GROUP = "warpgate"
@@ -24,7 +23,7 @@ ACTION_GROUP = "warpgate"
 class _WarpgateStubHandler(BaseHTTPRequestHandler):
     requests = []
 
-    def do_GET(self):  # noqa: N802
+    def do_GET(self):
         self.__class__.requests.append(
             {
                 "path": self.path,
@@ -47,7 +46,7 @@ class _WarpgateStubHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(response)
 
-    def log_message(self, format, *args):  # noqa: A002
+    def log_message(self, format, *args):
         """Silence HTTP server logs in the pytest output."""
 
 

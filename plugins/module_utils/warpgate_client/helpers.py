@@ -6,17 +6,18 @@ Provides common functionality used across multiple modules:
 - Robust by-name lookup with search-then-list-all fallback
 """
 
-from typing import Any, Callable, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from .client import WarpgateAPIError
 from .role import get_role, get_roles
 
 
 def find_by_exact_name(
-    list_fn: Callable[..., List[Any]],
+    list_fn: Callable[..., list[Any]],
     client: Any,
     name: str,
-) -> Optional[Any]:
+) -> Any | None:
     """
     Robustly look up an entity by its exact name.
 
@@ -37,7 +38,7 @@ def find_by_exact_name(
         The matching entity object, or ``None`` if no exact match exists.
     """
 
-    def _scan(items: List[Any]) -> Optional[Any]:
+    def _scan(items: list[Any]) -> Any | None:
         for item in items:
             if (
                 getattr(item, "name", None) == name
@@ -63,16 +64,16 @@ def find_by_exact_name(
 
 
 def find_id_by_exact_name(
-    list_fn: Callable[..., List[Any]],
+    list_fn: Callable[..., list[Any]],
     client: Any,
     name: str,
-) -> Optional[str]:
+) -> str | None:
     """Convenience wrapper around :func:`find_by_exact_name` returning the ID."""
     item = find_by_exact_name(list_fn, client, name)
     return getattr(item, "id", None) if item is not None else None
 
 
-def resolve_role_ids(client, role_specs: List[str]) -> List[str]:
+def resolve_role_ids(client, role_specs: list[str]) -> list[str]:
     """
     Resolves role specifications (IDs or names) to actual role IDs.
 

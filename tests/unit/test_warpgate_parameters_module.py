@@ -1,11 +1,9 @@
 """Tests for warpgate_parameters module and the parameters client."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-
-import warpgate_parameters  # noqa: E402
+import warpgate_parameters
 from warpgate_client.parameters import get_parameters, update_parameters
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -34,15 +32,23 @@ CURRENT = {
         "require_special": False,
     },
     "record_scp": False,
+    "ssh_host_key_verification": "Prompt",
     "login_protection_enabled": True,
     "lp_ip_max_attempts": 5,
     "lp_ip_block_duration_multiplier": 2.0,
     "lp_user_max_attempts": 10,
     "lp_user_exempt_admins": True,
-    "ssh_banner": "",
+    "banner": "",
+    # Deprecated read-only alias still returned by GET (Warpgate >= 0.27),
+    # mirrors web_clients_enabled.
     "web_ssh_enabled": True,
+    "web_clients_enabled": True,
+    "web_auth_max_age_seconds": None,
+    "web_approval_grace_period_seconds": None,
     "analytics_consent": "Undecided",
     "analytics_normal": False,
+    "recordings_enable": False,
+    "recordings_storage": {"kind": "Disk", "path": "./data/recordings"},
 }
 
 
@@ -57,6 +63,7 @@ def _base_params(**overrides):
         ssh_client_auth_publickey=None,
         ssh_client_auth_password=None,
         ssh_client_auth_keyboard_interactive=None,
+        ssh_host_key_verification=None,
         minimize_password_login=None,
         password_login_mode=None,
         ticket_self_service_enabled=None,
@@ -83,10 +90,14 @@ def _base_params(**overrides):
         lp_user_auto_unlock=None,
         lp_user_lockout_duration_seconds=None,
         lp_user_exempt_admins=None,
-        ssh_banner=None,
-        web_ssh_enabled=None,
+        banner=None,
+        web_clients_enabled=None,
+        web_auth_max_age_seconds=None,
+        web_approval_grace_period_seconds=None,
         analytics_consent=None,
         analytics_normal=None,
+        recordings_enable=None,
+        recordings_storage=None,
         insecure=False,
         timeout=30,
     )
@@ -143,9 +154,11 @@ class TestParametersClient:
         method, path, body = mock_client._request.call_args[0]
         assert (method, path) == ("PUT", "/parameters")
         assert "id" not in body
-        # Deprecated, read-only in 0.26: must not be sent back on PUT.
-        assert "minimize_password_login" not in body
+        # Deprecated, read-only: must not be sent back on PUT.
+        assert "minimize_password_login" not in body  # 0.26
+        assert "web_ssh_enabled" not in body  # 0.27 (renamed to web_clients_enabled)
         assert body["password_login_mode"] == "Enabled"
+        assert body["web_clients_enabled"] is True
         assert body["allow_own_credential_management"] is True
 
     def test_update_parameters_drops_none_values(self, mock_client):
@@ -256,7 +269,7 @@ class TestParametersModule:
         assert result["changed"] is True
 
     def test_login_protection_field_change(self):
-        params = _base_params(lp_ip_max_attempts=3, web_ssh_enabled=False)
+        params = _base_params(lp_ip_max_attempts=3, web_clients_enabled=False)
         with (
             patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
             patch("warpgate_parameters.update_parameters") as mock_update,
@@ -264,16 +277,40 @@ class TestParametersModule:
             result, mod = _run_module(params)
         sent = mock_update.call_args[0][1]
         assert sent["lp_ip_max_attempts"] == 3
-        assert sent["web_ssh_enabled"] is False
+        assert sent["web_clients_enabled"] is False
         assert result["changed"] is True
 
-    def test_ssh_banner_set(self):
-        params = _base_params(ssh_banner="Authorized access only.")
+    def test_banner_set(self):
+        params = _base_params(banner="Authorized access only.")
         with (
             patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
             patch("warpgate_parameters.update_parameters") as mock_update,
         ):
             result, mod = _run_module(params)
         sent = mock_update.call_args[0][1]
-        assert sent["ssh_banner"] == "Authorized access only."
+        assert sent["banner"] == "Authorized access only."
+        assert result["changed"] is True
+
+    def test_ssh_host_key_verification_change(self):
+        params = _base_params(ssh_host_key_verification="AutoReject")
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        sent = mock_update.call_args[0][1]
+        assert sent["ssh_host_key_verification"] == "AutoReject"
+        assert result["changed"] is True
+
+    def test_recordings_storage_preserved_when_unset(self):
+        params = _base_params(recordings_enable=True)
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        sent = mock_update.call_args[0][1]
+        assert sent["recordings_enable"] is True
+        # unmanaged storage is round-tripped unchanged from the server
+        assert sent["recordings_storage"] == CURRENT["recordings_storage"]
         assert result["changed"] is True

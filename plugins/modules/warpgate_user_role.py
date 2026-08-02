@@ -1,9 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
 
 ANSIBLE_METADATA = {
     "metadata_version": "1.0",
@@ -133,19 +129,17 @@ expires_at:
 """
 
 from ansible.module_utils.basic import AnsibleModule
-
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
+    WarpgateAPIError,
     WarpgateClient,
     WarpgateClientError,
-    WarpgateAPIError,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.role import (
-    get_user_roles,
     add_user_role,
-    update_user_role,
     delete_user_role,
+    get_user_roles,
+    update_user_role,
 )
-
 
 _NEVER_SENTINEL = "never"
 
@@ -274,9 +268,9 @@ def main():
             msg=f"Warpgate API error: {e.message}", status_code=e.status_code
         )
     except WarpgateClientError as e:
-        module.fail_json(msg=f"Warpgate client error: {str(e)}")
+        module.fail_json(msg=f"Warpgate client error: {e!s}")
     except Exception as e:
-        module.fail_json(msg=f"Unexpected error: {str(e)}")
+        module.fail_json(msg=f"Unexpected error: {e!s}")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
 
 ANSIBLE_METADATA = {
     "metadata_version": "1.0",
@@ -124,17 +120,16 @@ credential_id:
 """
 
 from ansible.module_utils.basic import AnsibleModule
-
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
+    WarpgateAPIError,
     WarpgateClient,
     WarpgateClientError,
-    WarpgateAPIError,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.credential import (
     add_password_credential,
+    delete_password_credential,
     format_password_policy_error,
     get_password_credentials,
-    delete_password_credential,
 )
 
 
@@ -252,9 +247,9 @@ def main():
             msg=f"Warpgate API error: {e.message}", status_code=e.status_code
         )
     except WarpgateClientError as e:
-        module.fail_json(msg=f"Warpgate client error: {str(e)}")
+        module.fail_json(msg=f"Warpgate client error: {e!s}")
     except Exception as e:
-        module.fail_json(msg=f"Unexpected error: {str(e)}")
+        module.fail_json(msg=f"Unexpected error: {e!s}")
 
 
 if __name__ == "__main__":

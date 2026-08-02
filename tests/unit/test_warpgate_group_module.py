@@ -1,11 +1,9 @@
 """Tests for warpgate_group module."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-
-import warpgate_group  # noqa: E402
+import warpgate_group
 from warpgate_client.target_group import TargetGroup
-
 
 # ---------------------------------------------------------------------------
 # Helpers

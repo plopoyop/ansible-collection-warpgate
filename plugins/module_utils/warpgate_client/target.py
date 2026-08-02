@@ -5,7 +5,7 @@ This module provides functions to manage Warpgate targets (SSH, HTTP, MySQL, Pos
 """
 
 import urllib.parse
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .client import WarpgateAPIError
 
@@ -22,7 +22,7 @@ class TLS:
         self.mode = mode
         self.verify = verify
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
         return {"mode": self.mode, "verify": self.verify}
 
@@ -36,9 +36,9 @@ class Target:
         name: str,
         description: str = "",
         group_id: str = "",
-        allow_roles: Optional[List[str]] = None,
-        options: Optional[Dict[str, Any]] = None,
-        rate_limit_bytes_per_second: Optional[int] = None,
+        allow_roles: list[str] | None = None,
+        options: dict[str, Any] | None = None,
+        rate_limit_bytes_per_second: int | None = None,
     ):
         self.id = id
         self.name = name
@@ -49,7 +49,7 @@ class Target:
         self.rate_limit_bytes_per_second = rate_limit_bytes_per_second
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Target":
+    def from_dict(cls, data: dict[str, Any]) -> "Target":
         """Create a Target from a dictionary"""
         return cls(
             id=data["id"],
@@ -62,7 +62,7 @@ class Target:
         )
 
 
-def get_targets(client, search: str = "") -> List[Target]:
+def get_targets(client, search: str = "") -> list[Target]:
     """
     Retrieves all targets from the Warpgate API, optionally filtered by search term.
 
@@ -81,7 +81,7 @@ def get_targets(client, search: str = "") -> List[Target]:
     return [Target.from_dict(target) for target in response]
 
 
-def get_target(client, target_id: str) -> Optional[Target]:
+def get_target(client, target_id: str) -> Target | None:
     """
     Retrieves a specific target by ID from the Warpgate API.
 
@@ -106,8 +106,8 @@ def create_target(
     name: str,
     description: str = "",
     group_id: str = "",
-    options: Optional[Dict[str, Any]] = None,
-    rate_limit_bytes_per_second: Optional[int] = None,
+    options: dict[str, Any] | None = None,
+    rate_limit_bytes_per_second: int | None = None,
 ) -> Target:
     """
     Creates a new target in Warpgate with the provided name, description, and configuration options.
@@ -123,7 +123,7 @@ def create_target(
     Returns:
         Created Target object
     """
-    body: Dict[str, Any] = {
+    body: dict[str, Any] = {
         "name": name,
         "description": description,
         "options": options or {},
@@ -142,8 +142,8 @@ def update_target(
     name: str,
     description: str = "",
     group_id: str = "",
-    options: Optional[Dict[str, Any]] = None,
-    rate_limit_bytes_per_second: Optional[int] = None,
+    options: dict[str, Any] | None = None,
+    rate_limit_bytes_per_second: int | None = None,
 ) -> Target:
     """
     Updates an existing target's information including name, description, and configuration options.
@@ -160,7 +160,7 @@ def update_target(
     Returns:
         Updated Target object
     """
-    body: Dict[str, Any] = {
+    body: dict[str, Any] = {
         "name": name,
         "description": description,
         "options": options or {},

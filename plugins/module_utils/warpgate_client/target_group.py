@@ -5,7 +5,7 @@ This module provides functions to manage Warpgate target groups.
 """
 
 import urllib.parse
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .client import WarpgateAPIError
 
@@ -20,7 +20,7 @@ class TargetGroup:
         self.color = color
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TargetGroup":
+    def from_dict(cls, data: dict[str, Any]) -> "TargetGroup":
         return cls(
             id=data["id"],
             name=data["name"],
@@ -29,7 +29,7 @@ class TargetGroup:
         )
 
 
-def get_target_groups(client, search: str = "") -> List[TargetGroup]:
+def get_target_groups(client, search: str = "") -> list[TargetGroup]:
     """
     Retrieves all target groups from the Warpgate API, optionally filtered by search term.
 
@@ -43,7 +43,7 @@ def get_target_groups(client, search: str = "") -> List[TargetGroup]:
     return [TargetGroup.from_dict(item) for item in response]
 
 
-def get_target_group(client, group_id: str) -> Optional[TargetGroup]:
+def get_target_group(client, group_id: str) -> TargetGroup | None:
     """Retrieves a specific target group by ID. Returns None if not found."""
     try:
         response = client._request("GET", f"/target-groups/{group_id}")
@@ -58,7 +58,7 @@ def create_target_group(
     client, name: str, description: str = "", color: str = ""
 ) -> TargetGroup:
     """Creates a new target group."""
-    body: Dict[str, Any] = {
+    body: dict[str, Any] = {
         "name": name,
         "description": description,
     }
@@ -73,7 +73,7 @@ def update_target_group(
     client, group_id: str, name: str, description: str = "", color: str = ""
 ) -> TargetGroup:
     """Updates an existing target group."""
-    body: Dict[str, Any] = {
+    body: dict[str, Any] = {
         "name": name,
         "description": description,
     }

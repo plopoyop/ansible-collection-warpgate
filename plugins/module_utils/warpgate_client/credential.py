@@ -5,7 +5,7 @@ This module provides functions to manage user credentials (password, public key,
 """
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .client import WarpgateAPIError
 
@@ -21,7 +21,7 @@ PASSWORD_POLICY_VIOLATION_LABELS = {
 }
 
 
-def format_password_policy_error(error: WarpgateAPIError) -> Optional[str]:
+def format_password_policy_error(error: WarpgateAPIError) -> str | None:
     """Formats a 422 password-policy violation response into a readable message.
 
     Returns ``None`` when the error is not a password policy violation, so the
@@ -46,7 +46,7 @@ class PasswordCredential:
         self.id = id
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PasswordCredential":
+    def from_dict(cls, data: dict[str, Any]) -> "PasswordCredential":
         """Create a PasswordCredential from a dictionary"""
         return cls(id=data.get("id", ""))
 
@@ -69,7 +69,7 @@ class PublicKeyCredential:
         self.last_used = last_used
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PublicKeyCredential":
+    def from_dict(cls, data: dict[str, Any]) -> "PublicKeyCredential":
         """Create a PublicKeyCredential from a dictionary"""
         return cls(
             id=data.get("id", ""),
@@ -89,7 +89,7 @@ class SsoCredential:
         self.email = email
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SsoCredential":
+    def from_dict(cls, data: dict[str, Any]) -> "SsoCredential":
         """Create an SsoCredential from a dictionary"""
         return cls(
             id=data.get("id", ""),
@@ -115,7 +115,7 @@ def add_password_credential(client, user_id: str, password: str) -> PasswordCred
     return PasswordCredential.from_dict(response)
 
 
-def get_password_credentials(client, user_id: str) -> List[PasswordCredential]:
+def get_password_credentials(client, user_id: str) -> list[PasswordCredential]:
     """
     Retrieves all password credentials for a user.
     Note: The password values are not returned for security reasons, only the IDs.
@@ -171,7 +171,7 @@ def add_public_key_credential(
     return PublicKeyCredential.from_dict(response)
 
 
-def get_public_key_credentials(client, user_id: str) -> List[PublicKeyCredential]:
+def get_public_key_credentials(client, user_id: str) -> list[PublicKeyCredential]:
     """
     Retrieves all public key credentials for a user.
 
@@ -223,7 +223,7 @@ def delete_public_key_credential(client, user_id: str, credential_id: str) -> No
     )
 
 
-def get_sso_credentials(client, user_id: str) -> List[SsoCredential]:
+def get_sso_credentials(client, user_id: str) -> list[SsoCredential]:
     """
     Retrieves all SSO credentials for a user.
 
@@ -253,7 +253,7 @@ def add_sso_credential(
     Returns:
         Created SsoCredential object
     """
-    body: Dict[str, Any] = {"email": email}
+    body: dict[str, Any] = {"email": email}
     if provider:
         body["provider"] = provider
     response = client._request("POST", f"/users/{user_id}/credentials/sso", body)
@@ -276,7 +276,7 @@ def update_sso_credential(
     Returns:
         Updated SsoCredential object
     """
-    body: Dict[str, Any] = {"email": email}
+    body: dict[str, Any] = {"email": email}
     if provider:
         body["provider"] = provider
     response = client._request(
@@ -315,7 +315,7 @@ class CertificateCredential:
         self.fingerprint = fingerprint
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CertificateCredential":
+    def from_dict(cls, data: dict[str, Any]) -> "CertificateCredential":
         """Create a CertificateCredential from a dictionary"""
         return cls(
             id=data.get("id", ""),
@@ -336,7 +336,7 @@ class IssuedCertificateCredential:
         self.certificate_pem = certificate_pem
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "IssuedCertificateCredential":
+    def from_dict(cls, data: dict[str, Any]) -> "IssuedCertificateCredential":
         """Create an IssuedCertificateCredential from a dictionary"""
         cred_data = data.get("credential", {})
         return cls(
@@ -345,7 +345,7 @@ class IssuedCertificateCredential:
         )
 
 
-def get_certificate_credentials(client, user_id: str) -> List[CertificateCredential]:
+def get_certificate_credentials(client, user_id: str) -> list[CertificateCredential]:
     """
     Retrieves all certificate credentials for a user.
 

@@ -1,9 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
 
 ANSIBLE_METADATA = {
     "metadata_version": "1.0",
@@ -447,27 +443,26 @@ roles:
 import re
 
 from ansible.module_utils.basic import AnsibleModule
-
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
+    WarpgateAPIError,
     WarpgateClient,
     WarpgateClientError,
-    WarpgateAPIError,
+    find_id_by_exact_name,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
-    find_id_by_exact_name,
     resolve_role_ids as _resolve_role_ids,
 )
-from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.target import (
-    get_targets,
-    get_target,
-    create_target,
-    update_target,
-    delete_target,
-)
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.role import (
-    get_target_roles,
     add_target_role,
     delete_target_role,
+    get_target_roles,
+)
+from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.target import (
+    create_target,
+    delete_target,
+    get_target,
+    get_targets,
+    update_target,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.target_group import (
     get_target_groups,
@@ -539,7 +534,7 @@ def build_target_options(module):
                 "password_auth and public_key_auth"
             )
 
-        if "password_auth" in ssh_options and ssh_options["password_auth"]:
+        if ssh_options.get("password_auth"):
             options["auth"] = {
                 "kind": "Password",
                 "password": ssh_options["password_auth"]["password"],
@@ -646,15 +641,12 @@ def build_target_options(module):
                 "token_auth and certificate_auth"
             )
 
-        if "token_auth" in kubernetes_options and kubernetes_options["token_auth"]:
+        if kubernetes_options.get("token_auth"):
             options["auth"] = {
                 "kind": "Token",
                 "token": kubernetes_options["token_auth"]["token"],
             }
-        elif (
-            "certificate_auth" in kubernetes_options
-            and kubernetes_options["certificate_auth"]
-        ):
+        elif kubernetes_options.get("certificate_auth"):
             options["auth"] = {
                 "kind": "Certificate",
                 "certificate": kubernetes_options["certificate_auth"]["certificate"],
@@ -1133,9 +1125,9 @@ def main():
             msg=f"Warpgate API error: {e.message}", status_code=e.status_code
         )
     except WarpgateClientError as e:
-        module.fail_json(msg=f"Warpgate client error: {str(e)}")
+        module.fail_json(msg=f"Warpgate client error: {e!s}")
     except Exception as e:
-        module.fail_json(msg=f"Unexpected error: {str(e)}")
+        module.fail_json(msg=f"Unexpected error: {e!s}")
 
 
 if __name__ == "__main__":

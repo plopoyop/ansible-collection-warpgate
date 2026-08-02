@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 # Import module-level functions — conftest.py wires up ansible.module_utils
-import warpgate_user  # noqa: E402
+import warpgate_user
 from warpgate_client.client import WarpgateAPIError
 from warpgate_client.credential import (
     PasswordCredential,
@@ -519,10 +519,12 @@ class TestManageUserRoles:
         mock_del.assert_not_called()
 
     def test_api_error_calls_fail_json(self, mock_client, mock_module):
-        with patch(
-            "warpgate_user.get_user_roles",
-            side_effect=WarpgateAPIError(500, "server error"),
+        with (
+            patch(
+                "warpgate_user.get_user_roles",
+                side_effect=WarpgateAPIError(500, "server error"),
+            ),
+            pytest.raises(SystemExit),
         ):
-            with pytest.raises(SystemExit):
-                warpgate_user.manage_user_roles(mock_client, "u1", ["r1"], mock_module)
+            warpgate_user.manage_user_roles(mock_client, "u1", ["r1"], mock_module)
         mock_module.fail_json.assert_called_once()

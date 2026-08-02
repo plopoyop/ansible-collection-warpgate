@@ -4,7 +4,7 @@ Ticket management for the Warpgate API
 This module provides functions to manage Warpgate access tickets.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class Ticket:
@@ -18,7 +18,7 @@ class Ticket:
         description: str = "",
         target_id: str = "",
         target: str = "",
-        uses_left: Optional[int] = None,
+        uses_left: int | None = None,
         expiry: str = "",
         created: str = "",
     ):
@@ -33,7 +33,7 @@ class Ticket:
         self.created = created
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Ticket":
+    def from_dict(cls, data: dict[str, Any]) -> "Ticket":
         """Create a Ticket from a dictionary"""
         return cls(
             id=data.get("id", ""),
@@ -56,7 +56,7 @@ class TicketAndSecret:
         self.secret = secret
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TicketAndSecret":
+    def from_dict(cls, data: dict[str, Any]) -> "TicketAndSecret":
         """Create a TicketAndSecret from a dictionary"""
         ticket = Ticket.from_dict(data.get("ticket", {}))
         return cls(ticket=ticket, secret=data.get("secret", ""))
@@ -69,7 +69,7 @@ def create_ticket(
     user_id: str = "",
     target_id: str = "",
     expiry: str = "",
-    number_of_uses: Optional[int] = None,
+    number_of_uses: int | None = None,
     description: str = "",
 ) -> TicketAndSecret:
     """
@@ -93,7 +93,7 @@ def create_ticket(
     Returns:
         TicketAndSecret object containing the ticket and its secret
     """
-    body: Dict[str, Any] = {}
+    body: dict[str, Any] = {}
     if username:
         body["username"] = username
     if target_name:

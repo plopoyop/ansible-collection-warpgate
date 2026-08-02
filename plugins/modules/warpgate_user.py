@@ -1,9 +1,5 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 
-from __future__ import absolute_import, division, print_function
-
-__metaclass__ = type
 
 ANSIBLE_METADATA = {
     "metadata_version": "1.0",
@@ -306,47 +302,46 @@ admin_roles:
 """
 
 from ansible.module_utils.basic import AnsibleModule
-
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
+    WarpgateAPIError,
     WarpgateClient,
     WarpgateClientError,
-    WarpgateAPIError,
+    find_id_by_exact_name,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
-    find_id_by_exact_name,
     resolve_role_ids as _resolve_role_ids,
 )
-from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.user import (
-    get_users,
-    get_user,
-    create_user,
-    update_user,
-    delete_user,
-    UserRequireCredentialsPolicy,
+from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.admin_role import (
+    add_user_admin_role,
+    delete_user_admin_role,
+    get_user_admin_roles,
+    resolve_admin_role_ids,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.credential import (
     add_password_credential,
+    add_public_key_credential,
+    add_sso_credential,
+    delete_password_credential,
+    delete_public_key_credential,
+    delete_sso_credential,
     format_password_policy_error,
     get_password_credentials,
-    delete_password_credential,
     get_public_key_credentials,
-    add_public_key_credential,
-    update_public_key_credential,
-    delete_public_key_credential,
     get_sso_credentials,
-    add_sso_credential,
-    delete_sso_credential,
+    update_public_key_credential,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.role import (
-    get_user_roles,
     add_user_role,
     delete_user_role,
+    get_user_roles,
 )
-from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.admin_role import (
-    get_user_admin_roles,
-    add_user_admin_role,
-    delete_user_admin_role,
-    resolve_admin_role_ids,
+from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.user import (
+    UserRequireCredentialsPolicy,
+    create_user,
+    delete_user,
+    get_user,
+    get_users,
+    update_user,
 )
 
 
@@ -1312,9 +1307,9 @@ def main():
             msg=f"Warpgate API error: {e.message}", status_code=e.status_code
         )
     except WarpgateClientError as e:
-        module.fail_json(msg=f"Warpgate client error: {str(e)}")
+        module.fail_json(msg=f"Warpgate client error: {e!s}")
     except Exception as e:
-        module.fail_json(msg=f"Unexpected error: {str(e)}")
+        module.fail_json(msg=f"Unexpected error: {e!s}")
 
 
 if __name__ == "__main__":

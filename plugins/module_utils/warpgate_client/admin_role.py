@@ -6,7 +6,7 @@ permissions on the admin UI / API itself (create targets, terminate
 sessions, view recordings, etc.) rather than access to backends.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .client import WarpgateAPIError
 
@@ -39,7 +39,7 @@ class AdminRole:
         id: str = "",
         name: str = "",
         description: str = "",
-        permissions: Optional[Dict[str, bool]] = None,
+        permissions: dict[str, bool] | None = None,
     ):
         self.id = id
         self.name = name
@@ -51,7 +51,7 @@ class AdminRole:
             )
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AdminRole":
+    def from_dict(cls, data: dict[str, Any]) -> "AdminRole":
         perms = {f: bool(data.get(f, False)) for f in PERMISSION_FIELDS}
         return cls(
             id=data.get("id", ""),
@@ -60,8 +60,8 @@ class AdminRole:
             permissions=perms,
         )
 
-    def to_request_body(self) -> Dict[str, Any]:
-        body: Dict[str, Any] = {"name": self.name}
+    def to_request_body(self) -> dict[str, Any]:
+        body: dict[str, Any] = {"name": self.name}
         if self.description:
             body["description"] = self.description
         for f in PERMISSION_FIELDS:
@@ -69,13 +69,13 @@ class AdminRole:
         return body
 
 
-def get_admin_roles(client) -> List[AdminRole]:
+def get_admin_roles(client) -> list[AdminRole]:
     """List all admin roles."""
     response = client._request("GET", "/admin-roles")
     return [AdminRole.from_dict(r) for r in response]
 
 
-def get_admin_role(client, role_id: str) -> Optional[AdminRole]:
+def get_admin_role(client, role_id: str) -> AdminRole | None:
     """Retrieve a single admin role by ID. Returns None if not found."""
     try:
         response = client._request("GET", f"/admin-roles/{role_id}")
@@ -90,7 +90,7 @@ def create_admin_role(
     client,
     name: str,
     description: str = "",
-    permissions: Optional[Dict[str, bool]] = None,
+    permissions: dict[str, bool] | None = None,
 ) -> AdminRole:
     role = AdminRole(name=name, description=description, permissions=permissions)
     response = client._request("POST", "/admin-roles", role.to_request_body())
@@ -102,7 +102,7 @@ def update_admin_role(
     role_id: str,
     name: str,
     description: str = "",
-    permissions: Optional[Dict[str, bool]] = None,
+    permissions: dict[str, bool] | None = None,
 ) -> AdminRole:
     role = AdminRole(name=name, description=description, permissions=permissions)
     response = client._request("PUT", f"/admin-roles/{role_id}", role.to_request_body())
@@ -113,7 +113,7 @@ def delete_admin_role(client, role_id: str) -> None:
     client._request("DELETE", f"/admin-roles/{role_id}")
 
 
-def get_admin_role_users(client, role_id: str) -> List[Dict[str, Any]]:
+def get_admin_role_users(client, role_id: str) -> list[dict[str, Any]]:
     """List users that hold a given admin role (raw dicts from the API)."""
     try:
         return client._request("GET", f"/admin-roles/{role_id}/users") or []
@@ -123,7 +123,7 @@ def get_admin_role_users(client, role_id: str) -> List[Dict[str, Any]]:
         raise
 
 
-def get_user_admin_roles(client, user_id: str) -> List[AdminRole]:
+def get_user_admin_roles(client, user_id: str) -> list[AdminRole]:
     """List the admin roles held by a given user."""
     try:
         response = client._request("GET", f"/users/{user_id}/admin-roles") or []
@@ -161,7 +161,7 @@ def resolve_admin_role_id(client, spec: str) -> str:
     raise ValueError(f"Admin role '{spec}' not found (neither as ID nor as name)")
 
 
-def resolve_admin_role_ids(client, specs: List[str]) -> List[str]:
+def resolve_admin_role_ids(client, specs: list[str]) -> list[str]:
     """Resolve a list of admin-role UUIDs or names to UUIDs.
 
     The admin-role list is fetched at most once and cached locally for
@@ -170,8 +170,8 @@ def resolve_admin_role_ids(client, specs: List[str]) -> List[str]:
     if not specs:
         return []
 
-    resolved: List[str] = []
-    all_roles: Optional[List[AdminRole]] = None
+    resolved: list[str] = []
+    all_roles: list[AdminRole] | None = None
     for spec in specs:
         if len(spec) == 36 and spec.count("-") == 4:
             role = get_admin_role(client, spec)
