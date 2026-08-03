@@ -605,53 +605,53 @@
         }
       }
     },
-    "python313Packages.ruff@0.15.22": {
-      "last_modified": "2026-07-23T05:10:05Z",
-      "resolved": "github:NixOS/nixpkgs/7525d999cd850b9a488817abc89c75dc733acf17#python313Packages.ruff",
+    "python313Packages.ruff@0.16.1": {
+      "last_modified": "2026-08-01T16:34:20Z",
+      "resolved": "github:NixOS/nixpkgs/a5cbcfe954791221bfffe2307f7d1a1bf61a871e#python313Packages.ruff",
       "source": "devbox-search",
-      "version": "0.15.22",
+      "version": "0.16.1",
       "systems": {
         "aarch64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/n1ihpys7hzlb635abic4xlrax4bn1gag-python3.13-ruff-0.15.22",
+              "path": "/nix/store/gswb28i0lxfxiikr2i5f3xd2xgxisb60-python3.13-ruff-0.16.1",
               "default": true
             },
             {
               "name": "dist",
-              "path": "/nix/store/z735lra14va8c7nf9zwhzgna1an6n3pz-python3.13-ruff-0.15.22-dist"
+              "path": "/nix/store/00jsyksi8p20ms4n1nb56xhwy8l1w5y4-python3.13-ruff-0.16.1-dist"
             }
           ],
-          "store_path": "/nix/store/n1ihpys7hzlb635abic4xlrax4bn1gag-python3.13-ruff-0.15.22"
+          "store_path": "/nix/store/gswb28i0lxfxiikr2i5f3xd2xgxisb60-python3.13-ruff-0.16.1"
         },
         "aarch64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/zg9w2631mh4d4jbgdsf00n778mr4wqld-python3.13-ruff-0.15.22",
+              "path": "/nix/store/kk27vba9blsjdqqwimlqm95qkvfg92yz-python3.13-ruff-0.16.1",
               "default": true
             },
             {
               "name": "dist",
-              "path": "/nix/store/27mrd0yml0wa9sp6dw1j0xyymn6hgpsh-python3.13-ruff-0.15.22-dist"
+              "path": "/nix/store/2f3gi864dhdk9i27gnznx5vhxlq3f3db-python3.13-ruff-0.16.1-dist"
             }
           ],
-          "store_path": "/nix/store/zg9w2631mh4d4jbgdsf00n778mr4wqld-python3.13-ruff-0.15.22"
+          "store_path": "/nix/store/kk27vba9blsjdqqwimlqm95qkvfg92yz-python3.13-ruff-0.16.1"
         },
         "x86_64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/8gipfn0cbslivq7gxvagcjnwgrsfphjn-python3.13-ruff-0.15.22",
+              "path": "/nix/store/mr5wz2vr2nk1hwbdv2bqckc7samd68p4-python3.13-ruff-0.16.1",
               "default": true
             },
             {
               "name": "dist",
-              "path": "/nix/store/1nb8m14k4324lp87rfx4lf8diw47snsg-python3.13-ruff-0.15.22-dist"
+              "path": "/nix/store/ql50daiwf1sdgw7a4bpc88cs94kjnlz8-python3.13-ruff-0.16.1-dist"
             }
           ],
-          "store_path": "/nix/store/8gipfn0cbslivq7gxvagcjnwgrsfphjn-python3.13-ruff-0.15.22"
+          "store_path": "/nix/store/mr5wz2vr2nk1hwbdv2bqckc7samd68p4-python3.13-ruff-0.16.1"
         }
       }
     },
