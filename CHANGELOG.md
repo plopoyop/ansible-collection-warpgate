@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.0.1) (2026-08-03)
+
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.0.0...2.0.1)
+
+**Merged pull requests:**
+
+- feat\(deps\): update python313packages.ruff \(0.15.22 → 0.16.1\) [\#96](https://github.com/plopoyop/ansible-collection-warpgate/pull/96) ([plopoyop](https://github.com/plopoyop))
+
 ## [2.0.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.0.0) (2026-08-02)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/1.4.0...2.0.0)
