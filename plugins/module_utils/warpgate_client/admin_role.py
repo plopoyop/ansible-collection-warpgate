@@ -28,6 +28,7 @@ PERMISSION_FIELDS = (
     "tickets_delete",
     "config_edit",
     "admin_roles_manage",
+    "ticket_requests_manage"
 )
 
 
