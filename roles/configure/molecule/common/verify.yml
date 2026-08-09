@@ -273,3 +273,22 @@
       loop: "{{ _verify_target_roles.results | subelements('item.roles') }}"
       loop_control:
         label: "{{ item.0.item.name }} -> {{ item.1 }}"
+
+    - name: "Get active sessions from API"
+      ansible.builtin.uri:
+        url: "{{ warpgate_api_host }}sessions?active_only=true&limit=1"
+        method: GET
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        headers: "{{ _verify_auth_headers }}"
+        status_code: [200]
+        timeout: 10
+      register: _verify_sessions
+
+    - name: "Assert the role did not leak API sessions"
+      ansible.builtin.assert:
+        that:
+          - (_verify_sessions.json.total | int) <= 5
+        fail_msg: >-
+          {{ _verify_sessions.json.total }} active sessions remain: the modules
+          are leaking their admin API session
+        success_msg: "No leaked API session ({{ _verify_sessions.json.total }} active)"
