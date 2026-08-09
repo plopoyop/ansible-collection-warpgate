@@ -220,6 +220,11 @@ The modules and the `configure` role support two authentication methods:
 
 When both are provided, the API token takes priority.
 
+With username/password, each task opens an HTTP session on Warpgate and logs
+out when it finishes, so no session is left behind. Token authentication does
+not open any session at all — prefer it when the `configure` role manages a
+large number of resources.
+
 ## Development
 
 This project uses [devbox](https://www.jetify.com/devbox) for reproducible development environments:
