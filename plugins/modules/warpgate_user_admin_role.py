@@ -150,6 +150,8 @@ def main():
     insecure = module.params["insecure"]
     timeout = module.params["timeout"]
 
+    client = None
+
     try:
         client = WarpgateClient(
             host,
@@ -202,6 +204,9 @@ def main():
         module.fail_json(msg=f"Warpgate client error: {e!s}")
     except Exception as e:
         module.fail_json(msg=f"Unexpected error: {e!s}")
+    finally:
+        if client is not None:
+            client.logout()
 
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@ def _base_params(**overrides):
     return params
 
 
-def _run_module(params, check_mode=False):
+def _run_module(params, check_mode=False, client_mock=None):
     with patch("warpgate_group.AnsibleModule") as mock_cls:
         mod = MagicMock()
         mod.params = params
@@ -49,7 +49,9 @@ def _run_module(params, check_mode=False):
         mod.exit_json = MagicMock(side_effect=capture_exit)
         mod.fail_json = MagicMock(side_effect=capture_fail)
 
-        with patch("warpgate_group.WarpgateClient"):
+        with patch("warpgate_group.WarpgateClient") as mock_client_cls:
+            if client_mock is not None:
+                mock_client_cls.return_value = client_mock
             try:
                 warpgate_group.main()
             except SystemExit:
@@ -179,3 +181,30 @@ class TestGroupDelete:
             result, mod = _run_module(params, check_mode=True)
         mock_del.assert_not_called()
         assert result["changed"] is True
+
+
+# ---------------------------------------------------------------------------
+# Session lifecycle
+# ---------------------------------------------------------------------------
+
+
+class TestGroupSession:
+    def test_logout_called_on_success(self):
+        client = MagicMock()
+        existing = TargetGroup(
+            id="g1", name="production", description="Prod servers", color="Danger"
+        )
+        params = _base_params()
+        with patch("warpgate_group.get_target_groups", return_value=[existing]):
+            _run_module(params, client_mock=client)
+        client.logout.assert_called_once_with()
+
+    def test_logout_called_on_failure(self):
+        client = MagicMock()
+        params = _base_params()
+        with patch(
+            "warpgate_group.get_target_groups", side_effect=RuntimeError("boom")
+        ):
+            result, mod = _run_module(params, client_mock=client)
+        assert "Unexpected error" in result["msg"]
+        client.logout.assert_called_once_with()

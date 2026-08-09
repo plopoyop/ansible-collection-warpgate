@@ -118,6 +118,31 @@ class WarpgateClient:
         except URLError as e:
             raise WarpgateClientError(f"Login request failed: {e.reason}")
 
+    def logout(self) -> None:
+        """
+        Close the API session opened by :meth:`_login`.
+
+        Warpgate keeps every login as an open HTTP session until it is either
+        logged out or expired, so each module run must release its own.
+        Best effort: never raises, so it can be called from a ``finally`` block.
+        """
+        if self._session_cookie is None:
+            return
+
+        logout_url = _user_api_base(self.base_url) + "auth/logout"
+        req = Request(logout_url, data=b"", method="POST")
+        req.add_header("Content-Type", "application/json; charset=utf-8")
+        req.add_header("Accept", "application/json; charset=utf-8")
+        req.add_header("Cookie", self._session_cookie)
+
+        try:
+            with urlopen(req, timeout=self.timeout, context=self.ssl_context):
+                pass
+        except (HTTPError, URLError, OSError):
+            pass
+        finally:
+            self._session_cookie = None
+
     def _request(
         self, method: str, path: str, body: dict[str, Any] | None = None
     ) -> Any:

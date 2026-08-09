@@ -1,6 +1,7 @@
 """Tests for WarpgateClient initialisation and URL helpers."""
 
 from unittest.mock import MagicMock, patch
+from urllib.error import URLError
 
 import pytest
 from warpgate_client.client import WarpgateClient, _user_api_base
@@ -131,3 +132,48 @@ class TestClientRequest:
         with patch.object(c, "_login", side_effect=Exception("login called")):
             with pytest.raises(Exception, match="login called"):
                 c._request("GET", "/test")
+
+
+# ---------------------------------------------------------------------------
+# WarpgateClient.logout
+# ---------------------------------------------------------------------------
+
+
+class TestClientLogout:
+    @patch("warpgate_client.client.urlopen")
+    def test_logout_posts_to_user_api_with_cookie(self, mock_urlopen):
+        resp = MagicMock()
+        resp.getcode.return_value = 201
+        resp.__enter__ = MagicMock(return_value=resp)
+        resp.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = resp
+
+        c = WarpgateClient(
+            "https://host:8888/@warpgate/admin/api", username="u", password="p"
+        )
+        c._session_cookie = "warpgate-session=abc"
+
+        c.logout()
+
+        req = mock_urlopen.call_args[0][0]
+        assert req.full_url == "https://host:8888/@warpgate/api/auth/logout"
+        assert req.get_method() == "POST"
+        assert req.get_header("Cookie") == "warpgate-session=abc"
+        assert c._session_cookie is None
+
+    @patch("warpgate_client.client.urlopen")
+    def test_logout_noop_without_session(self, mock_urlopen):
+        c = WarpgateClient("https://host", token="tok")
+
+        c.logout()
+
+        mock_urlopen.assert_not_called()
+
+    @patch("warpgate_client.client.urlopen", side_effect=URLError("boom"))
+    def test_logout_swallows_errors(self, mock_urlopen):
+        c = WarpgateClient("https://host", username="u", password="p")
+        c._session_cookie = "warpgate-session=abc"
+
+        c.logout()
+
+        assert c._session_cookie is None
