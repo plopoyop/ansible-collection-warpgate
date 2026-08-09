@@ -1,8 +1,12 @@
 # Changelog
 
-## [2.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.0.1) (2026-08-06)
+## [2.1.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.1.0) (2026-08-09)
 
-[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.0.0...2.0.1)
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.0.0...2.1.0)
+
+## 🚀 New Features
+
+- Add `ticket_requests_manage` to Admin Role Permissions [\#99](https://github.com/plopoyop/ansible-collection-warpgate/pull/99) ([Waffleer](https://github.com/Waffleer))
 
 ## ⚙️ Dependencies
 
