@@ -7,7 +7,7 @@
     "go-task@3.48.0",
     "podman@5.8.4",
     "prek@0.4.10",
-    "python313Packages.ansible@14.2.0",
+    "python313Packages.ansible@14.3.1",
     "python313Packages.molecule@26.6.0",
     "python313Packages.molecule-plugins@25.8.12",
     "python313Packages.pytest@9.1.1",
