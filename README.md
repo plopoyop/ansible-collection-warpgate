@@ -32,7 +32,7 @@ Installs Warpgate from the official release binary, configures the systemd servi
   roles:
     - role: plopoyop.warpgate.install
       vars:
-        warpgate_version: "0.27.1"
+        warpgate_version: "0.28.4"
         warpgate_admin_password: "{{ vault_warpgate_admin_password }}"
         warpgate_http_port: 8888
         warpgate_ssh_enabled: true
@@ -44,7 +44,7 @@ Key variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `warpgate_version` | `0.27.1` | Warpgate release version |
+| `warpgate_version` | `0.28.4` | Warpgate release version |
 | `warpgate_admin_password` | *(required)* | Admin password |
 | `warpgate_http_port` | `8888` | HTTPS listen port |
 | `warpgate_ssh_enabled` | `false` | Enable SSH proxy |
