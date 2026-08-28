@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.1.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.1.1) (2026-08-27)
+## [2.1.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.1.1) (2026-08-28)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.1.0...2.1.1)
 
@@ -8,6 +8,10 @@
 
 - fix\(ci\): update renovatebot/github-action action \(v46.2.2 → v46.2.4\) [\#111](https://github.com/plopoyop/ansible-collection-warpgate/pull/111) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.2.1 → v46.2.2\) [\#107](https://github.com/plopoyop/ansible-collection-warpgate/pull/107) ([plopoyop](https://github.com/plopoyop))
+
+**Merged pull requests:**
+
+- fix\(deps\): update podman \(5.8.4 → 5.8.6\) [\#112](https://github.com/plopoyop/ansible-collection-warpgate/pull/112) ([plopoyop](https://github.com/plopoyop))
 
 ## [2.1.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.1.0) (2026-08-09)
 
