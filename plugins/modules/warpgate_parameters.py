@@ -107,6 +107,13 @@ options:
             - Action performed when clicking a target in the UI.
         type: str
         choices: ["Connect", "ShowInstructions"]
+    open_targets_in_new_tab:
+        description:
+            - Whether HTTP targets open in a new browser tab (Warpgate >= 0.28).
+            - V(DefaultOn) and V(DefaultOff) set the default that users can
+              toggle; V(ForcedOn) and V(ForcedOff) enforce it without a toggle.
+        type: str
+        choices: ["DefaultOn", "DefaultOff", "ForcedOn", "ForcedOff"]
     show_session_menu:
         description:
             - Inject a session menu into HTTP sessions, allowing users to log
@@ -389,6 +396,11 @@ def main():
         ticket_request_show_all_targets=dict(type="bool", required=False),
         target_click_action=dict(
             type="str", required=False, choices=["Connect", "ShowInstructions"]
+        ),
+        open_targets_in_new_tab=dict(
+            type="str",
+            required=False,
+            choices=["DefaultOn", "DefaultOff", "ForcedOn", "ForcedOff"],
         ),
         show_session_menu=dict(type="bool", required=False),
         password_policy=dict(

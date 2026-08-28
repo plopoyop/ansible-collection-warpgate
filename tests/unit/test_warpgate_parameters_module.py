@@ -23,6 +23,7 @@ CURRENT = {
     "ticket_require_description": False,
     "ticket_request_show_all_targets": False,
     "target_click_action": "Connect",
+    "open_targets_in_new_tab": "DefaultOn",
     "show_session_menu": True,
     "password_policy": {
         "min_length": 0,
@@ -73,6 +74,7 @@ def _base_params(**overrides):
         ticket_require_description=None,
         ticket_request_show_all_targets=None,
         target_click_action=None,
+        open_targets_in_new_tab=None,
         show_session_menu=None,
         password_policy=None,
         max_api_token_duration_seconds=None,
@@ -243,6 +245,17 @@ class TestParametersModule:
             result, mod = _run_module(params)
         sent = mock_update.call_args[0][1]
         assert sent["target_click_action"] == "ShowInstructions"
+        assert result["changed"] is True
+
+    def test_open_targets_in_new_tab_change(self):
+        params = _base_params(open_targets_in_new_tab="ForcedOff")
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        sent = mock_update.call_args[0][1]
+        assert sent["open_targets_in_new_tab"] == "ForcedOff"
         assert result["changed"] is True
 
     def test_password_login_mode_change(self):
