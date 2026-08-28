@@ -7,6 +7,7 @@
 ## ⚙️ Dependencies
 
 - fix\(ci\): update renovatebot/github-action action \(v46.2.2 → v46.2.4\) [\#111](https://github.com/plopoyop/ansible-collection-warpgate/pull/111) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.16.2 → v0.16.3\) [\#108](https://github.com/plopoyop/ansible-collection-warpgate/pull/108) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.2.1 → v46.2.2\) [\#107](https://github.com/plopoyop/ansible-collection-warpgate/pull/107) ([plopoyop](https://github.com/plopoyop))
 
 **Merged pull requests:**
