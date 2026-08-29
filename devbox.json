@@ -12,7 +12,7 @@
     "python313Packages.molecule-plugins@25.8.12",
     "python313Packages.pytest@9.1.1",
     "python313Packages.pytest-ansible@26.6.0",
-    "python313Packages.ruff@0.16.2",
+    "python313Packages.ruff@0.16.4",
     "yamllint@1.37.1"
   ],
   "env": {
