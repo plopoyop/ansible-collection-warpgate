@@ -28,6 +28,15 @@ class TargetGroup:
             color=data.get("color", "") or "",
         )
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the target group for module output"""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "color": self.color,
+        }
+
 
 def get_target_groups(client, search: str = "") -> list[TargetGroup]:
     """

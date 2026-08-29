@@ -61,6 +61,18 @@ class Target:
             rate_limit_bytes_per_second=data.get("rate_limit_bytes_per_second"),
         )
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the target for module output"""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "group_id": self.group_id,
+            "allow_roles": list(self.allow_roles),
+            "options": dict(self.options),
+            "rate_limit_bytes_per_second": self.rate_limit_bytes_per_second,
+        }
+
 
 def get_targets(client, search: str = "") -> list[Target]:
     """

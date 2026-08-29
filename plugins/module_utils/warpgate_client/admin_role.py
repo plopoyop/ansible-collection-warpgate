@@ -61,6 +61,15 @@ class AdminRole:
             permissions=perms,
         )
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the admin role for module output"""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "permissions": dict(self.permissions),
+        }
+
     def to_request_body(self) -> dict[str, Any]:
         body: dict[str, Any] = {"name": self.name}
         if self.description:

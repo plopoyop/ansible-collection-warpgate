@@ -142,6 +142,52 @@ All modules support `check_mode` and `diff` mode (`--diff`).
 | `plopoyop.warpgate.warpgate_public_key_credential` | Manage SSH public key credentials |
 | `plopoyop.warpgate.warpgate_ticket` | Manage temporary access tickets |
 
+### Info modules
+
+Read-only modules that list the current server state. They never report a change and
+run unmodified under `--check`. Use them to diff Warpgate against your playbook
+variables — typically to remove entries that are no longer declared.
+
+| Module | Returns |
+|---|---|
+| `plopoyop.warpgate.warpgate_user_info` | `users` |
+| `plopoyop.warpgate.warpgate_role_info` | `roles` |
+| `plopoyop.warpgate.warpgate_admin_role_info` | `admin_roles` |
+| `plopoyop.warpgate.warpgate_group_info` | `target_groups` |
+| `plopoyop.warpgate.warpgate_target_info` | `targets` |
+
+Each accepts an exact-match filter (`username` for users, `name` for the others) or a
+partial `search` filter — the two are mutually exclusive. Without either one, the full
+collection is returned.
+
+```yaml
+- name: List the users declared in Warpgate
+  plopoyop.warpgate.warpgate_user_info:
+    host: "https://bastion.example.com:8888/@warpgate/admin/api/"
+    token: "{{ warpgate_api_token }}"
+  register: warpgate_existing_users
+
+- name: Remove users that are no longer declared
+  plopoyop.warpgate.warpgate_user:
+    host: "https://bastion.example.com:8888/@warpgate/admin/api/"
+    token: "{{ warpgate_api_token }}"
+    username: "{{ item }}"
+    state: absent
+  loop: >-
+    {{ warpgate_existing_users.users
+       | map(attribute='username')
+       | difference(warpgate_users | map(attribute='name') | list)
+       | difference(['admin']) }}
+```
+
+> Keep the account used for the API calls (and any SSO-provisioned user) out of the
+> deletion loop, otherwise the next run will lock itself out.
+
+> Ansible redacts the value of any `no_log` parameter from module output. If your
+> `api_password` or `token` happens to be the exact name of a user, role or target,
+> that name comes back as `VALUE_SPECIFIED_IN_NO_LOG_PARAMETER` and a prune loop
+> would treat it as undeclared. Assert on the diff before acting on it.
+
 ### Module usage example
 
 ```yaml

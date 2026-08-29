@@ -1,5 +1,6 @@
 """Tests for model classes: from_dict / to_dict round-trips and edge cases."""
 
+from warpgate_client.admin_role import PERMISSION_FIELDS, AdminRole
 from warpgate_client.credential import (
     CertificateCredential,
     IssuedCertificateCredential,
@@ -110,6 +111,24 @@ class TestUser:
         u = User.from_dict({"id": "u1", "username": "alice", "credential_policy": {}})
         assert u.credential_policy is None
 
+    def test_to_dict_round_trip(self):
+        data = {
+            "id": "u1",
+            "username": "alice",
+            "description": "Alice",
+            "credential_policy": {"ssh": ["PublicKey"]},
+            "rate_limit_bytes_per_second": 1024,
+            "ldap_server_id": "ldap1",
+            "allowed_ip_ranges": ["10.0.0.0/8"],
+        }
+        assert User.from_dict(data).to_dict() == data
+
+    def test_to_dict_without_policy(self):
+        d = User.from_dict({"id": "u1", "username": "alice"}).to_dict()
+        assert d["credential_policy"] == {}
+        assert d["rate_limit_bytes_per_second"] is None
+        assert d["allowed_ip_ranges"] == []
+
 
 # ---------------------------------------------------------------------------
 # Role
@@ -128,6 +147,15 @@ class TestRole:
     def test_from_dict_minimal(self):
         r = Role.from_dict({"id": "r1", "name": "ops"})
         assert r.description == ""
+
+    def test_to_dict_round_trip(self):
+        data = {
+            "id": "r1",
+            "name": "developers",
+            "description": "Dev team",
+            "is_default": True,
+        }
+        assert Role.from_dict(data).to_dict() == data
 
 
 # ---------------------------------------------------------------------------
@@ -255,6 +283,18 @@ class TestTarget:
         assert t.allow_roles == []
         assert t.options == {}
 
+    def test_to_dict_round_trip(self):
+        data = {
+            "id": "t1",
+            "name": "web",
+            "description": "Web server",
+            "group_id": "g1",
+            "allow_roles": ["r1"],
+            "options": {"kind": "Ssh"},
+            "rate_limit_bytes_per_second": 2048,
+        }
+        assert Target.from_dict(data).to_dict() == data
+
 
 # ---------------------------------------------------------------------------
 # TargetGroup
@@ -271,6 +311,34 @@ class TestTargetGroup:
     def test_from_dict_null_color(self):
         g = TargetGroup.from_dict({"id": "g1", "name": "dev", "color": None})
         assert g.color == ""
+
+    def test_to_dict_round_trip(self):
+        data = {"id": "g1", "name": "prod", "description": "Prod", "color": "Danger"}
+        assert TargetGroup.from_dict(data).to_dict() == data
+
+
+# ---------------------------------------------------------------------------
+# AdminRole
+# ---------------------------------------------------------------------------
+
+
+class TestAdminRole:
+    def test_to_dict_exposes_every_permission(self):
+        d = AdminRole.from_dict(
+            {"id": "a1", "name": "auditor", "sessions_view": True}
+        ).to_dict()
+        assert d["id"] == "a1"
+        assert d["name"] == "auditor"
+        assert d["permissions"]["sessions_view"] is True
+        assert set(d["permissions"]) == set(PERMISSION_FIELDS)
+        assert all(
+            v is False for k, v in d["permissions"].items() if k != "sessions_view"
+        )
+
+    def test_to_dict_is_a_copy(self):
+        role = AdminRole.from_dict({"id": "a1", "name": "auditor"})
+        role.to_dict()["permissions"]["config_edit"] = True
+        assert role.permissions["config_edit"] is False
 
 
 # ---------------------------------------------------------------------------
