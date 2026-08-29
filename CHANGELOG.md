@@ -1,8 +1,12 @@
 # Changelog
 
-## [2.1.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.1.1) (2026-08-28)
+## [2.2.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.2.0) (2026-08-29)
 
-[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.1.0...2.1.1)
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.1.0...2.2.0)
+
+## 🚀 New Features
+
+- Feat/warpgate 0.28 [\#114](https://github.com/plopoyop/ansible-collection-warpgate/pull/114) ([plopoyop](https://github.com/plopoyop))
 
 ## ⚙️ Dependencies
 
