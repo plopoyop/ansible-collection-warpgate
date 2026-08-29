@@ -20,6 +20,7 @@
 - fix\(deps\): update podman \(5.8.4 → 5.8.6\) [\#112](https://github.com/plopoyop/ansible-collection-warpgate/pull/112) ([plopoyop](https://github.com/plopoyop))
 - feat\(deps\): update ansible-doctor \(8.3.3 → 8.4.0\) [\#109](https://github.com/plopoyop/ansible-collection-warpgate/pull/109) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update python313packages.ruff \(0.16.1 → 0.16.2\) [\#106](https://github.com/plopoyop/ansible-collection-warpgate/pull/106) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update prek \(0.4.10 → 0.4.12\) [\#105](https://github.com/plopoyop/ansible-collection-warpgate/pull/105) ([plopoyop](https://github.com/plopoyop))
 
 ## [2.1.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.1.0) (2026-08-09)
 
