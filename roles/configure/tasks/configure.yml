@@ -20,6 +20,7 @@
     ticket_require_description: "{{ warpgate_parameters.ticket_require_description | default(omit) }}"
     ticket_request_show_all_targets: "{{ warpgate_parameters.ticket_request_show_all_targets | default(omit) }}"
     target_click_action: "{{ warpgate_parameters.target_click_action | default(omit) }}"
+    open_targets_in_new_tab: "{{ warpgate_parameters.open_targets_in_new_tab | default(omit) }}"
     show_session_menu: "{{ warpgate_parameters.show_session_menu | default(omit) }}"
     password_policy: "{{ warpgate_parameters.password_policy | default(omit) }}"
     max_api_token_duration_seconds: "{{ warpgate_parameters.max_api_token_duration_seconds | default(omit) }}"

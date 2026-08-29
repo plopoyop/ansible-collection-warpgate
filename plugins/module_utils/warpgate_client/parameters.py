@@ -18,6 +18,8 @@ alias in ``GET``), and adds the ``ssh_host_key_verification`` mode, the web
 reauthentication settings (``web_auth_max_age_seconds``,
 ``web_approval_grace_period_seconds``) and the session-recording parameters
 (``recordings_enable`` and the ``recordings_storage`` disk/S3 config).
+
+Warpgate 0.28 adds the ``open_targets_in_new_tab`` mode.
 """
 
 from typing import Any
@@ -38,6 +40,7 @@ PARAMETER_FIELDS = (
     "ticket_require_description",
     "ticket_request_show_all_targets",
     "target_click_action",
+    "open_targets_in_new_tab",
     "show_session_menu",
     "password_policy",
     "max_api_token_duration_seconds",
@@ -75,6 +78,9 @@ PASSWORD_POLICY_FIELDS = (
 )
 
 TARGET_CLICK_ACTIONS = ("Connect", "ShowInstructions")
+
+# open_targets_in_new_tab enum (Warpgate >= 0.28).
+OPEN_TARGETS_IN_NEW_TAB_MODES = ("DefaultOn", "DefaultOff", "ForcedOn", "ForcedOff")
 
 # password_login_mode enum (Warpgate >= 0.26).
 PASSWORD_LOGIN_MODES = ("Enabled", "Minimized", "Disabled")
