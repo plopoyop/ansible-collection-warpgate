@@ -4,7 +4,7 @@
     "ansible-doctor@8.4.0",
     "ansible-lint@25.8.2",
     "git@2.55.0",
-    "go-task@3.48.0",
+    "go-task@3.52.0",
     "podman@5.8.6",
     "prek@0.4.12",
     "python313Packages.ansible@14.3.1",
