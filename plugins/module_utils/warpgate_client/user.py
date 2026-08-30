@@ -95,6 +95,20 @@ class User:
             allowed_ip_ranges=data.get("allowed_ip_ranges") or [],
         )
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the user for module output"""
+        return {
+            "id": self.id,
+            "username": self.username,
+            "description": self.description,
+            "credential_policy": (
+                self.credential_policy.to_dict() if self.credential_policy else {}
+            ),
+            "rate_limit_bytes_per_second": self.rate_limit_bytes_per_second,
+            "ldap_server_id": self.ldap_server_id,
+            "allowed_ip_ranges": list(self.allowed_ip_ranges),
+        }
+
 
 def get_users(client, search: str = "") -> list[User]:
     """

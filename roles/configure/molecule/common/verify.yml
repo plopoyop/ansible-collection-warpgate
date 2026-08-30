@@ -3,6 +3,12 @@
   hosts: all
   vars_files:
     - "../vars/configure.yml"
+  module_defaults:
+    group/plopoyop.warpgate.warpgate:
+      host: "{{ warpgate_api_host }}"
+      api_username: "{{ warpgate_admin_username }}"
+      api_password: "{{ warpgate_admin_password }}"
+      insecure: "{{ warpgate_api_insecure }}"
   tasks:
     - name: "Set user API base URL"
       ansible.builtin.set_fact:
@@ -273,6 +279,230 @@
       loop: "{{ _verify_target_roles.results | subelements('item.roles') }}"
       loop_control:
         label: "{{ item.0.item.name }} -> {{ item.1 }}"
+
+    # ---- Verify info modules ----
+    - name: "List every user with warpgate_user_info"
+      plopoyop.warpgate.warpgate_user_info:
+      register: "_info_users"
+      check_mode: true
+
+    - name: "Assert warpgate_user_info matches GET /users"
+      ansible.builtin.assert:
+        that:
+          - "_info_users is not changed"
+          - "(_info_users.users | map(attribute='username') | sort) == (_verify_users.json | map(attribute='username') | sort)"
+          - "(_info_users.users | map(attribute='id') | sort) == (_verify_users.json | map(attribute='id') | sort)"
+        fail_msg: >-
+          warpgate_user_info returned {{ _info_users.users | map(attribute='username') | list }}
+          but GET /users returned {{ _verify_users.json | map(attribute='username') | list }}
+        success_msg: "warpgate_user_info returned {{ _info_users.users | length }} users in check mode"
+
+    - name: "Look up a single user by exact username"
+      plopoyop.warpgate.warpgate_user_info:
+        username: "{{ warpgate_users[0].name }}"
+      register: "_info_user_one"
+
+    - name: "Assert the exact username filter resolves names containing spaces"
+      ansible.builtin.assert:
+        that:
+          - "(_info_user_one.users | length) == 1"
+          - "_info_user_one.users[0].username == warpgate_users[0].name"
+          - "_info_user_one.users[0].id == _verify_user_map[warpgate_users[0].name]"
+        fail_msg: >-
+          Exact lookup of '{{ warpgate_users[0].name }}' returned
+          {{ _info_user_one.users | length }} user(s)
+        success_msg: "Exact username lookup works on '{{ warpgate_users[0].name }}'"
+
+    - name: "Look up a user that does not exist"
+      plopoyop.warpgate.warpgate_user_info:
+        username: "molecule-no-such-user"
+      register: "_info_user_missing"
+
+    - name: "Assert an unknown username returns an empty list"
+      ansible.builtin.assert:
+        that:
+          - "_info_user_missing.users == []"
+        fail_msg: "warpgate_user_info should return an empty list for an unknown username"
+        success_msg: "An unknown username returns an empty list"
+
+    - name: "List every access role with warpgate_role_info"
+      plopoyop.warpgate.warpgate_role_info:
+      register: "_info_roles"
+
+    - name: "Assert warpgate_role_info matches GET /roles"
+      ansible.builtin.assert:
+        that:
+          - "_info_roles is not changed"
+          - "(_info_roles.roles | map(attribute='name') | sort) == (_verify_roles.json | map(attribute='name') | sort)"
+          - "(warpgate_roles | map(attribute='name') | sort) is subset (_info_roles.roles | map(attribute='name') | list)"
+        fail_msg: "warpgate_role_info does not match the admin API"
+        success_msg: "warpgate_role_info returned {{ _info_roles.roles | length }} roles"
+
+    - name: "List every admin role with warpgate_admin_role_info"
+      plopoyop.warpgate.warpgate_admin_role_info:
+      register: "_info_admin_roles"
+
+    - name: "Assert warpgate_admin_role_info matches GET /admin-roles"
+      ansible.builtin.assert:
+        that:
+          - "_info_admin_roles is not changed"
+          - "(_info_admin_roles.admin_roles | map(attribute='name') | sort) == (_verify_admin_roles.json | map(attribute='name') | sort)"
+        fail_msg: "warpgate_admin_role_info does not match the admin API"
+        success_msg: "warpgate_admin_role_info returned {{ _info_admin_roles.admin_roles | length }} admin roles"
+
+    - name: "Assert warpgate_admin_role_info exposes the declared permissions"
+      ansible.builtin.assert:
+        that:
+          - >-
+            (_info_admin_roles.admin_roles | selectattr('name', 'equalto', item.name) | first).permissions
+              | dict2items
+              | selectattr('key', 'in', (item.permissions | list))
+              | items2dict
+              == item.permissions
+        fail_msg: "Admin role '{{ item.name }}' permissions are not reported by warpgate_admin_role_info"
+        success_msg: "warpgate_admin_role_info reports the permissions of '{{ item.name }}'"
+      loop: "{{ warpgate_admin_roles | selectattr('permissions', 'defined') }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: "Filter admin roles with the client-side search filter"
+      plopoyop.warpgate.warpgate_admin_role_info:
+        search: "ADMIN"
+      register: "_info_admin_roles_search"
+
+    - name: "Assert the admin-role search is a case-insensitive substring"
+      ansible.builtin.assert:
+        that:
+          - "'ops-admin' in (_info_admin_roles_search.admin_roles | map(attribute='name'))"
+          - "'auditor' not in (_info_admin_roles_search.admin_roles | map(attribute='name'))"
+        fail_msg: "warpgate_admin_role_info search returned {{ _info_admin_roles_search.admin_roles | map(attribute='name') | list }}"
+        success_msg: "The admin-role search filter matches 'ops-admin' but not 'auditor'"
+
+    - name: "List every target group with warpgate_group_info"
+      plopoyop.warpgate.warpgate_group_info:
+      register: "_info_groups"
+
+    - name: "Assert warpgate_group_info matches GET /target-groups"
+      ansible.builtin.assert:
+        that:
+          - "_info_groups is not changed"
+          - "(_info_groups.target_groups | map(attribute='name') | sort) == (_verify_groups.json | map(attribute='name') | sort)"
+          - >-
+            (_info_groups.target_groups | selectattr('name', 'equalto', warpgate_target_groups[0].name) | first).color
+            == warpgate_target_groups[0].color
+        fail_msg: "warpgate_group_info does not match the admin API"
+        success_msg: "warpgate_group_info returned {{ _info_groups.target_groups | length }} target groups"
+
+    - name: "List every target with warpgate_target_info"
+      plopoyop.warpgate.warpgate_target_info:
+      register: "_info_targets"
+
+    - name: "Assert warpgate_target_info matches GET /targets"
+      ansible.builtin.assert:
+        that:
+          - "_info_targets is not changed"
+          - "(_info_targets.targets | map(attribute='name') | sort) == (_verify_targets.json | map(attribute='name') | sort)"
+          - >-
+            (_info_targets.targets | selectattr('name', 'equalto', warpgate_targets[0].name) | first).rate_limit_bytes_per_second
+            == warpgate_targets[0].rate_limit_bytes_per_second
+          - >-
+            (_info_targets.targets | selectattr('name', 'equalto', warpgate_targets[0].name) | first).group_id
+            == (_info_groups.target_groups | selectattr('name', 'equalto', warpgate_targets[0].group) | first).id
+        fail_msg: "warpgate_target_info does not match the admin API"
+        success_msg: "warpgate_target_info returned {{ _info_targets.targets | length }} targets"
+
+    - name: "Filter targets with the server-side search filter"
+      plopoyop.warpgate.warpgate_target_info:
+        search: "{{ warpgate_targets[0].name[:5] }}"
+      register: "_info_targets_search"
+
+    - name: "Assert the target search filter narrows the listing"
+      ansible.builtin.assert:
+        that:
+          - "warpgate_targets[0].name in (_info_targets_search.targets | map(attribute='name'))"
+        fail_msg: "Target '{{ warpgate_targets[0].name }}' not returned by the search filter"
+        success_msg: "The target search filter returns '{{ warpgate_targets[0].name }}'"
+
+    # ---- Verify the prune workflow described in issue #104 ----
+    - name: "Create a user that the playbook does not declare"
+      plopoyop.warpgate.warpgate_user:
+        username: "molecule-stray-user"
+        description: "Left over from a previous run"
+
+    - name: "Create a target that the playbook does not declare"
+      plopoyop.warpgate.warpgate_target:
+        name: "molecule-stray-target"
+        description: "Left over from a previous run"
+        ssh_options:
+          host: "localhost"
+          port: 22
+          username: "testuser"
+          allow_insecure_algos: false
+          password_auth:
+            password: "testpassword"
+
+    - name: "List users before the prune"
+      plopoyop.warpgate.warpgate_user_info:
+      register: "_prune_users_before"
+
+    - name: "List targets before the prune"
+      plopoyop.warpgate.warpgate_target_info:
+      register: "_prune_targets_before"
+
+    - name: "Compute the entries that are no longer declared"
+      ansible.builtin.set_fact:
+        _prune_users: >-
+          {{ _prune_users_before.users | map(attribute='username') | list
+             | ansible.builtin.difference((warpgate_users | map(attribute='name') | list) + [warpgate_admin_username])
+             | sort }}
+        _prune_targets: >-
+          {{ _prune_targets_before.targets | map(attribute='name') | list
+             | ansible.builtin.difference(warpgate_targets | map(attribute='name') | list)
+             | sort }}
+
+    - name: "Assert the diff selects the stray entries and nothing declared"
+      ansible.builtin.assert:
+        that:
+          - "'molecule-stray-user' in _prune_users"
+          - "'molecule-stray-target' in _prune_targets"
+          - "(_prune_users | ansible.builtin.intersect((warpgate_users | map(attribute='name') | list) + [warpgate_admin_username])) == []"
+          - "(_prune_targets | ansible.builtin.intersect(warpgate_targets | map(attribute='name') | list)) == []"
+        fail_msg: >-
+          Prune diff is wrong: users={{ _prune_users }} targets={{ _prune_targets }}
+        success_msg: "Prune diff selects users={{ _prune_users }} targets={{ _prune_targets }}"
+
+    - name: "Remove the users that are no longer declared"
+      plopoyop.warpgate.warpgate_user:
+        username: "{{ item }}"
+        state: "absent"
+      loop: "{{ _prune_users }}"
+
+    - name: "Remove the targets that are no longer declared"
+      plopoyop.warpgate.warpgate_target:
+        name: "{{ item }}"
+        state: "absent"
+      loop: "{{ _prune_targets }}"
+
+    - name: "List users after the prune"
+      plopoyop.warpgate.warpgate_user_info:
+      register: "_prune_users_after"
+
+    - name: "List targets after the prune"
+      plopoyop.warpgate.warpgate_target_info:
+      register: "_prune_targets_after"
+
+    - name: "Assert the prune removed the stray entries and kept the declared ones"
+      ansible.builtin.assert:
+        that:
+          - "'molecule-stray-user' not in (_prune_users_after.users | map(attribute='username'))"
+          - "'molecule-stray-target' not in (_prune_targets_after.targets | map(attribute='name'))"
+          - "(warpgate_users | map(attribute='name') | sort) is subset (_prune_users_after.users | map(attribute='username') | list)"
+          - "(warpgate_targets | map(attribute='name') | sort) is subset (_prune_targets_after.targets | map(attribute='name') | list)"
+          - "warpgate_admin_username in (_prune_users_after.users | map(attribute='username'))"
+        fail_msg: >-
+          Prune left users={{ _prune_users_after.users | map(attribute='username') | list }}
+          targets={{ _prune_targets_after.targets | map(attribute='name') | list }}
+        success_msg: "The prune workflow removed only the undeclared entries"
 
     - name: "Get active sessions from API"
       ansible.builtin.uri:

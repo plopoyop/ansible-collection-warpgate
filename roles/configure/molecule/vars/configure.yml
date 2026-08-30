@@ -2,7 +2,7 @@
 warpgate_api_host: "https://localhost:8888/@warpgate/admin/api/"
 warpgate_api_insecure: true
 warpgate_admin_username: "admin"
-warpgate_admin_password: "admin"
+warpgate_admin_password: "molecule-admin-secret"
 
 warpgate_roles:
   - name: "developers"

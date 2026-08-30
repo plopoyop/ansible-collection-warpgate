@@ -36,6 +36,15 @@ class Role:
             is_default=bool(data.get("is_default", False)),
         )
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the role for module output"""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "is_default": self.is_default,
+        }
+
 
 class UserRoleAssignment:
     """Represents a single user-to-role assignment (with optional expiry).
