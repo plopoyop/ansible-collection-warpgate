@@ -1,11 +1,12 @@
 # Changelog
 
-## [2.2.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.2.0) (2026-08-29)
+## [2.2.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.2.0) (2026-08-30)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.1.0...2.2.0)
 
 ## 🚀 New Features
 
+- Add info modules [\#119](https://github.com/plopoyop/ansible-collection-warpgate/pull/119) ([plopoyop](https://github.com/plopoyop))
 - Feat/warpgate 0.28 [\#114](https://github.com/plopoyop/ansible-collection-warpgate/pull/114) ([plopoyop](https://github.com/plopoyop))
 
 ## ⚙️ Dependencies
@@ -13,6 +14,10 @@
 - fix\(ci\): update renovatebot/github-action action \(v46.2.2 → v46.2.4\) [\#111](https://github.com/plopoyop/ansible-collection-warpgate/pull/111) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.16.2 → v0.16.3\) [\#108](https://github.com/plopoyop/ansible-collection-warpgate/pull/108) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.2.1 → v46.2.2\) [\#107](https://github.com/plopoyop/ansible-collection-warpgate/pull/107) ([plopoyop](https://github.com/plopoyop))
+
+**Closed issues:**
+
+- \[feature\] Get list of Users/Targets into ansible vars. [\#104](https://github.com/plopoyop/ansible-collection-warpgate/issues/104)
 
 **Merged pull requests:**
 
