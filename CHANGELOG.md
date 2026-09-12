@@ -1,11 +1,12 @@
 # Changelog
 
-## [2.2.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.2.1) (2026-09-10)
+## [2.2.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.2.1) (2026-09-12)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.2.0...2.2.1)
 
 ## ⚙️ Dependencies
 
+- fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.16.6 → v0.16.7\) [\#123](https://github.com/plopoyop/ansible-collection-warpgate/pull/123) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.2.5 → v46.2.6\) [\#122](https://github.com/plopoyop/ansible-collection-warpgate/pull/122) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.16.5 → v0.16.6\) [\#121](https://github.com/plopoyop/ansible-collection-warpgate/pull/121) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.2.4 → v46.2.5\) [\#120](https://github.com/plopoyop/ansible-collection-warpgate/pull/120) ([plopoyop](https://github.com/plopoyop))
