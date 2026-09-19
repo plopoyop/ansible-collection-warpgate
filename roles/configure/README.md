@@ -101,8 +101,8 @@ Warpgate API token. If unset, the role will try to obtain one via user API
 Warpgate global parameters (v0.24+). Only the keys you set are changed;
 the other parameters keep their current server-side value.
 See the warpgate_parameters module documentation for the full key list,
-including the login-protection (v0.26) and banner / web-client /
-session-recording (v0.27) parameters.
+including the login-protection (v0.26), banner / web-client /
+session-recording (v0.27) and MFA / session-approval (v0.29) parameters.
 
 **_Type:_** dict<br />
 
