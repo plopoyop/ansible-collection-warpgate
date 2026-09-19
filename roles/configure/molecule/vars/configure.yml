@@ -4,6 +4,26 @@ warpgate_api_insecure: true
 warpgate_admin_username: "admin"
 warpgate_admin_password: "molecule-admin-secret"
 
+# Exercise the global parameters module, including the fields added in
+# Warpgate 0.26 (login-protection), 0.27 (banner / web clients), 0.28
+# (open_targets_in_new_tab) and 0.29 (MFA / default credential policy /
+# session-approval). mfa_enforcement is left at "Off" so the admin can still
+# authenticate against the API during the verify stage.
+warpgate_parameters:
+  allow_own_credential_management: false
+  target_click_action: "ShowInstructions"
+  open_targets_in_new_tab: "DefaultOff"
+  banner: "Managed by Ansible molecule"
+  login_protection_enabled: true
+  lp_ip_max_attempts: 3
+  record_desktop_keyboard_input: true
+  mfa_enforcement: "Off"
+  mfa_policy_exempt_sso_users: true
+  admin_approval_timeout_seconds: 600
+  default_credential_policy:
+    ssh: ["PublicKey"]
+    http: ["Password", "Totp"]
+
 warpgate_roles:
   - name: "developers"
     description: "Role for development team"

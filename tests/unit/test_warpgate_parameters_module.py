@@ -14,10 +14,11 @@ CURRENT = {
     "ssh_client_auth_publickey": True,
     "ssh_client_auth_password": True,
     "ssh_client_auth_keyboard_interactive": True,
-    # Deprecated read-only field still returned by GET (Warpgate >= 0.26),
-    # derived from password_login_mode.
-    "minimize_password_login": False,
     "password_login_mode": "Enabled",
+    # Warpgate >= 0.29
+    "mfa_enforcement": "Off",
+    "mfa_policy_exempt_sso_users": True,
+    "default_credential_policy": {},
     "ticket_self_service_enabled": False,
     "ticket_auto_approve_existing_access": False,
     "ticket_require_description": False,
@@ -33,6 +34,7 @@ CURRENT = {
         "require_special": False,
     },
     "record_scp": False,
+    "record_desktop_keyboard_input": False,
     "ssh_host_key_verification": "Prompt",
     "login_protection_enabled": True,
     "lp_ip_max_attempts": 5,
@@ -40,12 +42,11 @@ CURRENT = {
     "lp_user_max_attempts": 10,
     "lp_user_exempt_admins": True,
     "banner": "",
-    # Deprecated read-only alias still returned by GET (Warpgate >= 0.27),
-    # mirrors web_clients_enabled.
-    "web_ssh_enabled": True,
     "web_clients_enabled": True,
     "web_auth_max_age_seconds": None,
     "web_approval_grace_period_seconds": None,
+    "admin_approval_timeout_seconds": None,
+    "admin_approval_grace_period_seconds": None,
     "analytics_consent": "Undecided",
     "analytics_normal": False,
     "recordings_enable": False,
@@ -67,6 +68,9 @@ def _base_params(**overrides):
         ssh_host_key_verification=None,
         minimize_password_login=None,
         password_login_mode=None,
+        mfa_enforcement=None,
+        mfa_policy_exempt_sso_users=None,
+        default_credential_policy=None,
         ticket_self_service_enabled=None,
         ticket_auto_approve_existing_access=None,
         ticket_max_duration_seconds=None,
@@ -79,6 +83,7 @@ def _base_params(**overrides):
         password_policy=None,
         max_api_token_duration_seconds=None,
         record_scp=None,
+        record_desktop_keyboard_input=None,
         login_protection_enabled=None,
         login_protection_retention_seconds=None,
         lp_ip_max_attempts=None,
@@ -96,6 +101,8 @@ def _base_params(**overrides):
         web_clients_enabled=None,
         web_auth_max_age_seconds=None,
         web_approval_grace_period_seconds=None,
+        admin_approval_timeout_seconds=None,
+        admin_approval_grace_period_seconds=None,
         analytics_consent=None,
         analytics_normal=None,
         recordings_enable=None,
@@ -152,15 +159,19 @@ class TestParametersClient:
     def test_update_parameters_filters_unknown_keys(self, mock_client):
         values = dict(CURRENT)
         values["id"] = "parameters"  # read-only key returned by GET
+        # Deprecated fields removed from the API in 0.29 but that an older
+        # server might still echo back must never be sent on PUT.
+        values["minimize_password_login"] = False
+        values["web_ssh_enabled"] = True
         update_parameters(mock_client, values)
         method, path, body = mock_client._request.call_args[0]
         assert (method, path) == ("PUT", "/parameters")
         assert "id" not in body
-        # Deprecated, read-only: must not be sent back on PUT.
-        assert "minimize_password_login" not in body  # 0.26
-        assert "web_ssh_enabled" not in body  # 0.27 (renamed to web_clients_enabled)
+        assert "minimize_password_login" not in body
+        assert "web_ssh_enabled" not in body
         assert body["password_login_mode"] == "Enabled"
         assert body["web_clients_enabled"] is True
+        assert body["mfa_enforcement"] == "Off"
         assert body["allow_own_credential_management"] is True
 
     def test_update_parameters_drops_none_values(self, mock_client):
@@ -236,6 +247,55 @@ class TestParametersModule:
         assert sent["password_policy"]["require_uppercase"] is False
         assert result["changed"] is True
 
+    def test_mfa_enforcement_change(self):
+        params = _base_params(mfa_enforcement="Require")
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        sent = mock_update.call_args[0][1]
+        assert sent["mfa_enforcement"] == "Require"
+        assert result["changed"] is True
+
+    def test_default_credential_policy_change(self):
+        params = _base_params(default_credential_policy={"ssh": ["PublicKey"]})
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        sent = mock_update.call_args[0][1]
+        assert sent["default_credential_policy"] == {"ssh": ["PublicKey"]}
+        assert result["changed"] is True
+
+    def test_default_credential_policy_is_idempotent(self):
+        # The server echoes back every protocol, unset ones as null; a partial
+        # policy must merge over them so a second run reports no change.
+        current = dict(CURRENT)
+        current["default_credential_policy"] = {
+            "http": ["Password", "Totp"],
+            "ssh": ["PublicKey"],
+            "mysql": None,
+            "postgres": None,
+            "kubernetes": None,
+            "rdp": None,
+            "vnc": None,
+        }
+        params = _base_params(
+            default_credential_policy={
+                "ssh": ["PublicKey"],
+                "http": ["Password", "Totp"],
+            }
+        )
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=current),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        mock_update.assert_not_called()
+        assert result["changed"] is False
+
     def test_target_click_action_change(self):
         params = _base_params(target_click_action="ShowInstructions")
         with (
@@ -279,6 +339,21 @@ class TestParametersModule:
         mod.deprecate.assert_called_once()
         sent = mock_update.call_args[0][1]
         assert sent["password_login_mode"] == "Minimized"
+        assert result["changed"] is True
+
+    def test_minimize_password_login_warns_without_overriding_mode(self):
+        params = _base_params(
+            minimize_password_login=False, password_login_mode="Disabled"
+        )
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        # Deprecation is still reported, but the explicit mode wins.
+        mod.deprecate.assert_called_once()
+        sent = mock_update.call_args[0][1]
+        assert sent["password_login_mode"] == "Disabled"
         assert result["changed"] is True
 
     def test_login_protection_field_change(self):

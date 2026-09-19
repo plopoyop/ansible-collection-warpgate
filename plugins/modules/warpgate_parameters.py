@@ -78,6 +78,26 @@ options:
               login entirely (SSO only).
         type: str
         choices: ["Enabled", "Minimized", "Disabled"]
+    mfa_enforcement:
+        description:
+            - Global multi-factor authentication enforcement policy
+              (Warpgate >= 0.29).
+            - V(Off) does not enforce MFA, V(Enroll) prompts users to enrol a
+              second factor, V(Require) blocks access until MFA is enrolled.
+        type: str
+        choices: ["Off", "Enroll", "Require"]
+    mfa_policy_exempt_sso_users:
+        description:
+            - Exempt SSO-authenticated users from the MFA enforcement policy
+              (Warpgate >= 0.29).
+        type: bool
+    default_credential_policy:
+        description:
+            - Credential policy applied by default to new users (Warpgate >= 0.29).
+            - A mapping of protocol to the list of required credential kinds.
+              Valid protocols are C(http), C(ssh), C(mysql), C(postgres) and
+              C(kubernetes); see the EXAMPLES section for the structure.
+        type: dict
     ticket_self_service_enabled:
         description:
             - Enable the ticket self-service request system.
@@ -146,6 +166,11 @@ options:
     record_scp:
         description:
             - Record SCP sessions.
+        type: bool
+    record_desktop_keyboard_input:
+        description:
+            - Record keyboard input in desktop (RDP/VNC) session recordings
+              (Warpgate >= 0.29).
         type: bool
     login_protection_enabled:
         description:
@@ -233,6 +258,16 @@ options:
             - Grace period (seconds) during which a cached web approval is reused
               instead of prompting again (Warpgate >= 0.27).
         type: int
+    admin_approval_timeout_seconds:
+        description:
+            - How long (seconds) a session waits for admin approval before it is
+              rejected, for targets that require session approval (Warpgate >= 0.29).
+        type: int
+    admin_approval_grace_period_seconds:
+        description:
+            - Grace period (seconds) during which a granted session approval is
+              reused without prompting an admin again (Warpgate >= 0.29).
+        type: int
     analytics_consent:
         description:
             - Anonymous usage analytics reporting mode (Warpgate >= 0.26).
@@ -282,6 +317,16 @@ EXAMPLES = """
     allow_own_credential_management: true
     show_session_menu: true
     target_click_action: "Connect"
+
+- name: Enforce MFA and a default credential policy (Warpgate 0.29)
+  plopoyop.warpgate.warpgate_parameters:
+    host: "https://warpgate.example.com"
+    token: "{{ warpgate_api_token }}"
+    mfa_enforcement: "Require"
+    mfa_policy_exempt_sso_users: true
+    default_credential_policy:
+      ssh: ["PublicKey"]
+      http: ["Password", "Totp"]
 
 - name: Enforce a password policy and ticket limits
   plopoyop.warpgate.warpgate_parameters:
@@ -345,8 +390,10 @@ def build_desired_parameters(module, current):
     """Merges module parameters over the current server values.
 
     Returns the merged dict. Options left to ``None`` keep the current
-    server-side value; ``password_policy`` is merged key by key so a partial
-    policy does not reset the other rules.
+    server-side value; ``password_policy`` and ``default_credential_policy``
+    are merged key by key so a partial value does not reset the other keys
+    (the server echoes every protocol back, including the unset ones as
+    ``null``, so a plain overlay would never be idempotent).
     """
     desired = dict(current)
     for field in PARAMETER_FIELDS:
@@ -359,6 +406,10 @@ def build_desired_parameters(module, current):
                 policy_value = value.get(policy_field)
                 if policy_value is not None:
                     merged_policy[policy_field] = policy_value
+            desired[field] = merged_policy
+        elif field == "default_credential_policy":
+            merged_policy = dict(current.get("default_credential_policy") or {})
+            merged_policy.update(value)
             desired[field] = merged_policy
         else:
             desired[field] = value
@@ -388,6 +439,11 @@ def main():
             no_log=False,
             choices=["Enabled", "Minimized", "Disabled"],
         ),
+        mfa_enforcement=dict(
+            type="str", required=False, choices=["Off", "Enroll", "Require"]
+        ),
+        mfa_policy_exempt_sso_users=dict(type="bool", required=False),
+        default_credential_policy=dict(type="dict", required=False, no_log=False),
         ticket_self_service_enabled=dict(type="bool", required=False),
         ticket_auto_approve_existing_access=dict(type="bool", required=False),
         ticket_max_duration_seconds=dict(type="int", required=False),
@@ -417,6 +473,7 @@ def main():
         ),
         max_api_token_duration_seconds=dict(type="int", required=False),
         record_scp=dict(type="bool", required=False),
+        record_desktop_keyboard_input=dict(type="bool", required=False),
         login_protection_enabled=dict(type="bool", required=False),
         login_protection_retention_seconds=dict(type="int", required=False),
         lp_ip_max_attempts=dict(type="int", required=False),
@@ -430,12 +487,32 @@ def main():
         lp_user_auto_unlock=dict(type="bool", required=False),
         lp_user_lockout_duration_seconds=dict(type="int", required=False),
         lp_user_exempt_admins=dict(type="bool", required=False),
-        banner=dict(type="str", required=False, aliases=["ssh_banner"]),
+        banner=dict(
+            type="str",
+            required=False,
+            deprecated_aliases=[
+                dict(
+                    name="ssh_banner",
+                    version="2.0.0",
+                    collection_name="plopoyop.warpgate",
+                )
+            ],
+        ),
         web_clients_enabled=dict(
-            type="bool", required=False, aliases=["web_ssh_enabled"]
+            type="bool",
+            required=False,
+            deprecated_aliases=[
+                dict(
+                    name="web_ssh_enabled",
+                    version="2.0.0",
+                    collection_name="plopoyop.warpgate",
+                )
+            ],
         ),
         web_auth_max_age_seconds=dict(type="int", required=False),
         web_approval_grace_period_seconds=dict(type="int", required=False),
+        admin_approval_timeout_seconds=dict(type="int", required=False),
+        admin_approval_grace_period_seconds=dict(type="int", required=False),
         analytics_consent=dict(
             type="str", required=False, choices=["Undecided", "Off", "On"]
         ),
@@ -461,20 +538,19 @@ def main():
             msg="Provide either token or both api_username and api_password"
         )
 
-    # minimize_password_login was replaced by password_login_mode in Warpgate 0.26.
-    if (
-        module.params.get("password_login_mode") is None
-        and module.params.get("minimize_password_login") is not None
-    ):
+    # minimize_password_login was replaced by password_login_mode in Warpgate 0.26
+    # and removed from the API in 0.29.
+    if module.params.get("minimize_password_login") is not None:
         module.deprecate(
-            "minimize_password_login is deprecated since Warpgate 0.26; "
-            "use password_login_mode instead.",
+            "minimize_password_login is deprecated since Warpgate 0.26 and was "
+            "removed from the Warpgate API in 0.29; use password_login_mode instead.",
             version="2.0.0",
             collection_name="plopoyop.warpgate",
         )
-        module.params["password_login_mode"] = (
-            "Minimized" if module.params["minimize_password_login"] else "Enabled"
-        )
+        if module.params.get("password_login_mode") is None:
+            module.params["password_login_mode"] = (
+                "Minimized" if module.params["minimize_password_login"] else "Enabled"
+            )
 
     insecure = module.params["insecure"]
     timeout = module.params["timeout"]
