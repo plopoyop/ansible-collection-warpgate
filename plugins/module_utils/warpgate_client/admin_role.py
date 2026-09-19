@@ -23,6 +23,7 @@ PERMISSION_FIELDS = (
     "access_roles_assign",
     "sessions_view",
     "sessions_terminate",
+    "approve_sessions",
     "recordings_view",
     "tickets_create",
     "tickets_delete",

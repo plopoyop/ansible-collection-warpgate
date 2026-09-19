@@ -1,5 +1,7 @@
 """Tests for model classes: from_dict / to_dict round-trips and edge cases."""
 
+from unittest.mock import MagicMock
+
 from warpgate_client.admin_role import PERMISSION_FIELDS, AdminRole
 from warpgate_client.credential import (
     CertificateCredential,
@@ -9,7 +11,7 @@ from warpgate_client.credential import (
     SsoCredential,
 )
 from warpgate_client.role import Role
-from warpgate_client.target import TLS, Target
+from warpgate_client.target import TLS, Target, create_target, update_target
 from warpgate_client.target_group import TargetGroup
 from warpgate_client.ticket import Ticket, TicketAndSecret
 from warpgate_client.user import User, UserRequireCredentialsPolicy
@@ -339,6 +341,43 @@ class TestAdminRole:
         role = AdminRole.from_dict({"id": "a1", "name": "auditor"})
         role.to_dict()["permissions"]["config_edit"] = True
         assert role.permissions["config_edit"] is False
+
+    def test_permission_fields_include_approve_sessions(self):
+        # Required boolean added to AdminRoleDataRequest in Warpgate 0.29.
+        assert "approve_sessions" in PERMISSION_FIELDS
+
+
+# ---------------------------------------------------------------------------
+# Target create/update request body (Warpgate 0.29 required fields)
+# ---------------------------------------------------------------------------
+
+
+class TestTargetRequestBody:
+    _APPROVAL_FIELDS = (
+        "require_approval",
+        "ticket_requests_disabled",
+        "ticket_require_approval",
+    )
+
+    def _client(self):
+        client = MagicMock()
+        client._request.return_value = {"id": "t1", "name": "t"}
+        return client
+
+    def test_create_target_sends_required_approval_fields(self):
+        client = self._client()
+        create_target(client, "t", options={})
+        body = client._request.call_args[0][2]
+        for field in self._APPROVAL_FIELDS:
+            assert body[field] is False
+
+    def test_update_target_forwards_approval_flags(self):
+        client = self._client()
+        update_target(client, "t1", "t", require_approval=True)
+        body = client._request.call_args[0][2]
+        assert body["require_approval"] is True
+        assert body["ticket_requests_disabled"] is False
+        assert body["ticket_require_approval"] is False
 
 
 # ---------------------------------------------------------------------------
