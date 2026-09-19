@@ -20,6 +20,14 @@ reauthentication settings (``web_auth_max_age_seconds``,
 (``recordings_enable`` and the ``recordings_storage`` disk/S3 config).
 
 Warpgate 0.28 adds the ``open_targets_in_new_tab`` mode.
+
+Warpgate 0.29 makes breaking API changes: the deprecated ``minimize_password_login``
+and ``web_ssh_enabled`` fields are removed from the ``GET`` response (use
+``password_login_mode`` and ``web_clients_enabled``). It adds the MFA enforcement
+policy (``mfa_enforcement``, ``mfa_policy_exempt_sso_users``), the
+``default_credential_policy``, ``record_desktop_keyboard_input`` and the session
+approval settings (``admin_approval_timeout_seconds``,
+``admin_approval_grace_period_seconds``).
 """
 
 from typing import Any
@@ -33,6 +41,9 @@ PARAMETER_FIELDS = (
     "ssh_client_auth_keyboard_interactive",
     "ssh_host_key_verification",
     "password_login_mode",
+    "mfa_enforcement",
+    "mfa_policy_exempt_sso_users",
+    "default_credential_policy",
     "ticket_self_service_enabled",
     "ticket_auto_approve_existing_access",
     "ticket_max_duration_seconds",
@@ -45,6 +56,7 @@ PARAMETER_FIELDS = (
     "password_policy",
     "max_api_token_duration_seconds",
     "record_scp",
+    "record_desktop_keyboard_input",
     "login_protection_enabled",
     "login_protection_retention_seconds",
     "lp_ip_max_attempts",
@@ -62,6 +74,8 @@ PARAMETER_FIELDS = (
     "web_clients_enabled",
     "web_auth_max_age_seconds",
     "web_approval_grace_period_seconds",
+    "admin_approval_timeout_seconds",
+    "admin_approval_grace_period_seconds",
     "analytics_consent",
     "analytics_normal",
     "recordings_enable",
@@ -90,6 +104,9 @@ ANALYTICS_CONSENT_VALUES = ("Undecided", "Off", "On")
 
 # ssh_host_key_verification enum (Warpgate >= 0.27).
 SSH_HOST_KEY_VERIFICATION_MODES = ("Prompt", "AutoAccept", "AutoReject", "Ignore")
+
+# mfa_enforcement enum (Warpgate >= 0.29).
+MFA_ENFORCEMENT_VALUES = ("Off", "Enroll", "Require")
 
 
 def get_parameters(client) -> dict[str, Any]:

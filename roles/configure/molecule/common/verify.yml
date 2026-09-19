@@ -32,6 +32,62 @@
         _verify_auth_headers:
           Cookie: "{{ _verify_login.set_cookie }}"
 
+    # ---- Verify global parameters ----
+    - name: "Get global parameters from API"
+      ansible.builtin.uri:
+        url: "{{ warpgate_api_host }}parameters"
+        method: GET
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        headers: "{{ _verify_auth_headers }}"
+        status_code: [200]
+        timeout: 10
+      register: _verify_parameters
+
+    - name: "Assert scalar global parameters were applied"
+      ansible.builtin.assert:
+        that:
+          - _verify_parameters.json.allow_own_credential_management == false
+          - _verify_parameters.json.target_click_action == "ShowInstructions"
+          - _verify_parameters.json.open_targets_in_new_tab == "DefaultOff"
+          - _verify_parameters.json.banner == "Managed by Ansible molecule"
+          - _verify_parameters.json.lp_ip_max_attempts == 3
+          - _verify_parameters.json.record_desktop_keyboard_input | bool
+          - _verify_parameters.json.mfa_enforcement == "Off"
+          - _verify_parameters.json.mfa_policy_exempt_sso_users | bool
+          - _verify_parameters.json.admin_approval_timeout_seconds == 600
+        fail_msg: "Global parameters were not applied as declared"
+        success_msg: "Global parameters match the declared values"
+
+    - name: "Assert the default credential policy was applied"
+      ansible.builtin.assert:
+        that:
+          - _verify_parameters.json.default_credential_policy.ssh == ["PublicKey"]
+          - (_verify_parameters.json.default_credential_policy.http | sort) == ["Password", "Totp"]
+        fail_msg: >-
+          default_credential_policy mismatch:
+          {{ _verify_parameters.json.default_credential_policy }}
+        success_msg: "default_credential_policy matches the declared value"
+
+    - name: "Re-apply the same scalar parameters to assert idempotence"
+      plopoyop.warpgate.warpgate_parameters:
+        host: "{{ warpgate_api_host }}"
+        api_username: "{{ warpgate_admin_username }}"
+        api_password: "{{ warpgate_admin_password }}"
+        insecure: "{{ warpgate_api_insecure }}"
+        allow_own_credential_management: "{{ warpgate_parameters.allow_own_credential_management }}"
+        target_click_action: "{{ warpgate_parameters.target_click_action }}"
+        open_targets_in_new_tab: "{{ warpgate_parameters.open_targets_in_new_tab }}"
+        banner: "{{ warpgate_parameters.banner }}"
+        mfa_enforcement: "{{ warpgate_parameters.mfa_enforcement }}"
+      register: _verify_parameters_idem
+
+    - name: "Assert re-applying the parameters reports no change"
+      ansible.builtin.assert:
+        that:
+          - _verify_parameters_idem is not changed
+        fail_msg: "warpgate_parameters is not idempotent"
+        success_msg: "warpgate_parameters is idempotent"
+
     # ---- Verify Roles ----
     - name: "Get all roles from API"
       ansible.builtin.uri:
