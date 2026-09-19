@@ -4,12 +4,17 @@
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.2.0...2.2.1)
 
+## 🚀 New Features
+
+- feat: update for Warpgate 0.29 [\#130](https://github.com/plopoyop/ansible-collection-warpgate/pull/130) ([plopoyop](https://github.com/plopoyop))
+
 ## 🐛 Bug Fixes
 
 - Fix renovate ci job [\#128](https://github.com/plopoyop/ansible-collection-warpgate/pull/128) ([plopoyop](https://github.com/plopoyop))
 
 ## ⚙️ Dependencies
 
+- feat\(deps\): update warp-tech/warpgate \(v0.28.4 → v0.29.0\) [\#129](https://github.com/plopoyop/ansible-collection-warpgate/pull/129) ([plopoyop](https://github.com/plopoyop))
 - feat\(ci\)!: Update ubuntu \(24.04 → 26.04\) [\#127](https://github.com/plopoyop/ansible-collection-warpgate/pull/127) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.3.0 → v46.3.1\) [\#125](https://github.com/plopoyop/ansible-collection-warpgate/pull/125) ([plopoyop](https://github.com/plopoyop))
 - feat\(ci\): update renovatebot/github-action action \(v46.2.6 → v46.3.0\) [\#124](https://github.com/plopoyop/ansible-collection-warpgate/pull/124) ([plopoyop](https://github.com/plopoyop))
