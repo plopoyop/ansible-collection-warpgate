@@ -4,6 +4,10 @@
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.2.0...2.2.1)
 
+## 🐛 Bug Fixes
+
+- Fix renovate ci job [\#128](https://github.com/plopoyop/ansible-collection-warpgate/pull/128) ([plopoyop](https://github.com/plopoyop))
+
 ## ⚙️ Dependencies
 
 - feat\(ci\)!: Update ubuntu \(24.04 → 26.04\) [\#127](https://github.com/plopoyop/ansible-collection-warpgate/pull/127) ([plopoyop](https://github.com/plopoyop))
