@@ -560,21 +560,12 @@
           targets={{ _prune_targets_after.targets | map(attribute='name') | list }}
         success_msg: "The prune workflow removed only the undeclared entries"
 
-    - name: "Get active sessions from API"
-      ansible.builtin.uri:
-        url: "{{ warpgate_api_host }}sessions?active_only=true&limit=1"
-        method: GET
-        validate_certs: "{{ not warpgate_api_insecure }}"
-        headers: "{{ _verify_auth_headers }}"
-        status_code: [200]
-        timeout: 10
-      register: _verify_sessions
-
-    - name: "Assert the role did not leak API sessions"
-      ansible.builtin.assert:
-        that:
-          - (_verify_sessions.json.total | int) <= 5
-        fail_msg: >-
-          {{ _verify_sessions.json.total }} active sessions remain: the modules
-          are leaking their admin API session
-        success_msg: "No leaked API session ({{ _verify_sessions.json.total }} active)"
+    # NOTE: there used to be an assertion here that /sessions?active_only=true
+    # stayed low, to catch the modules leaking their admin API session. Since
+    # Warpgate 0.29 every username/password login on the HTTP API creates a
+    # persistent user-session row and POST /auth/logout only clears the browser
+    # cookie (it does not set `ended`). With password auth the converge alone
+    # therefore leaves one lingering user session per module call, so an
+    # absolute active-session count is no longer a valid leak metric. The
+    # client still calls logout() in a finally block; there is no user-facing
+    # API to end the lingering session.

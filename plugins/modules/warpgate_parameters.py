@@ -390,8 +390,10 @@ def build_desired_parameters(module, current):
     """Merges module parameters over the current server values.
 
     Returns the merged dict. Options left to ``None`` keep the current
-    server-side value; ``password_policy`` is merged key by key so a partial
-    policy does not reset the other rules.
+    server-side value; ``password_policy`` and ``default_credential_policy``
+    are merged key by key so a partial value does not reset the other keys
+    (the server echoes every protocol back, including the unset ones as
+    ``null``, so a plain overlay would never be idempotent).
     """
     desired = dict(current)
     for field in PARAMETER_FIELDS:
@@ -404,6 +406,10 @@ def build_desired_parameters(module, current):
                 policy_value = value.get(policy_field)
                 if policy_value is not None:
                     merged_policy[policy_field] = policy_value
+            desired[field] = merged_policy
+        elif field == "default_credential_policy":
+            merged_policy = dict(current.get("default_credential_policy") or {})
+            merged_policy.update(value)
             desired[field] = merged_policy
         else:
             desired[field] = value

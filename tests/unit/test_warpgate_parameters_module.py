@@ -269,6 +269,33 @@ class TestParametersModule:
         assert sent["default_credential_policy"] == {"ssh": ["PublicKey"]}
         assert result["changed"] is True
 
+    def test_default_credential_policy_is_idempotent(self):
+        # The server echoes back every protocol, unset ones as null; a partial
+        # policy must merge over them so a second run reports no change.
+        current = dict(CURRENT)
+        current["default_credential_policy"] = {
+            "http": ["Password", "Totp"],
+            "ssh": ["PublicKey"],
+            "mysql": None,
+            "postgres": None,
+            "kubernetes": None,
+            "rdp": None,
+            "vnc": None,
+        }
+        params = _base_params(
+            default_credential_policy={
+                "ssh": ["PublicKey"],
+                "http": ["Password", "Totp"],
+            }
+        )
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=current),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        mock_update.assert_not_called()
+        assert result["changed"] is False
+
     def test_target_click_action_change(self):
         params = _base_params(target_click_action="ShowInstructions")
         with (
