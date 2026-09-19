@@ -17,7 +17,8 @@ jobs:
         uses: renovatebot/github-action@v46.2.5
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
-          RENOVATE_USERNAME: "renovate[bot]"
+          RENOVATE_USERNAME: "plopoyop"
+          RENOVATE_GIT_AUTHOR: "plopoyop <5174134+plopoyop@users.noreply.github.com>"
           LOG_LEVEL: debug
         with:
           token: ${{ secrets.RENOVATE_TOKEN }}
