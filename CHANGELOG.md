@@ -9,6 +9,7 @@
 - fix\(deps\): update warp-tech/warpgate \(v0.29.1 → v0.29.2\) [\#140](https://github.com/plopoyop/ansible-collection-warpgate/pull/140) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.3.6 → v46.3.7\) [\#139](https://github.com/plopoyop/ansible-collection-warpgate/pull/139) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.3.5 → v46.3.6\) [\#138](https://github.com/plopoyop/ansible-collection-warpgate/pull/138) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.16.9 → v0.16.10\) [\#137](https://github.com/plopoyop/ansible-collection-warpgate/pull/137) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.3.4 → v46.3.5\) [\#136](https://github.com/plopoyop/ansible-collection-warpgate/pull/136) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.3.3 → v46.3.4\) [\#135](https://github.com/plopoyop/ansible-collection-warpgate/pull/135) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.16.7 → v0.16.9\) [\#134](https://github.com/plopoyop/ansible-collection-warpgate/pull/134) ([plopoyop](https://github.com/plopoyop))
