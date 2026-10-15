@@ -1,12 +1,13 @@
 # Changelog
 
-## [2.2.4](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.2.4) (2026-10-14)
+## [2.2.4](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.2.4) (2026-10-15)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.2.3...2.2.4)
 
 **Merged pull requests:**
 
 - feat\(deps\): update python313packages.ansible \(14.3.1 → 14.4.0\) [\#146](https://github.com/plopoyop/ansible-collection-warpgate/pull/146) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update ansible-doctor \(8.4.0 → 8.4.2\) [\#142](https://github.com/plopoyop/ansible-collection-warpgate/pull/142) ([plopoyop](https://github.com/plopoyop))
 
 ## [2.2.3](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.2.3) (2026-10-11)
 
