@@ -11,6 +11,7 @@
 **Merged pull requests:**
 
 - feat\(deps\): update python313packages.ansible \(14.3.1 → 14.4.0\) [\#146](https://github.com/plopoyop/ansible-collection-warpgate/pull/146) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update podman \(5.8.6 → 5.8.8\) [\#143](https://github.com/plopoyop/ansible-collection-warpgate/pull/143) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update ansible-doctor \(8.4.0 → 8.4.2\) [\#142](https://github.com/plopoyop/ansible-collection-warpgate/pull/142) ([plopoyop](https://github.com/plopoyop))
 
 ## [2.2.3](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.2.3) (2026-10-11)
