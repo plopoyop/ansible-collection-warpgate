@@ -28,6 +28,11 @@ policy (``mfa_enforcement``, ``mfa_policy_exempt_sso_users``), the
 ``default_credential_policy``, ``record_desktop_keyboard_input`` and the session
 approval settings (``admin_approval_timeout_seconds``,
 ``admin_approval_grace_period_seconds``).
+
+Warpgate 0.30 adds the custom ``logo`` (a writable image data URL, ``null``
+clears it). ``GET`` returns only ``logo_etag`` (lowercase hex sha256 of the
+stored data URL), never the image itself, so callers compare
+``sha256(logo)`` with ``logo_etag`` to stay idempotent.
 """
 
 from typing import Any
@@ -71,6 +76,7 @@ PARAMETER_FIELDS = (
     "lp_user_lockout_duration_seconds",
     "lp_user_exempt_admins",
     "banner",
+    "logo",
     "web_clients_enabled",
     "web_auth_max_age_seconds",
     "web_approval_grace_period_seconds",

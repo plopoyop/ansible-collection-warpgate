@@ -43,6 +43,7 @@
     lp_user_lockout_duration_seconds: "{{ warpgate_parameters.lp_user_lockout_duration_seconds | default(omit) }}"
     lp_user_exempt_admins: "{{ warpgate_parameters.lp_user_exempt_admins | default(omit) }}"
     banner: "{{ warpgate_parameters.banner | default(omit) }}"
+    logo: "{{ warpgate_parameters.logo | default(omit) }}"
     web_clients_enabled: "{{ warpgate_parameters.web_clients_enabled | default(omit) }}"
     web_auth_max_age_seconds: "{{ warpgate_parameters.web_auth_max_age_seconds | default(omit) }}"
     web_approval_grace_period_seconds: "{{ warpgate_parameters.web_approval_grace_period_seconds | default(omit) }}"
