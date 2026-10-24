@@ -122,6 +122,21 @@ class TestUpdate:
         assert result["changed"] is False
         assert "diff" not in result
 
+    def test_idempotent_kubernetes_without_mount(self):
+        # The server echoes an unset mount back as null; a user who omits mount
+        # must still be idempotent.
+        existing = _existing(auth={"method": "Kubernetes", "role": "r", "mount": None})
+        params = _base_params(auth={"method": "Kubernetes", "role": "r"})
+        with (
+            patch(
+                "warpgate_secret_backend.get_secret_backends", return_value=[existing]
+            ),
+            patch("warpgate_secret_backend.update_secret_backend") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        mock_update.assert_not_called()
+        assert result["changed"] is False
+
     def test_update_on_field_change(self):
         existing = _existing(address="https://old.example.com:8200")
         updated = _existing()

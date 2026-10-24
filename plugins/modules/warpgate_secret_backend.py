@@ -18,8 +18,11 @@ description:
     - A secret backend (HashiCorp Vault or OpenBao) lets Warpgate resolve
       target passwords and SSH private keys at connection time instead of
       storing them in its database.
+    - Create backends before the targets that reference them via
+      C(secret://<backend>/...). Deleting a backend still referenced by a
+      target returns HTTP 409; remove the referencing targets first.
 
-version_added: "1.4.0"
+version_added: "2.3.0"
 
 options:
     host:
@@ -199,8 +202,15 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.
 _AUTH_SECRET_KEYS = ("token", "secret_id")
 
 
-def _auth_without_secrets(auth):
-    return {k: v for k, v in (auth or {}).items() if k not in _AUTH_SECRET_KEYS}
+def _auth_comparable(auth):
+    """Normalize an auth mapping for idempotent comparison: drop the secret
+    sub-keys the server blanks, and drop ``None`` values (the server echoes an
+    unset ``mount`` back as ``null`` while the user simply omits the key)."""
+    return {
+        k: v
+        for k, v in (auth or {}).items()
+        if k not in _AUTH_SECRET_KEYS and v is not None
+    }
 
 
 def main():
@@ -298,7 +308,7 @@ def main():
                 or (existing.namespace or "") != (namespace or "")
                 or bool(existing.tls_skip_verify) != bool(tls_skip_verify)
                 or sorted(existing.allowed_paths or []) != sorted(allowed_paths or [])
-                or _auth_without_secrets(existing.auth) != _auth_without_secrets(auth)
+                or _auth_comparable(existing.auth) != _auth_comparable(auth)
             )
 
             if needs_update:
@@ -309,7 +319,7 @@ def main():
                         "namespace": existing.namespace,
                         "tls_skip_verify": existing.tls_skip_verify,
                         "allowed_paths": existing.allowed_paths,
-                        "auth": _auth_without_secrets(existing.auth),
+                        "auth": _auth_comparable(existing.auth),
                     },
                     "after": {
                         "backend_type": backend_type,
@@ -317,7 +327,7 @@ def main():
                         "namespace": namespace,
                         "tls_skip_verify": tls_skip_verify,
                         "allowed_paths": allowed_paths,
-                        "auth": _auth_without_secrets(auth),
+                        "auth": _auth_comparable(auth),
                     },
                 }
                 if not module.check_mode:
