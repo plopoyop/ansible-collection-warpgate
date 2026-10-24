@@ -1,5 +1,6 @@
 """Tests for warpgate_parameters module and the parameters client."""
 
+import hashlib
 from unittest.mock import MagicMock, patch
 
 import warpgate_parameters
@@ -382,9 +383,8 @@ class TestParametersModule:
         assert sent["banner"] == "Authorized access only."
         assert result["changed"] is True
 
-    def test_logo_set(self):
-        # GET never returns the logo (only logo_etag), so setting it always
-        # reports changed and sends it on PUT.
+    def test_logo_set_when_etag_differs(self):
+        # Server has no logo (logo_etag=None) -> the new logo is sent.
         params = _base_params(logo="data:image/png;base64,AAAA")
         with (
             patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
@@ -394,6 +394,22 @@ class TestParametersModule:
         sent = mock_update.call_args[0][1]
         assert sent["logo"] == "data:image/png;base64,AAAA"
         assert result["changed"] is True
+        # The returned parameters redact the data URL for readability.
+        assert result["parameters"]["logo"].startswith("<image data URL")
+
+    def test_logo_unchanged_when_etag_matches(self):
+        # When sha256(logo) == server logo_etag, nothing is sent.
+        logo = "data:image/png;base64,AAAA"
+        current = dict(CURRENT)
+        current["logo_etag"] = hashlib.sha256(logo.encode("utf-8")).hexdigest()
+        params = _base_params(logo=logo)
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=current),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        mock_update.assert_not_called()
+        assert result["changed"] is False
 
     def test_ssh_host_key_verification_change(self):
         params = _base_params(ssh_host_key_verification="AutoReject")

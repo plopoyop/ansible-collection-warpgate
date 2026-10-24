@@ -236,9 +236,11 @@ options:
         description:
             - Custom logo shown on the login page, as an image data URL
               (e.g. V(data:image/png;base64,...)), Warpgate >= 0.30.
-            - The server never returns the image (only an etag), so a managed
-              logo cannot be compared and the task always reports C(changed).
-              Setting an empty string is rejected; use the admin UI to clear it.
+            - The module compares C(sha256(logo)) against the server's
+              C(logo_etag) and only sends the image when it differs, so an
+              unchanged logo is idempotent.
+            - Clearing the logo is not supported here (an empty string is
+              rejected by the server); use the admin UI to remove it.
         type: str
     web_clients_enabled:
         description:
@@ -380,6 +382,8 @@ parameters:
     returned: always
 """
 
+import hashlib
+
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
     WarpgateAPIError,
@@ -394,6 +398,24 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.
 )
 
 
+def _logo_etag(data_url):
+    """Mirror Warpgate's ``logo_etag`` (lowercase hex sha256 of the data URL)."""
+    return hashlib.sha256(data_url.encode("utf-8")).hexdigest()
+
+
+def _sanitize_params(params):
+    """Return a copy of a parameters dict with the (potentially huge) ``logo``
+    data URL replaced by a short descriptor, for readable diff/return output."""
+    if not params or params.get("logo") is None:
+        return params
+    sanitized = dict(params)
+    logo = sanitized["logo"]
+    sanitized["logo"] = (
+        f"<image data URL, {len(logo)} chars, sha256={_logo_etag(logo)}>"
+    )
+    return sanitized
+
+
 def build_desired_parameters(module, current):
     """Merges module parameters over the current server values.
 
@@ -401,7 +423,9 @@ def build_desired_parameters(module, current):
     server-side value; ``password_policy`` and ``default_credential_policy``
     are merged key by key so a partial value does not reset the other keys
     (the server echoes every protocol back, including the unset ones as
-    ``null``, so a plain overlay would never be idempotent).
+    ``null``, so a plain overlay would never be idempotent). ``logo`` is only
+    set when its sha256 differs from the server's ``logo_etag`` so an unchanged
+    logo does not report a change.
     """
     desired = dict(current)
     for field in PARAMETER_FIELDS:
@@ -419,6 +443,9 @@ def build_desired_parameters(module, current):
             merged_policy = dict(current.get("default_credential_policy") or {})
             merged_policy.update(value)
             desired[field] = merged_policy
+        elif field == "logo":
+            if _logo_etag(value) != current.get("logo_etag"):
+                desired[field] = value
         else:
             desired[field] = value
     return desired
@@ -506,7 +533,7 @@ def main():
                 )
             ],
         ),
-        logo=dict(type="str", required=False, no_log=False),
+        logo=dict(type="str", required=False),
         web_clients_enabled=dict(
             type="bool",
             required=False,
@@ -583,10 +610,13 @@ def main():
 
         if desired != current:
             result["changed"] = True
-            result["diff"] = {"before": current, "after": desired}
+            result["diff"] = {
+                "before": _sanitize_params(current),
+                "after": _sanitize_params(desired),
+            }
             if not module.check_mode:
                 update_parameters(client, desired)
-        result["parameters"] = desired
+        result["parameters"] = _sanitize_params(desired)
 
         module.exit_json(**result)
 

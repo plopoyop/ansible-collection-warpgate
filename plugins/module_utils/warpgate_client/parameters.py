@@ -30,9 +30,9 @@ approval settings (``admin_approval_timeout_seconds``,
 ``admin_approval_grace_period_seconds``).
 
 Warpgate 0.30 adds the custom ``logo`` (a writable image data URL, ``null``
-clears it). ``GET`` only returns ``logo_etag`` (a change indicator), never the
-image itself, so a managed ``logo`` cannot be compared and the module always
-reports it as changed.
+clears it). ``GET`` returns only ``logo_etag`` (lowercase hex sha256 of the
+stored data URL), never the image itself, so callers compare
+``sha256(logo)`` with ``logo_etag`` to stay idempotent.
 """
 
 from typing import Any
