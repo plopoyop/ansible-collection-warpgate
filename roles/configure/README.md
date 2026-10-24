@@ -143,6 +143,7 @@ warpgate_roles: []
 Warpgate secret backends (Vault / OpenBao, v0.30+). Each item: name,
 backend_type (vault|openbao), address, auth (method Token/AppRole/Kubernetes),
 optional namespace, tls_skip_verify, allowed_paths, state.
+See the warpgate_secret_backend module documentation for the full example.
 
 **_Type:_** list<br />
 
@@ -150,12 +151,6 @@ optional namespace, tls_skip_verify, allowed_paths, state.
 
 ```YAML
 warpgate_secret_backends: []
-```
-
-#### Example usage
-
-```YAML
-
 ```
 
 ### warpgate_target_groups
