@@ -1,8 +1,12 @@
 # Changelog
 
-## [2.2.4](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.2.4) (2026-10-24)
+## [2.3.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.3.0) (2026-10-24)
 
-[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.2.3...2.2.4)
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.2.3...2.3.0)
+
+## 🚀 New Features
+
+- feat\(parameters\): support the Warpgate 0.30 custom logo [\#157](https://github.com/plopoyop/ansible-collection-warpgate/pull/157) ([plopoyop](https://github.com/plopoyop))
 
 ## ⚙️ Dependencies
 
