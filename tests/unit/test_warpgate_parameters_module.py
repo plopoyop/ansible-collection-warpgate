@@ -42,6 +42,8 @@ CURRENT = {
     "lp_user_max_attempts": 10,
     "lp_user_exempt_admins": True,
     "banner": "",
+    # Warpgate >= 0.30: GET returns only the logo etag, never the image itself.
+    "logo_etag": None,
     "web_clients_enabled": True,
     "web_auth_max_age_seconds": None,
     "web_approval_grace_period_seconds": None,
@@ -98,6 +100,7 @@ def _base_params(**overrides):
         lp_user_lockout_duration_seconds=None,
         lp_user_exempt_admins=None,
         banner=None,
+        logo=None,
         web_clients_enabled=None,
         web_auth_max_age_seconds=None,
         web_approval_grace_period_seconds=None,
@@ -377,6 +380,19 @@ class TestParametersModule:
             result, mod = _run_module(params)
         sent = mock_update.call_args[0][1]
         assert sent["banner"] == "Authorized access only."
+        assert result["changed"] is True
+
+    def test_logo_set(self):
+        # GET never returns the logo (only logo_etag), so setting it always
+        # reports changed and sends it on PUT.
+        params = _base_params(logo="data:image/png;base64,AAAA")
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        sent = mock_update.call_args[0][1]
+        assert sent["logo"] == "data:image/png;base64,AAAA"
         assert result["changed"] is True
 
     def test_ssh_host_key_verification_change(self):

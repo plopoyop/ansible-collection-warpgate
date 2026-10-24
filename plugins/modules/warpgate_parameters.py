@@ -232,6 +232,14 @@ options:
             - Renamed from O(ssh_banner) in Warpgate 0.27.
         type: str
         aliases: ["ssh_banner"]
+    logo:
+        description:
+            - Custom logo shown on the login page, as an image data URL
+              (e.g. V(data:image/png;base64,...)), Warpgate >= 0.30.
+            - The server never returns the image (only an etag), so a managed
+              logo cannot be compared and the task always reports C(changed).
+              Setting an empty string is rejected; use the admin UI to clear it.
+        type: str
     web_clients_enabled:
         description:
             - Enable the in-browser clients (WebSSH terminal and web target
@@ -498,6 +506,7 @@ def main():
                 )
             ],
         ),
+        logo=dict(type="str", required=False, no_log=False),
         web_clients_enabled=dict(
             type="bool",
             required=False,
