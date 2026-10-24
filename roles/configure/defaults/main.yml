@@ -146,3 +146,20 @@ warpgate_target_groups: []
 #       port: 22
 #       username: "test"
 warpgate_targets: []
+
+# @var warpgate_secret_backends:type: list
+# @var warpgate_secret_backends:description: >
+# Warpgate secret backends (Vault / OpenBao, v0.30+). Each item: name,
+# backend_type (vault|openbao), address, auth (method Token/AppRole/Kubernetes),
+# optional namespace, tls_skip_verify, allowed_paths, state.
+# @var warpgate_secret_backends: example:
+# warpgate_secret_backends:
+#   - name: "vault-prod"
+#     backend_type: "vault"
+#     address: "https://vault.example.com:8200"
+#     auth:
+#       method: "Token"
+#       token: "{{ vault_token }}"
+#     allowed_paths:
+#       - "secret/data/warpgate"
+warpgate_secret_backends: []

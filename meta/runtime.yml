@@ -12,6 +12,7 @@ action_groups:
     - warpgate_public_key_credential
     - warpgate_role
     - warpgate_role_info
+    - warpgate_secret_backend
     - warpgate_target
     - warpgate_target_info
     - warpgate_ticket

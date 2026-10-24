@@ -147,3 +147,23 @@
   loop: "{{ warpgate_targets }}"
   loop_control:
     loop_var: "warpgate_current_target"
+
+- name: Handle Warpgate secret backends
+  warpgate_secret_backend:
+    host: "{{ warpgate_api_host }}"
+    token: "{{ warpgate_api_token if (warpgate_api_token is defined and warpgate_api_token | length > 0) else omit }}"
+    api_username: "{{ warpgate_admin_username | default(omit) }}"
+    api_password: "{{ warpgate_admin_password | default(omit) }}"
+    insecure: "{{ warpgate_api_insecure }}"
+    name: "{{ warpgate_current_secret_backend.name }}"
+    backend_type: "{{ warpgate_current_secret_backend.backend_type | default(omit) }}"
+    address: "{{ warpgate_current_secret_backend.address | default(omit) }}"
+    namespace: "{{ warpgate_current_secret_backend.namespace | default(omit) }}"
+    auth: "{{ warpgate_current_secret_backend.auth | default(omit) }}"
+    tls_skip_verify: "{{ warpgate_current_secret_backend.tls_skip_verify | default(omit) }}"
+    allowed_paths: "{{ warpgate_current_secret_backend.allowed_paths | default(omit) }}"
+    state: "{{ warpgate_current_secret_backend.state | default('present') }}"
+  loop: "{{ warpgate_secret_backends }}"
+  loop_control:
+    loop_var: "warpgate_current_secret_backend"
+  no_log: true
