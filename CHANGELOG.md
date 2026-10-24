@@ -6,6 +6,7 @@
 
 ## 🚀 New Features
 
+- feat\(secret\_backend\): add warpgate\_secret\_backend module \(Warpgate 0.30\) [\#158](https://github.com/plopoyop/ansible-collection-warpgate/pull/158) ([plopoyop](https://github.com/plopoyop))
 - feat\(parameters\): support the Warpgate 0.30 custom logo [\#157](https://github.com/plopoyop/ansible-collection-warpgate/pull/157) ([plopoyop](https://github.com/plopoyop))
 
 ## ⚙️ Dependencies
