@@ -41,6 +41,7 @@ for _sub in (
     "parameters",
     "target",
     "target_group",
+    "secret_backend",
     "ticket",
     "helpers",
 ):

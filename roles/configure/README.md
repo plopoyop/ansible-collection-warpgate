@@ -14,6 +14,7 @@ Configure warpgate via API (roles, users, targets, groups)
   - [warpgate_api_token](#warpgate_api_token)
   - [warpgate_parameters](#warpgate_parameters)
   - [warpgate_roles](#warpgate_roles)
+  - [warpgate_secret_backends](#warpgate_secret_backends)
   - [warpgate_target_groups](#warpgate_target_groups)
   - [warpgate_targets](#warpgate_targets)
   - [warpgate_users](#warpgate_users)
@@ -135,6 +136,21 @@ warpgate_roles: []
 
 ```YAML
 
+```
+
+### warpgate_secret_backends
+
+Warpgate secret backends (Vault / OpenBao, v0.30+). Each item: name,
+backend_type (vault|openbao), address, auth (method Token/AppRole/Kubernetes),
+optional namespace, tls_skip_verify, allowed_paths, state.
+See the warpgate_secret_backend module documentation for the full example.
+
+**_Type:_** list<br />
+
+#### Default value
+
+```YAML
+warpgate_secret_backends: []
 ```
 
 ### warpgate_target_groups
