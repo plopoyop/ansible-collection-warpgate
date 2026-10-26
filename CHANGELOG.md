@@ -8,6 +8,10 @@
 
 - fix\(deps\): update warp-tech/warpgate \(v0.30.0 → v0.30.1\) [\#160](https://github.com/plopoyop/ansible-collection-warpgate/pull/160) ([plopoyop](https://github.com/plopoyop))
 
+**Merged pull requests:**
+
+- fix\(deps\): update python313packages.ruff \(0.17.1 → 0.17.2\) [\#159](https://github.com/plopoyop/ansible-collection-warpgate/pull/159) ([plopoyop](https://github.com/plopoyop))
+
 ## [2.3.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.3.0) (2026-10-25)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.2.3...2.3.0)
