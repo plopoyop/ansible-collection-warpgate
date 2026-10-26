@@ -155,3 +155,11 @@ warpgate_targets: []
 # optional namespace, tls_skip_verify, allowed_paths, state.
 # See the warpgate_secret_backend module documentation for the full example.
 warpgate_secret_backends: []
+
+# @var warpgate_ssh_client_keys:type: list
+# @var warpgate_ssh_client_keys:description: >
+# Warpgate outbound SSH client keys (v0.27+). Each item: label, and either
+# private_key (OpenSSH/PKCS#8 PEM, no passphrase) or reference
+# (secret://... , v0.30+); optional is_default and state. Keep private_key in a
+# vault. See the warpgate_ssh_client_key module documentation for examples.
+warpgate_ssh_client_keys: []

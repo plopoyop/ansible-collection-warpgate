@@ -142,6 +142,7 @@ All modules support `check_mode` and `diff` mode (`--diff`).
 | `plopoyop.warpgate.warpgate_public_key_credential` | Manage SSH public key credentials |
 | `plopoyop.warpgate.warpgate_ticket` | Manage temporary access tickets |
 | `plopoyop.warpgate.warpgate_secret_backend` | Manage secret backends (Vault / OpenBao, Warpgate >= 0.30) |
+| `plopoyop.warpgate.warpgate_ssh_client_key` | Manage outbound SSH client keys (Warpgate >= 0.27) |
 
 ### Info modules
 

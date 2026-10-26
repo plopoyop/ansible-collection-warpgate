@@ -42,6 +42,7 @@ for _sub in (
     "target",
     "target_group",
     "secret_backend",
+    "ssh_client_key",
     "ticket",
     "helpers",
 ):

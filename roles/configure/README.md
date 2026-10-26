@@ -15,6 +15,7 @@ Configure warpgate via API (roles, users, targets, groups)
   - [warpgate_parameters](#warpgate_parameters)
   - [warpgate_roles](#warpgate_roles)
   - [warpgate_secret_backends](#warpgate_secret_backends)
+  - [warpgate_ssh_client_keys](#warpgate_ssh_client_keys)
   - [warpgate_target_groups](#warpgate_target_groups)
   - [warpgate_targets](#warpgate_targets)
   - [warpgate_users](#warpgate_users)
@@ -152,6 +153,21 @@ See the warpgate_secret_backend module documentation for the full example.
 
 ```YAML
 warpgate_secret_backends: []
+```
+
+### warpgate_ssh_client_keys
+
+Warpgate outbound SSH client keys (v0.27+). Each item: label, and either
+private_key (OpenSSH/PKCS#8 PEM, no passphrase) or reference
+(secret://... , v0.30+); optional is_default and state. Keep private_key in a
+vault. See the warpgate_ssh_client_key module documentation for examples.
+
+**_Type:_** list<br />
+
+#### Default value
+
+```YAML
+warpgate_ssh_client_keys: []
 ```
 
 ### warpgate_target_groups

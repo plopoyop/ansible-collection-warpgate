@@ -21,6 +21,23 @@
     loop_var: "warpgate_current_secret_backend"
   no_log: true
 
+- name: Handle Warpgate SSH client keys
+  plopoyop.warpgate.warpgate_ssh_client_key:
+    host: "{{ warpgate_api_host }}"
+    token: "{{ warpgate_api_token if (warpgate_api_token is defined and warpgate_api_token | length > 0) else omit }}"
+    api_username: "{{ warpgate_admin_username | default(omit) }}"
+    api_password: "{{ warpgate_admin_password | default(omit) }}"
+    insecure: "{{ warpgate_api_insecure }}"
+    label: "{{ warpgate_current_ssh_client_key.label }}"
+    private_key: "{{ warpgate_current_ssh_client_key.private_key | default(omit) }}"
+    reference: "{{ warpgate_current_ssh_client_key.reference | default(omit) }}"
+    is_default: "{{ warpgate_current_ssh_client_key.is_default | default(omit) }}"
+    state: "{{ warpgate_current_ssh_client_key.state | default('present') }}"
+  loop: "{{ warpgate_ssh_client_keys }}"
+  loop_control:
+    loop_var: "warpgate_current_ssh_client_key"
+  no_log: true
+
 - name: Handle Warpgate global parameters
   warpgate_parameters:
     host: "{{ warpgate_api_host }}"
