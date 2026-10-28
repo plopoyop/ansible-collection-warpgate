@@ -7,6 +7,7 @@
 ## ⚙️ Dependencies
 
 - fix\(deps\): update warp-tech/warpgate \(v0.30.1 → v0.30.2\) [\#162](https://github.com/plopoyop/ansible-collection-warpgate/pull/162) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.17.2 → v0.17.3\) [\#161](https://github.com/plopoyop/ansible-collection-warpgate/pull/161) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update warp-tech/warpgate \(v0.30.0 → v0.30.1\) [\#160](https://github.com/plopoyop/ansible-collection-warpgate/pull/160) ([plopoyop](https://github.com/plopoyop))
 
 **Merged pull requests:**
