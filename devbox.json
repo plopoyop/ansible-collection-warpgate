@@ -5,7 +5,7 @@
     "ansible-lint@25.8.2",
     "git@2.56.0",
     "go-task@3.53.1",
-    "podman@5.8.9",
+    "podman@6.1.4",
     "prek@0.5.5",
     "python313Packages.ansible@14.4.0",
     "python313Packages.molecule@26.8.0",
@@ -16,7 +16,8 @@
     "yamllint@1.37.1"
   ],
   "env": {
-      "DEVBOX_VIRTUAL_ENV": "${DEVBOX_PROJECT_ROOT}/.devbox/virtenv"
+      "DEVBOX_VIRTUAL_ENV": "${DEVBOX_PROJECT_ROOT}/.devbox/virtenv",
+      "CONTAINERS_STORAGE_CONF": "${DEVBOX_PROJECT_ROOT}/devbox.d/podman/storage.conf"
   },
   "shell": {
     "init_hook": [

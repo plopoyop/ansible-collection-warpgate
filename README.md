@@ -284,6 +284,8 @@ task test:role -- install    # molecule test for install role
 task test:role -- configure  # molecule test for configure role
 ```
 
+Podman storage is configured by `devbox.d/podman/storage.conf` (via `CONTAINERS_STORAGE_CONF`) so molecule runs rootless without any host configuration.
+
 ## License
 
 MPL-2.0
