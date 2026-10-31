@@ -16,7 +16,8 @@
     "yamllint@1.37.1"
   ],
   "env": {
-      "DEVBOX_VIRTUAL_ENV": "${DEVBOX_PROJECT_ROOT}/.devbox/virtenv"
+      "DEVBOX_VIRTUAL_ENV": "${DEVBOX_PROJECT_ROOT}/.devbox/virtenv",
+      "CONTAINERS_STORAGE_CONF": "${DEVBOX_PROJECT_ROOT}/devbox.d/podman/storage.conf"
   },
   "shell": {
     "init_hook": [
