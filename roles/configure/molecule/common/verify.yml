@@ -246,6 +246,48 @@
       loop_control:
         label: "{{ item.name }}"
 
+    # ---- Verify SSH client keys ----
+    - name: "Get all outbound SSH client keys from API"
+      ansible.builtin.uri:
+        url: "{{ warpgate_api_host }}ssh/own-keys"
+        method: GET
+        validate_certs: "{{ not warpgate_api_insecure }}"
+        headers: "{{ _verify_auth_headers }}"
+        status_code: [200]
+        timeout: 10
+      register: _verify_ssh_client_keys
+
+    - name: "Assert expected SSH client keys exist with the declared default flag"
+      ansible.builtin.assert:
+        that:
+          - item.label in (_verify_ssh_client_keys.json | map(attribute='label'))
+          - >-
+            (_verify_ssh_client_keys.json | selectattr('label', 'equalto', item.label) | first).is_default
+            == (item.is_default | default(false))
+        fail_msg: "SSH client key '{{ item.label }}' not found or is_default mismatch"
+        success_msg: "SSH client key '{{ item.label }}' exists (is_default={{ item.is_default | default(false) }})"
+      loop: "{{ warpgate_ssh_client_keys }}"
+      loop_control:
+        label: "{{ item.label }}"
+
+    - name: "Re-apply the SSH client keys to assert idempotence"
+      plopoyop.warpgate.warpgate_ssh_client_key:
+        label: "{{ item.label }}"
+        private_key: "{{ item.private_key }}"
+        is_default: "{{ item.is_default | default(omit) }}"
+      loop: "{{ warpgate_ssh_client_keys }}"
+      loop_control:
+        label: "{{ item.label }}"
+      register: _verify_ssh_client_keys_idem
+      no_log: true
+
+    - name: "Assert re-applying the SSH client keys reports no change"
+      ansible.builtin.assert:
+        that:
+          - _verify_ssh_client_keys_idem is not changed
+        fail_msg: "warpgate_ssh_client_key is not idempotent"
+        success_msg: "warpgate_ssh_client_key is idempotent"
+
     # ---- Verify User Role Assignments ----
     - name: "Build user ID map"
       ansible.builtin.set_fact:

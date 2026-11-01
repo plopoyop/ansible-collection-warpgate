@@ -4,6 +4,16 @@ warpgate_api_insecure: true
 warpgate_admin_username: "admin"
 warpgate_admin_password: "molecule-admin-secret"
 
+# Ephemeral outbound SSH client key, generated on the controller by prepare.yml
+# (never committed). The inline private_key import path is exercised here; the
+# secret:// reference path needs an external secret backend and is not covered.
+molecule_ssh_client_key_path: "{{ lookup('ansible.builtin.env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/molecule_client_ed25519"
+
+warpgate_ssh_client_keys:
+  - label: "molecule-client-key"
+    private_key: "{{ lookup('ansible.builtin.file', molecule_ssh_client_key_path) }}"
+    is_default: true
+
 # Exercise the global parameters module, including the fields added in
 # Warpgate 0.26 (login-protection), 0.27 (banner / web clients), 0.28
 # (open_targets_in_new_tab) and 0.29 (MFA / default credential policy /

@@ -7,3 +7,10 @@
     - name: "Import install role"
       ansible.builtin.import_role:
         name: "plopoyop.warpgate.install"
+
+    - name: "Generate an ephemeral outbound SSH client key for the molecule run"
+      community.crypto.openssh_keypair:
+        path: "{{ molecule_ssh_client_key_path }}"
+        type: "ed25519"
+        comment: "molecule-warpgate-client"
+      delegate_to: "localhost"
