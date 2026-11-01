@@ -7,6 +7,7 @@
 ## 🚀 New Features
 
 - Feat: warpgate ssh client key [\#165](https://github.com/plopoyop/ansible-collection-warpgate/pull/165) ([plopoyop](https://github.com/plopoyop))
+- feat\(install\): update config template to the Warpgate 0.30 schema [\#166](https://github.com/plopoyop/ansible-collection-warpgate/pull/166) ([plopoyop](https://github.com/plopoyop))
 
 ## ⚙️ Dependencies
 
