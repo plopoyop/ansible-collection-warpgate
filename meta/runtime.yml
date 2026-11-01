@@ -13,6 +13,7 @@ action_groups:
     - warpgate_role
     - warpgate_role_info
     - warpgate_secret_backend
+    - warpgate_ssh_client_key
     - warpgate_target
     - warpgate_target_info
     - warpgate_ticket
