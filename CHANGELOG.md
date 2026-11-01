@@ -1,8 +1,12 @@
 # Changelog
 
-## [2.3.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.3.1) (2026-10-31)
+## [2.4.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.4.0) (2026-11-01)
 
-[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.3.0...2.3.1)
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.3.0...2.4.0)
+
+## 🚀 New Features
+
+- Feat: warpgate ssh client key [\#165](https://github.com/plopoyop/ansible-collection-warpgate/pull/165) ([plopoyop](https://github.com/plopoyop))
 
 ## ⚙️ Dependencies
 
@@ -10,6 +14,10 @@
 - fix\(deps\): update warp-tech/warpgate \(v0.30.1 → v0.30.2\) [\#162](https://github.com/plopoyop/ansible-collection-warpgate/pull/162) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.17.2 → v0.17.3\) [\#161](https://github.com/plopoyop/ansible-collection-warpgate/pull/161) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update warp-tech/warpgate \(v0.30.0 → v0.30.1\) [\#160](https://github.com/plopoyop/ansible-collection-warpgate/pull/160) ([plopoyop](https://github.com/plopoyop))
+
+**Closed issues:**
+
+- \[feature\] Import outbound SSH client keys [\#147](https://github.com/plopoyop/ansible-collection-warpgate/issues/147)
 
 **Merged pull requests:**
 
