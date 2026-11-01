@@ -52,6 +52,8 @@ Key variables:
 | `warpgate_mysql_enabled` | `false` | Enable MySQL proxy |
 | `warpgate_postgres_enabled` | `false` | Enable PostgreSQL proxy |
 | `warpgate_kubernetes_enabled` | `false` | Enable Kubernetes proxy |
+| `warpgate_vnc_enabled` | `false` | Enable VNC proxy |
+| `warpgate_rdp_enabled` | `false` | Enable RDP proxy |
 | `warpgate_database_url` | `sqlite:/var/lib/warpgate/warpgate.db` | Database URL |
 | `warpgate_external_host` | `localhost` | External hostname for TLS |
 | `warpgate_record_sessions` | `true` | Record session recordings |

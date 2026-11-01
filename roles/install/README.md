@@ -17,6 +17,7 @@ Install warpgate
   - [warpgate_http_external_port](#warpgate_http_external_port)
   - [warpgate_http_key](#warpgate_http_key)
   - [warpgate_http_port](#warpgate_http_port)
+  - [warpgate_http_proxy_protocol](#warpgate_http_proxy_protocol)
   - [warpgate_http_session_max_age](#warpgate_http_session_max_age)
   - [warpgate_http_sni_certificates](#warpgate_http_sni_certificates)
   - [warpgate_http_trust_x_forwarded_headers](#warpgate_http_trust_x_forwarded_headers)
@@ -26,23 +27,34 @@ Install warpgate
   - [warpgate_kubernetes_external_port](#warpgate_kubernetes_external_port)
   - [warpgate_kubernetes_key](#warpgate_kubernetes_key)
   - [warpgate_kubernetes_port](#warpgate_kubernetes_port)
+  - [warpgate_kubernetes_proxy_protocol](#warpgate_kubernetes_proxy_protocol)
   - [warpgate_kubernetes_session_max_age](#warpgate_kubernetes_session_max_age)
   - [warpgate_log_audit_retention](#warpgate_log_audit_retention)
   - [warpgate_log_format](#warpgate_log_format)
   - [warpgate_log_retention](#warpgate_log_retention)
   - [warpgate_log_send_to](#warpgate_log_send_to)
+  - [warpgate_mysql_advertised_version](#warpgate_mysql_advertised_version)
   - [warpgate_mysql_certificate](#warpgate_mysql_certificate)
   - [warpgate_mysql_enabled](#warpgate_mysql_enabled)
   - [warpgate_mysql_external_host](#warpgate_mysql_external_host)
   - [warpgate_mysql_external_port](#warpgate_mysql_external_port)
   - [warpgate_mysql_key](#warpgate_mysql_key)
   - [warpgate_mysql_port](#warpgate_mysql_port)
+  - [warpgate_mysql_proxy_protocol](#warpgate_mysql_proxy_protocol)
   - [warpgate_postgres_certificate](#warpgate_postgres_certificate)
   - [warpgate_postgres_enabled](#warpgate_postgres_enabled)
   - [warpgate_postgres_external_host](#warpgate_postgres_external_host)
   - [warpgate_postgres_external_port](#warpgate_postgres_external_port)
   - [warpgate_postgres_key](#warpgate_postgres_key)
   - [warpgate_postgres_port](#warpgate_postgres_port)
+  - [warpgate_postgres_proxy_protocol](#warpgate_postgres_proxy_protocol)
+  - [warpgate_rdp_certificate](#warpgate_rdp_certificate)
+  - [warpgate_rdp_enabled](#warpgate_rdp_enabled)
+  - [warpgate_rdp_external_host](#warpgate_rdp_external_host)
+  - [warpgate_rdp_external_port](#warpgate_rdp_external_port)
+  - [warpgate_rdp_key](#warpgate_rdp_key)
+  - [warpgate_rdp_port](#warpgate_rdp_port)
+  - [warpgate_rdp_proxy_protocol](#warpgate_rdp_proxy_protocol)
   - [warpgate_record_sessions](#warpgate_record_sessions)
   - [warpgate_recordings_path](#warpgate_recordings_path)
   - [warpgate_service_enabled](#warpgate_service_enabled)
@@ -55,12 +67,22 @@ Install warpgate
   - [warpgate_ssh_keepalive_interval](#warpgate_ssh_keepalive_interval)
   - [warpgate_ssh_keys_path](#warpgate_ssh_keys_path)
   - [warpgate_ssh_port](#warpgate_ssh_port)
+  - [warpgate_ssh_proxy_protocol](#warpgate_ssh_proxy_protocol)
+  - [warpgate_ssh_target_handshake_timeout](#warpgate_ssh_target_handshake_timeout)
   - [warpgate_sso_providers](#warpgate_sso_providers)
   - [warpgate_system_group](#warpgate_system_group)
   - [warpgate_system_user](#warpgate_system_user)
   - [warpgate_tls_certificate_path](#warpgate_tls_certificate_path)
   - [warpgate_tls_key_path](#warpgate_tls_key_path)
   - [warpgate_version](#warpgate_version)
+  - [warpgate_vnc_certificate](#warpgate_vnc_certificate)
+  - [warpgate_vnc_enable_ard_auth](#warpgate_vnc_enable_ard_auth)
+  - [warpgate_vnc_enabled](#warpgate_vnc_enabled)
+  - [warpgate_vnc_external_host](#warpgate_vnc_external_host)
+  - [warpgate_vnc_external_port](#warpgate_vnc_external_port)
+  - [warpgate_vnc_key](#warpgate_vnc_key)
+  - [warpgate_vnc_port](#warpgate_vnc_port)
+  - [warpgate_vnc_proxy_protocol](#warpgate_vnc_proxy_protocol)
 - [Dependencies](#dependencies)
 - [License](#license)
 - [Author](#author)
@@ -199,6 +221,18 @@ Warpgate HTTP port
 warpgate_http_port: 8888
 ```
 
+### warpgate_http_proxy_protocol
+
+Accept HAProxy PROXY protocol v1/v2 headers on the HTTP listener
+
+**_Type:_** boolean<br />
+
+#### Default value
+
+```YAML
+warpgate_http_proxy_protocol: false
+```
+
 ### warpgate_http_session_max_age
 
 Maximum lifetime of an HTTP session
@@ -307,6 +341,18 @@ Warpgate Kubernetes port
 warpgate_kubernetes_port: 8443
 ```
 
+### warpgate_kubernetes_proxy_protocol
+
+Accept HAProxy PROXY protocol v1/v2 headers on the Kubernetes listener
+
+**_Type:_** boolean<br />
+
+#### Default value
+
+```YAML
+warpgate_kubernetes_proxy_protocol: false
+```
+
 ### warpgate_kubernetes_session_max_age
 
 Maximum lifetime of a Kubernetes session
@@ -365,6 +411,18 @@ Remote log endpoint (null = log locally only)
 
 ```YAML
 warpgate_log_send_to:
+```
+
+### warpgate_mysql_advertised_version
+
+MySQL server version advertised to clients during the handshake
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_mysql_advertised_version: 8.0.3-Warpgate
 ```
 
 ### warpgate_mysql_certificate
@@ -439,6 +497,18 @@ Warpgate MySQL port
 warpgate_mysql_port: 33306
 ```
 
+### warpgate_mysql_proxy_protocol
+
+Accept HAProxy PROXY protocol v1/v2 headers on the MySQL listener
+
+**_Type:_** boolean<br />
+
+#### Default value
+
+```YAML
+warpgate_mysql_proxy_protocol: false
+```
+
 ### warpgate_postgres_certificate
 
 TLS certificate path for the PostgreSQL listener
@@ -509,6 +579,102 @@ Warpgate PostgreSQL port
 
 ```YAML
 warpgate_postgres_port: 55432
+```
+
+### warpgate_postgres_proxy_protocol
+
+Accept HAProxy PROXY protocol v1/v2 headers on the PostgreSQL listener
+
+**_Type:_** boolean<br />
+
+#### Default value
+
+```YAML
+warpgate_postgres_proxy_protocol: false
+```
+
+### warpgate_rdp_certificate
+
+TLS certificate path for the RDP listener
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_rdp_certificate: '{{ warpgate_data_path }}/tls.certificate.pem'
+```
+
+### warpgate_rdp_enabled
+
+Warpgate RDP enabled
+
+**_Type:_** boolean<br />
+
+#### Default value
+
+```YAML
+warpgate_rdp_enabled: false
+```
+
+### warpgate_rdp_external_host
+
+Public hostname advertised for the RDP listener (null = auto)
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_rdp_external_host:
+```
+
+### warpgate_rdp_external_port
+
+Public port advertised for the RDP listener (null = auto)
+
+**_Type:_** int<br />
+
+#### Default value
+
+```YAML
+warpgate_rdp_external_port:
+```
+
+### warpgate_rdp_key
+
+TLS key path for the RDP listener
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_rdp_key: '{{ warpgate_data_path }}/tls.key.pem'
+```
+
+### warpgate_rdp_port
+
+Warpgate RDP port
+
+**_Type:_** int<br />
+
+#### Default value
+
+```YAML
+warpgate_rdp_port: 3389
+```
+
+### warpgate_rdp_proxy_protocol
+
+Accept HAProxy PROXY protocol v1/v2 headers on the RDP listener
+
+**_Type:_** boolean<br />
+
+#### Default value
+
+```YAML
+warpgate_rdp_proxy_protocol: false
 ```
 
 ### warpgate_record_sessions
@@ -655,6 +821,30 @@ Warpgate SSH port
 warpgate_ssh_port: 2222
 ```
 
+### warpgate_ssh_proxy_protocol
+
+Accept HAProxy PROXY protocol v1/v2 headers on the SSH listener
+
+**_Type:_** boolean<br />
+
+#### Default value
+
+```YAML
+warpgate_ssh_proxy_protocol: false
+```
+
+### warpgate_ssh_target_handshake_timeout
+
+Deadline for a target to accept the connection and complete key exchange (0s waits forever)
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_ssh_target_handshake_timeout: 30s
+```
+
 ### warpgate_sso_providers
 
 Warpgate SSO providers
@@ -725,6 +915,102 @@ warpgate version to install
 
 ```YAML
 warpgate_version: 0.30.2
+```
+
+### warpgate_vnc_certificate
+
+TLS certificate path for the VNC listener
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_vnc_certificate: '{{ warpgate_data_path }}/tls.certificate.pem'
+```
+
+### warpgate_vnc_enable_ard_auth
+
+Enable Apple-DH (ARD / type 30) auth; it does not support TLS unlike VeNCrypt
+
+**_Type:_** boolean<br />
+
+#### Default value
+
+```YAML
+warpgate_vnc_enable_ard_auth: false
+```
+
+### warpgate_vnc_enabled
+
+Warpgate VNC enabled
+
+**_Type:_** boolean<br />
+
+#### Default value
+
+```YAML
+warpgate_vnc_enabled: false
+```
+
+### warpgate_vnc_external_host
+
+Public hostname advertised for the VNC listener (null = auto)
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_vnc_external_host:
+```
+
+### warpgate_vnc_external_port
+
+Public port advertised for the VNC listener (null = auto)
+
+**_Type:_** int<br />
+
+#### Default value
+
+```YAML
+warpgate_vnc_external_port:
+```
+
+### warpgate_vnc_key
+
+TLS key path for the VNC listener
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_vnc_key: '{{ warpgate_data_path }}/tls.key.pem'
+```
+
+### warpgate_vnc_port
+
+Warpgate VNC port
+
+**_Type:_** int<br />
+
+#### Default value
+
+```YAML
+warpgate_vnc_port: 5900
+```
+
+### warpgate_vnc_proxy_protocol
+
+Accept HAProxy PROXY protocol v1/v2 headers on the VNC listener
+
+**_Type:_** boolean<br />
+
+#### Default value
+
+```YAML
+warpgate_vnc_proxy_protocol: false
 ```
 
 ## Dependencies
