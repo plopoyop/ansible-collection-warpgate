@@ -184,6 +184,18 @@ warpgate_ssh_inactivity_timeout: "5m"
 # Keepalive interval for SSH sessions (null disables keepalive)
 warpgate_ssh_keepalive_interval: null
 
+# @var warpgate_ssh_proxy_protocol
+# @var warpgate_ssh_proxy_protocol:type: boolean
+# @var warpgate_ssh_proxy_protocol:description: >
+# Accept HAProxy PROXY protocol v1/v2 headers on the SSH listener
+warpgate_ssh_proxy_protocol: false
+
+# @var warpgate_ssh_target_handshake_timeout
+# @var warpgate_ssh_target_handshake_timeout:type: string
+# @var warpgate_ssh_target_handshake_timeout:description: >
+# Deadline for a target to accept the connection and complete key exchange (0s waits forever)
+warpgate_ssh_target_handshake_timeout: "30s"
+
 # -----------------------------------------------------------------------------
 # HTTP listener
 # -----------------------------------------------------------------------------
@@ -236,6 +248,12 @@ warpgate_http_cookie_max_age: "1day"
 # Additional SNI certificates for the HTTP listener
 warpgate_http_sni_certificates: []
 
+# @var warpgate_http_proxy_protocol
+# @var warpgate_http_proxy_protocol:type: boolean
+# @var warpgate_http_proxy_protocol:description: >
+# Accept HAProxy PROXY protocol v1/v2 headers on the HTTP listener
+warpgate_http_proxy_protocol: false
+
 # -----------------------------------------------------------------------------
 # Kubernetes listener
 # -----------------------------------------------------------------------------
@@ -270,6 +288,12 @@ warpgate_kubernetes_key: "{{ warpgate_tls_key_path }}"
 # Maximum lifetime of a Kubernetes session
 warpgate_kubernetes_session_max_age: "30m"
 
+# @var warpgate_kubernetes_proxy_protocol
+# @var warpgate_kubernetes_proxy_protocol:type: boolean
+# @var warpgate_kubernetes_proxy_protocol:description: >
+# Accept HAProxy PROXY protocol v1/v2 headers on the Kubernetes listener
+warpgate_kubernetes_proxy_protocol: false
+
 # -----------------------------------------------------------------------------
 # MySQL listener
 # -----------------------------------------------------------------------------
@@ -298,6 +322,18 @@ warpgate_mysql_certificate: "{{ warpgate_tls_certificate_path }}"
 # TLS key path for the MySQL listener
 warpgate_mysql_key: "{{ warpgate_tls_key_path }}"
 
+# @var warpgate_mysql_proxy_protocol
+# @var warpgate_mysql_proxy_protocol:type: boolean
+# @var warpgate_mysql_proxy_protocol:description: >
+# Accept HAProxy PROXY protocol v1/v2 headers on the MySQL listener
+warpgate_mysql_proxy_protocol: false
+
+# @var warpgate_mysql_advertised_version
+# @var warpgate_mysql_advertised_version:type: string
+# @var warpgate_mysql_advertised_version:description: >
+# MySQL server version advertised to clients during the handshake
+warpgate_mysql_advertised_version: "8.0.3-Warpgate"
+
 # -----------------------------------------------------------------------------
 # PostgreSQL listener
 # -----------------------------------------------------------------------------
@@ -325,6 +361,110 @@ warpgate_postgres_certificate: "{{ warpgate_tls_certificate_path }}"
 # @var warpgate_postgres_key:description: >
 # TLS key path for the PostgreSQL listener
 warpgate_postgres_key: "{{ warpgate_tls_key_path }}"
+
+# @var warpgate_postgres_proxy_protocol
+# @var warpgate_postgres_proxy_protocol:type: boolean
+# @var warpgate_postgres_proxy_protocol:description: >
+# Accept HAProxy PROXY protocol v1/v2 headers on the PostgreSQL listener
+warpgate_postgres_proxy_protocol: false
+
+# -----------------------------------------------------------------------------
+# VNC listener
+# -----------------------------------------------------------------------------
+
+# @var warpgate_vnc_enabled
+# @var warpgate_vnc_enabled:type: boolean
+# @var warpgate_vnc_enabled:description: >
+# Warpgate VNC enabled
+warpgate_vnc_enabled: false
+
+# @var warpgate_vnc_port
+# @var warpgate_vnc_port:type: int
+# @var warpgate_vnc_port:description: >
+# Warpgate VNC port
+warpgate_vnc_port: 5900
+
+# @var warpgate_vnc_external_host
+# @var warpgate_vnc_external_host:type: string
+# @var warpgate_vnc_external_host:description: >
+# Public hostname advertised for the VNC listener (null = auto)
+warpgate_vnc_external_host: null
+
+# @var warpgate_vnc_external_port
+# @var warpgate_vnc_external_port:type: int
+# @var warpgate_vnc_external_port:description: >
+# Public port advertised for the VNC listener (null = auto)
+warpgate_vnc_external_port: null
+
+# @var warpgate_vnc_certificate
+# @var warpgate_vnc_certificate:type: string
+# @var warpgate_vnc_certificate:description: >
+# TLS certificate path for the VNC listener
+warpgate_vnc_certificate: "{{ warpgate_tls_certificate_path }}"
+
+# @var warpgate_vnc_key
+# @var warpgate_vnc_key:type: string
+# @var warpgate_vnc_key:description: >
+# TLS key path for the VNC listener
+warpgate_vnc_key: "{{ warpgate_tls_key_path }}"
+
+# @var warpgate_vnc_proxy_protocol
+# @var warpgate_vnc_proxy_protocol:type: boolean
+# @var warpgate_vnc_proxy_protocol:description: >
+# Accept HAProxy PROXY protocol v1/v2 headers on the VNC listener
+warpgate_vnc_proxy_protocol: false
+
+# @var warpgate_vnc_enable_ard_auth
+# @var warpgate_vnc_enable_ard_auth:type: boolean
+# @var warpgate_vnc_enable_ard_auth:description: >
+# Enable Apple-DH (ARD / type 30) auth; it does not support TLS unlike VeNCrypt
+warpgate_vnc_enable_ard_auth: false
+
+# -----------------------------------------------------------------------------
+# RDP listener
+# -----------------------------------------------------------------------------
+
+# @var warpgate_rdp_enabled
+# @var warpgate_rdp_enabled:type: boolean
+# @var warpgate_rdp_enabled:description: >
+# Warpgate RDP enabled
+warpgate_rdp_enabled: false
+
+# @var warpgate_rdp_port
+# @var warpgate_rdp_port:type: int
+# @var warpgate_rdp_port:description: >
+# Warpgate RDP port
+warpgate_rdp_port: 3389
+
+# @var warpgate_rdp_external_host
+# @var warpgate_rdp_external_host:type: string
+# @var warpgate_rdp_external_host:description: >
+# Public hostname advertised for the RDP listener (null = auto)
+warpgate_rdp_external_host: null
+
+# @var warpgate_rdp_external_port
+# @var warpgate_rdp_external_port:type: int
+# @var warpgate_rdp_external_port:description: >
+# Public port advertised for the RDP listener (null = auto)
+warpgate_rdp_external_port: null
+
+# @var warpgate_rdp_certificate
+# @var warpgate_rdp_certificate:type: string
+# @var warpgate_rdp_certificate:description: >
+# TLS certificate path for the RDP listener
+warpgate_rdp_certificate: "{{ warpgate_tls_certificate_path }}"
+
+# @var warpgate_rdp_key
+# @var warpgate_rdp_key:type: string
+# @var warpgate_rdp_key:description: >
+# TLS key path for the RDP listener
+warpgate_rdp_key: "{{ warpgate_tls_key_path }}"
+
+# @var warpgate_rdp_proxy_protocol
+# @var warpgate_rdp_proxy_protocol:type: boolean
+# @var warpgate_rdp_proxy_protocol:description: >
+# Accept HAProxy PROXY protocol v1/v2 headers on the RDP listener
+warpgate_rdp_proxy_protocol: false
 
 # -----------------------------------------------------------------------------
 # Logging

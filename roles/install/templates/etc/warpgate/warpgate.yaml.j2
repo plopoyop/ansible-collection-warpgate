@@ -1,5 +1,5 @@
-# Config generated in version v0.23.1-modified
-# yaml-language-server: $schema=https://raw.githubusercontent.com/warp-tech/warpgate/refs/heads/main/config-schema.json
+# Config managed by the plopoyop.warpgate Ansible collection (Warpgate {{ warpgate_version }})
+# yaml-language-server: $schema=https://raw.githubusercontent.com/warp-tech/warpgate/v{{ warpgate_version }}/config-schema.json
 
 sso_providers: {{ warpgate_sso_providers }}
 recordings:
@@ -10,14 +10,17 @@ database_url: {{ warpgate_database_url }}
 ssh:
   enable: {{ warpgate_ssh_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_ssh_port }}'
+  proxy_protocol: {{ warpgate_ssh_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_ssh_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_ssh_external_host | ansible.builtin.to_json }}
   keys: {{ warpgate_ssh_keys_path }}
   host_key_verification: {{ warpgate_ssh_host_key_verification }}
   inactivity_timeout: {{ warpgate_ssh_inactivity_timeout }}
   keepalive_interval: {{ warpgate_ssh_keepalive_interval | ansible.builtin.to_json }}
+  target_handshake_timeout: {{ warpgate_ssh_target_handshake_timeout }}
 http:
   listen: '[::]:{{ warpgate_http_port }}'
+  proxy_protocol: {{ warpgate_http_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_http_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_http_external_host | ansible.builtin.to_json }}
   certificate: {{ warpgate_http_certificate }}
@@ -29,6 +32,7 @@ http:
 kubernetes:
   enable: {{ warpgate_kubernetes_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_kubernetes_port }}'
+  proxy_protocol: {{ warpgate_kubernetes_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_kubernetes_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_kubernetes_external_host | ansible.builtin.to_json }}
   certificate: {{ warpgate_kubernetes_certificate }}
@@ -37,17 +41,37 @@ kubernetes:
 mysql:
   enable: {{ warpgate_mysql_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_mysql_port }}'
+  proxy_protocol: {{ warpgate_mysql_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_mysql_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_mysql_external_host | ansible.builtin.to_json }}
   certificate: {{ warpgate_mysql_certificate }}
   key: {{ warpgate_mysql_key }}
+  advertised_version: {{ warpgate_mysql_advertised_version | ansible.builtin.to_json }}
 postgres:
   enable: {{ warpgate_postgres_enabled | string | ansible.builtin.lower }}
   listen: '[::]:{{ warpgate_postgres_port }}'
+  proxy_protocol: {{ warpgate_postgres_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_postgres_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_postgres_external_host | ansible.builtin.to_json }}
   certificate: {{ warpgate_postgres_certificate }}
   key: {{ warpgate_postgres_key }}
+vnc:
+  enable: {{ warpgate_vnc_enabled | string | ansible.builtin.lower }}
+  listen: '[::]:{{ warpgate_vnc_port }}'
+  proxy_protocol: {{ warpgate_vnc_proxy_protocol | string | ansible.builtin.lower }}
+  external_port: {{ warpgate_vnc_external_port | ansible.builtin.to_json }}
+  external_host: {{ warpgate_vnc_external_host | ansible.builtin.to_json }}
+  certificate: {{ warpgate_vnc_certificate }}
+  key: {{ warpgate_vnc_key }}
+  enable_ard_auth: {{ warpgate_vnc_enable_ard_auth | string | ansible.builtin.lower }}
+rdp:
+  enable: {{ warpgate_rdp_enabled | string | ansible.builtin.lower }}
+  listen: '[::]:{{ warpgate_rdp_port }}'
+  proxy_protocol: {{ warpgate_rdp_proxy_protocol | string | ansible.builtin.lower }}
+  external_port: {{ warpgate_rdp_external_port | ansible.builtin.to_json }}
+  external_host: {{ warpgate_rdp_external_host | ansible.builtin.to_json }}
+  certificate: {{ warpgate_rdp_certificate }}
+  key: {{ warpgate_rdp_key }}
 log:
   retention: {{ warpgate_log_retention }}
   audit_retention: {{ warpgate_log_audit_retention }}
