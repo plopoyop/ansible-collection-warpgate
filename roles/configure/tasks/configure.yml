@@ -150,6 +150,8 @@
   loop: "{{ warpgate_users }}"
   loop_control:
     loop_var: "warpgate_current_user"
+    label: "{{ warpgate_current_user.name }}"
+  no_log: true
 
 - name: Handle Warpgate target groups
   warpgate_group:
@@ -187,3 +189,5 @@
   loop: "{{ warpgate_targets }}"
   loop_control:
     loop_var: "warpgate_current_target"
+    label: "{{ warpgate_current_target.name }}"
+  no_log: true
