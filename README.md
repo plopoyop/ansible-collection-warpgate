@@ -228,10 +228,7 @@ collection is returned.
     expiry: "2026-12-31T23:59:59Z"
     number_of_uses: 1
   register: ticket
-
-- name: Show ticket secret
-  ansible.builtin.debug:
-    msg: "Ticket: {{ ticket.secret }}"
+  no_log: true  # the ticket secret is returned in clear text
 ```
 
 > The `*_options` of `warpgate_target` are validated against their documented
