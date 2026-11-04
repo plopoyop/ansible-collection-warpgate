@@ -187,6 +187,9 @@ collection is returned.
 > Keep the account used for the API calls (and any SSO-provisioned user) out of the
 > deletion loop, otherwise the next run will lock itself out.
 
+> `warpgate_target_info` masks target credentials (`password`, `token`, `private_key`),
+> HTTP header values and URL userinfo as `********`; `secret://` references are kept as is.
+
 > Ansible redacts the value of any `no_log` parameter from module output. If your
 > `api_password` or `token` happens to be the exact name of a user, role or target,
 > that name comes back as `VALUE_SPECIFIED_IN_NO_LOG_PARAMETER` and a prune loop

@@ -14,6 +14,36 @@ TLS_MODE_DISABLED = "Disabled"
 TLS_MODE_PREFERRED = "Preferred"
 TLS_MODE_REQUIRED = "Required"
 
+REDACTED = "********"
+_SECRET_KEYS = frozenset({"password", "token", "private_key"})
+
+
+def _redact_url_userinfo(url: str) -> str:
+    parts = urllib.parse.urlsplit(url)
+    if "@" not in parts.netloc:
+        return url
+    host = parts.netloc.rsplit("@", 1)[1]
+    return urllib.parse.urlunsplit(parts._replace(netloc=f"{REDACTED}@{host}"))
+
+
+def redact_options(value: Any) -> Any:
+    """Return a copy of target options with credentials and header values masked"""
+    if isinstance(value, dict):
+        redacted = {}
+        for key, item in value.items():
+            if key in _SECRET_KEYS and item and not str(item).startswith("secret://"):
+                redacted[key] = REDACTED
+            elif key == "headers" and isinstance(item, dict):
+                redacted[key] = {name: REDACTED for name in item}
+            elif key == "url" and isinstance(item, str):
+                redacted[key] = _redact_url_userinfo(item)
+            else:
+                redacted[key] = redact_options(item)
+        return redacted
+    if isinstance(value, list):
+        return [redact_options(item) for item in value]
+    return value
+
 
 class TLS:
     """Represents TLS configuration for a target"""
@@ -69,7 +99,7 @@ class Target:
             "description": self.description,
             "group_id": self.group_id,
             "allow_roles": list(self.allow_roles),
-            "options": dict(self.options),
+            "options": redact_options(self.options),
             "rate_limit_bytes_per_second": self.rate_limit_bytes_per_second,
         }
 

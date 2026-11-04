@@ -472,6 +472,7 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.
     delete_target,
     get_target,
     get_targets,
+    redact_options,
     update_target,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.target_group import (
@@ -1031,14 +1032,14 @@ def main():
                     "name": existing_target.name,
                     "description": existing_target.description or "",
                     "group_id": existing_target.group_id or "",
-                    "options": existing_target.options or {},
+                    "options": redact_options(existing_target.options or {}),
                     "rate_limit_bytes_per_second": existing_target.rate_limit_bytes_per_second,
                 }
                 diff_after = {
                     "name": name,
                     "description": description,
                     "group_id": group_id or "",
-                    "options": target_options or {},
+                    "options": redact_options(target_options or {}),
                     "rate_limit_bytes_per_second": rate_limit_bytes_per_second,
                 }
 
@@ -1206,7 +1207,7 @@ def main():
                         "description": description,
                         "group": group,
                         "rate_limit_bytes_per_second": rate_limit_bytes_per_second,
-                        "options": target_options or {},
+                        "options": redact_options(target_options or {}),
                         "roles": roles or [],
                     },
                 }

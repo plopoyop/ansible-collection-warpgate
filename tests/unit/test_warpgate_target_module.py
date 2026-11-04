@@ -566,6 +566,7 @@ class TestTargetModuleCreate:
         assert result["changed"] is True
         assert result["diff"]["before"] == {}
         assert result["diff"]["after"]["name"] == "prod-ssh"
+        assert result["diff"]["after"]["options"]["auth"]["password"] == "********"
 
     def test_create_check_mode(self):
         group = TargetGroup(id="g1", name="production")
@@ -615,6 +616,8 @@ class TestTargetModuleUpdate:
         assert result["changed"] is True
         assert result["diff"]["before"]["description"] == "Old"
         assert result["diff"]["after"]["description"] == "Prod server"
+        assert result["diff"]["before"]["options"]["auth"]["password"] == "********"
+        assert result["diff"]["after"]["options"]["auth"]["password"] == "********"
 
     def test_no_change_when_identical(self):
         opts = {
