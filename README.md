@@ -231,6 +231,13 @@ collection is returned.
     msg: "Ticket: {{ ticket.secret }}"
 ```
 
+> The `*_options` of `warpgate_target` are validated against their documented
+> suboptions: unknown keys are rejected, and an unused protocol must be left out
+> (or set to `omit`), not passed as `{}`; enable public key auth with
+> `public_key_auth: {}`. Credentials inside them are `no_log`, except
+> `http_options.headers` and credentials embedded in `http_options.url`, which are
+> masked in the diff only: set `no_log` on the task when they carry secrets.
+
 With ansible-core >= 2.12 it is possible to specify default parameters for all modules in this collection using [Module defaults groups](https://docs.ansible.com/ansible/latest/user_guide/playbooks_module_defaults.html#module-defaults-groups). Use it like this:
 
 ```yaml
