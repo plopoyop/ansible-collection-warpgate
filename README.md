@@ -240,6 +240,8 @@ collection is returned.
 > `public_key_auth: {}`. Credentials inside them are `no_log`, except
 > `http_options.headers` and credentials embedded in `http_options.url`, which are
 > masked in the diff only: set `no_log` on the task when they carry secrets.
+> `recordings_storage` of `warpgate_parameters` is validated the same way (`kind`,
+> and `credentials.mode` when set, are required).
 
 With ansible-core >= 2.12 it is possible to specify default parameters for all modules in this collection using [Module defaults groups](https://docs.ansible.com/ansible/latest/user_guide/playbooks_module_defaults.html#module-defaults-groups). Use it like this:
 
