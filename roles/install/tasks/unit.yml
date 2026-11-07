@@ -1,0 +1,84 @@
+---
+# Runs first: the service user of a previous release can make later tasks fail.
+- name: "Check files installed by previous releases"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  loop:
+    - "{{ warpgate_service_file_path }}"
+    - "{{ warpgate_executable_path }}"
+    - "{{ warpgate_config_file_path | ansible.builtin.dirname }}"
+  register: "warpgate_installed_files"
+
+- name: "Mark a host installed by a previous release as configured"
+  ansible.builtin.file:
+    path: "{{ warpgate_configured_marker_path }}"
+    state: "touch"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    modification_time: "preserve"
+    access_time: "preserve"
+  when: warpgate_installed_files.results | selectattr('stat.exists') | rejectattr('stat.uid', 'equalto', 0) | list | length > 0
+
+- name: "Replace a systemd unit not owned by root"
+  vars:
+    _unit: "{{ warpgate_installed_files.results[0].stat }}"
+  when: >-
+    not ansible_check_mode and _unit.exists
+    and (_unit.uid != 0 or _unit.nlink > 1 or not _unit.isreg)
+  block:
+    - name: "Create a temporary systemd unit"
+      ansible.builtin.tempfile:
+        path: "{{ warpgate_service_file_path | ansible.builtin.dirname }}"
+        suffix: ".tmp"
+      register: "warpgate_unit_tmp"
+
+    - name: "Render the new systemd unit"
+      ansible.builtin.template:
+        src: "etc/systemd/system/warpgate.service.j2"
+        dest: "{{ warpgate_unit_tmp.path }}"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+
+    - name: "Record a pending restart"
+      ansible.builtin.file:
+        path: "{{ warpgate_restart_marker_path }}"
+        state: "touch"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+        modification_time: "preserve"
+        access_time: "preserve"
+
+    - name: "Install the new systemd unit"
+      ansible.builtin.command:
+        argv: ["mv", "-fT", "{{ warpgate_unit_tmp.path }}", "{{ warpgate_service_file_path }}"]
+      changed_when: true
+      notify:
+        - "Reload Systemd"
+        - "Restart Warpgate"
+  always:
+    - name: "Remove the temporary systemd unit"
+      ansible.builtin.file:
+        path: "{{ warpgate_unit_tmp.path }}"
+        state: "absent"
+      when: warpgate_unit_tmp.path is defined
+
+- name: "Create systemd service file"
+  vars:
+    _unit: "{{ warpgate_installed_files.results[0].stat }}"
+  when: not (ansible_check_mode and _unit.exists and (_unit.uid != 0 or _unit.nlink > 1 or not _unit.isreg))
+  ansible.builtin.template:
+    src: "etc/systemd/system/warpgate.service.j2"
+    dest: "{{ warpgate_service_file_path }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify:
+    - "Reload Systemd"
+    - "Restart Warpgate"

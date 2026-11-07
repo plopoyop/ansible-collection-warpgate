@@ -1,40 +1,102 @@
 ---
-- name: "Create systemd service file"
-  ansible.builtin.template:
-    src: "etc/systemd/system/warpgate.service.j2"
-    dest: "{{ warpgate_service_file_path }}"
-    owner: "{{ warpgate_system_user }}"
-    group: "{{ warpgate_system_group }}"
-    mode: "0640"
-  notify:
-    - "Reload Systemd"
+- name: "Check the Warpgate binary"
+  ansible.builtin.stat:
+    path: "{{ warpgate_executable_path }}"
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  register: "warpgate_exec_attrs"
 
-- name: "Ensure systemd service is reloaded"
-  ansible.builtin.meta: flush_handlers
+# Never hash a file the service user may control.
+- name: "Compute the checksum of the Warpgate binary"
+  ansible.builtin.stat:
+    path: "{{ warpgate_executable_path }}"
+    follow: false
+    checksum_algorithm: "{{ (warpgate_expected_checksum | default('sha256:')).split(':', 1)[0] | lower }}"
+  register: "warpgate_exec"
+  when: >-
+    warpgate_exec_attrs.stat.exists and warpgate_exec_attrs.stat.isreg
+    and warpgate_exec_attrs.stat.uid == 0 and warpgate_exec_attrs.stat.gid == 0
+    and warpgate_exec_attrs.stat.mode == "0755" and warpgate_exec_attrs.stat.nlink == 1
 
-- name: "Download Warpgate"
-  ansible.builtin.get_url:
-    url: "{{ warpgate_download_url }}"
-    dest: "{{ warpgate_executable_path }}"
-    owner: "{{ warpgate_system_user }}"
-    group: "{{ warpgate_system_group }}"
-    mode: "0750"
-  ignore_errors: "{{ ansible_check_mode }}"
-  notify: "Restart Warpgate"
-  when: ( not warpgate_exec.stat.exists ) or ( warpgate_current_version != warpgate_version)
+# Replaced by a new inode: the service user may hold the old one open.
+- name: "Replace the Warpgate binary"
+  when: >-
+    not (warpgate_exec is not skipped and warpgate_exec.stat.exists
+         and warpgate_exec.stat.checksum
+             == ((warpgate_expected_checksum | default(':')).split(':', 1)[1] | ansible.builtin.regex_replace('\W+', '') | lower))
+  block:
+    - name: "Remove a leftover download"
+      ansible.builtin.file:
+        path: "{{ warpgate_executable_path }}.download"
+        state: "absent"
+
+    - name: "Download Warpgate"
+      ansible.builtin.get_url:
+        url: "{{ warpgate_download_url }}"
+        dest: "{{ warpgate_executable_path }}.download"
+        checksum: "{{ warpgate_expected_checksum }}"
+        owner: "root"
+        group: "root"
+        mode: "0755"
+      ignore_errors: "{{ ansible_check_mode }}"
+
+    - name: "Record a pending restart"
+      ansible.builtin.file:
+        path: "{{ warpgate_restart_marker_path }}"
+        state: "touch"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+        modification_time: "preserve"
+        access_time: "preserve"
+
+    - name: "Install the Warpgate binary"
+      ansible.builtin.command:
+        argv: ["mv", "-fT", "{{ warpgate_executable_path }}.download", "{{ warpgate_executable_path }}"]
+      changed_when: true
+      notify: "Restart Warpgate"
 
 - name: "Ensure data path exists"
   ansible.builtin.file:
-    path: "{{ warpgate_data_path }}"
+    path: "{{ warpgate_data_path_target }}"
     state: "directory"
+    follow: false
     owner: "{{ warpgate_system_user }}"
     group: "{{ warpgate_system_group }}"
     mode: "0750"
 
 - name: "Ensure config file directory exists"
   ansible.builtin.file:
-    path: "{{ warpgate_config_file_directory }}"
+    path: "{{ warpgate_config_file_path | ansible.builtin.dirname }}"
     state: "directory"
+    follow: false
+    owner: "root"
+    group: "{{ warpgate_system_group }}"
+    mode: "0750"
+
+- name: "Check directory for paths relative to the config file"
+  ansible.builtin.stat:
+    path: "{{ warpgate_config_file_path | ansible.builtin.dirname }}/data"
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  register: "warpgate_config_data_dir"
+
+- name: "Remove anything planted in place of that directory"
+  ansible.builtin.file:
+    path: "{{ warpgate_config_file_path | ansible.builtin.dirname }}/data"
+    state: "absent"
+  when: warpgate_config_data_dir.stat.exists and (warpgate_config_data_dir.stat.islnk or not warpgate_config_data_dir.stat.isdir)
+
+- name: "Ensure directory for paths relative to the config file exists"
+  when: not (ansible_check_mode and warpgate_config_data_dir.stat.exists and (warpgate_config_data_dir.stat.islnk or not warpgate_config_data_dir.stat.isdir))
+  ansible.builtin.file:
+    path: "{{ warpgate_config_file_path | ansible.builtin.dirname }}/data"
+    state: "directory"
+    follow: false
     owner: "{{ warpgate_system_user }}"
     group: "{{ warpgate_system_group }}"
     mode: "0750"

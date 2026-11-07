@@ -1,6 +1,7 @@
 ---
 # vars file for plopoyop.warpgate
 warpgate_download_url: "https://github.com/warp-tech/warpgate/releases/download/v{{ warpgate_version }}/warpgate-v{{ warpgate_version }}-x86_64-linux"
+warpgate_release_api_base_url: "https://api.github.com/repos/warp-tech/warpgate/releases/tags"
 warpgate_install_path: "/usr/bin"
 warpgate_executable_path: "{{ warpgate_install_path }}/warpgate"
 
@@ -8,3 +9,9 @@ warpgate_service_name: "warpgate"
 warpgate_service_file_path: "/etc/systemd/system/{{ warpgate_service_name }}.service"
 
 warpgate_config_file_directory: "/etc/warpgate"
+warpgate_setup_config_file_path: "{{ warpgate_data_path }}/unattended-setup.yaml"
+warpgate_sqlite_path: >-
+  {{ warpgate_database_url | ansible.builtin.regex_replace('^sqlite:(//)?', '') | ansible.builtin.regex_replace('[?#].*$', '')
+     if warpgate_database_url.startswith('sqlite:') else '' }}
+warpgate_configured_marker_path: "{{ warpgate_config_file_path | ansible.builtin.dirname }}.configured"
+warpgate_restart_marker_path: "{{ warpgate_config_file_path | ansible.builtin.dirname }}.restart-pending"

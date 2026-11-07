@@ -9,7 +9,7 @@ external_host: {{ warpgate_external_host }}
 database_url: {{ warpgate_database_url }}
 ssh:
   enable: {{ warpgate_ssh_enabled | string | ansible.builtin.lower }}
-  listen: '[::]:{{ warpgate_ssh_port }}'
+  listen: '{{ warpgate_ssh_listen_address }}:{{ warpgate_ssh_port }}'
   proxy_protocol: {{ warpgate_ssh_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_ssh_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_ssh_external_host | ansible.builtin.to_json }}
@@ -19,7 +19,7 @@ ssh:
   keepalive_interval: {{ warpgate_ssh_keepalive_interval | ansible.builtin.to_json }}
   target_handshake_timeout: {{ warpgate_ssh_target_handshake_timeout }}
 http:
-  listen: '[::]:{{ warpgate_http_port }}'
+  listen: '{{ warpgate_http_listen_address }}:{{ warpgate_http_port }}'
   proxy_protocol: {{ warpgate_http_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_http_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_http_external_host | ansible.builtin.to_json }}
@@ -31,7 +31,7 @@ http:
   sni_certificates: {{ warpgate_http_sni_certificates }}
 kubernetes:
   enable: {{ warpgate_kubernetes_enabled | string | ansible.builtin.lower }}
-  listen: '[::]:{{ warpgate_kubernetes_port }}'
+  listen: '{{ warpgate_kubernetes_listen_address }}:{{ warpgate_kubernetes_port }}'
   proxy_protocol: {{ warpgate_kubernetes_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_kubernetes_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_kubernetes_external_host | ansible.builtin.to_json }}
@@ -40,7 +40,7 @@ kubernetes:
   session_max_age: {{ warpgate_kubernetes_session_max_age }}
 mysql:
   enable: {{ warpgate_mysql_enabled | string | ansible.builtin.lower }}
-  listen: '[::]:{{ warpgate_mysql_port }}'
+  listen: '{{ warpgate_mysql_listen_address }}:{{ warpgate_mysql_port }}'
   proxy_protocol: {{ warpgate_mysql_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_mysql_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_mysql_external_host | ansible.builtin.to_json }}
@@ -49,7 +49,7 @@ mysql:
   advertised_version: {{ warpgate_mysql_advertised_version | ansible.builtin.to_json }}
 postgres:
   enable: {{ warpgate_postgres_enabled | string | ansible.builtin.lower }}
-  listen: '[::]:{{ warpgate_postgres_port }}'
+  listen: '{{ warpgate_postgres_listen_address }}:{{ warpgate_postgres_port }}'
   proxy_protocol: {{ warpgate_postgres_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_postgres_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_postgres_external_host | ansible.builtin.to_json }}
@@ -57,7 +57,7 @@ postgres:
   key: {{ warpgate_postgres_key }}
 vnc:
   enable: {{ warpgate_vnc_enabled | string | ansible.builtin.lower }}
-  listen: '[::]:{{ warpgate_vnc_port }}'
+  listen: '{{ warpgate_vnc_listen_address }}:{{ warpgate_vnc_port }}'
   proxy_protocol: {{ warpgate_vnc_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_vnc_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_vnc_external_host | ansible.builtin.to_json }}
@@ -66,7 +66,7 @@ vnc:
   enable_ard_auth: {{ warpgate_vnc_enable_ard_auth | string | ansible.builtin.lower }}
 rdp:
   enable: {{ warpgate_rdp_enabled | string | ansible.builtin.lower }}
-  listen: '[::]:{{ warpgate_rdp_port }}'
+  listen: '{{ warpgate_rdp_listen_address }}:{{ warpgate_rdp_port }}'
   proxy_protocol: {{ warpgate_rdp_proxy_protocol | string | ansible.builtin.lower }}
   external_port: {{ warpgate_rdp_external_port | ansible.builtin.to_json }}
   external_host: {{ warpgate_rdp_external_host | ansible.builtin.to_json }}

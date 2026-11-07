@@ -6,6 +6,7 @@
     warpgate_system_user: "warpgateu"
     warpgate_system_group: "warpgateg"
     warpgate_admin_password: "admin"
+    warpgate_github_token: "{{ lookup('ansible.builtin.env', 'GITHUB_TOKEN') }}"
     warpgate_ssh_enabled: true
     warpgate_ssh_port: 2223
     warpgate_mysql_enabled: true
@@ -14,6 +15,7 @@
     warpgate_postgres_port: 5432
     warpgate_record_sessions: true
     warpgate_external_host: "localhost"
+    warpgate_postgres_listen_address: "0.0.0.0"
   tasks:
     - name: "Import role"
       ansible.builtin.import_role:

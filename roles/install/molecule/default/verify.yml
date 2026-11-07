@@ -30,12 +30,92 @@
     - name: "Check install"
       ansible.builtin.stat:
         path: "/usr/bin/warpgate"
+        checksum_algorithm: "sha256"
       register: "st_bin"
+
+    - name: "Load the role defaults"
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../../defaults/main.yml"
+        name: "warpgate_defaults"
+
+    - name: "Get the published digest of the binary"
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/warp-tech/warpgate/releases/tags/v{{ warpgate_defaults.warpgate_version }}"
+        headers: >-
+          {{ {"Authorization": "Bearer " ~ lookup('ansible.builtin.env', 'GITHUB_TOKEN')}
+             if lookup('ansible.builtin.env', 'GITHUB_TOKEN') | length > 0 else {} }}
+      register: "warpgate_release"
+      until: warpgate_release is succeeded
+      retries: 3
+      delay: 5
+      delegate_to: "localhost"
+      become: false
+      no_log: true
 
     - name: "Check service config file"
       ansible.builtin.stat:
         path: "/etc/warpgate/warpgate.yaml"
       register: "st_service_config"
+
+    - name: "Check the files replaced by the role"
+      ansible.builtin.stat:
+        path: "{{ item }}"
+        follow: false
+        get_checksum: false
+      loop:
+        - "/usr/bin/warpgate"
+        - "/etc/warpgate/warpgate.yaml"
+        - "/etc/systemd/system/warpgate.service"
+      register: "st_replaced"
+
+    - name: "Check the original inodes kept by prepare"
+      ansible.builtin.stat:
+        path: "/root/previous-{{ item | ansible.builtin.basename }}"
+        follow: false
+        get_checksum: false
+      loop:
+        - "/usr/bin/warpgate"
+        - "/etc/warpgate/warpgate.yaml"
+        - "/etc/systemd/system/warpgate.service"
+      register: "st_previous"
+
+    - name: "Check the initial setup was not run again"
+      ansible.builtin.stat:
+        path: "/var/lib/warpgate/unattended-setup.yaml"
+      register: "st_setup_config"
+
+    - name: "Check relative-path data directory"
+      ansible.builtin.stat:
+        path: "/etc/warpgate/data"
+        follow: false
+      register: "st_config_data_dir"
+
+    - name: "Check the symlink target was left untouched"
+      ansible.builtin.stat:
+        path: "/etc/systemd/system"
+      register: "st_systemd_dir"
+
+    - name: "Check systemd unit file"
+      ansible.builtin.stat:
+        path: "/etc/systemd/system/warpgate.service"
+      register: "st_unit"
+
+    - name: "Check config directory"
+      ansible.builtin.stat:
+        path: "/etc/warpgate"
+      register: "st_config_dir"
+
+    - name: "Read service hardening properties"
+      ansible.builtin.systemd_service:
+        name: "warpgate"
+      register: "warpgate_unit"
+
+    - name: "Check the binary the service runs"
+      ansible.builtin.stat:
+        path: "/proc/{{ warpgate_unit.status.MainPID }}/exe"
+        follow: false
+        get_checksum: false
+      register: "st_running_exe"
 
     - name: "Gather facts on listening ports"
       community.general.listen_ports_facts:
@@ -46,8 +126,37 @@
           - not warpgate_group_check.changed
           - not warpgate_user_check.changed
           - not warpgate_service.changed
-          - st_bin.stat.mode == "0750"
-          - st_service_config.stat.mode == "0600"
+          - st_bin.stat.mode == "0755"
+          - st_bin.stat.pw_name == "root"
+          - not st_setup_config.stat.exists
+          - st_running_exe.stat.lnk_target == "/usr/bin/warpgate"
+          - st_replaced.results | rejectattr('stat.uid', 'equalto', 0) | list | length == 0
+          - st_previous.results | map(attribute='stat.pw_name') | unique == ['warpgateu']
+          - >-
+            st_replaced.results | map(attribute='stat.inode') | list
+            | ansible.builtin.intersect(st_previous.results | map(attribute='stat.inode') | list)
+            | length == 0
+          - st_config_data_dir.stat.isdir
+          - not st_config_data_dir.stat.islnk
+          - st_config_data_dir.stat.pw_name == "warpgateu"
+          - st_systemd_dir.stat.pw_name == "root"
+          - st_systemd_dir.stat.mode == "0755"
+          - "'/etc/warpgate/data' in warpgate_unit.status.ReadWritePaths.split()"
+          - ("sha256:" ~ st_bin.stat.checksum) in (warpgate_release.json.assets | map(attribute='digest'))
+          - st_unit.stat.mode == "0644"
+          - st_unit.stat.pw_name == "root"
+          - st_config_dir.stat.pw_name == "root"
+          - st_config_dir.stat.gr_name == "warpgateg"
+          - st_config_dir.stat.mode == "0750"
+          - st_service_config.stat.mode == "0640"
+          - st_service_config.stat.pw_name == "root"
+          - st_service_config.stat.gr_name == "warpgateg"
+          - warpgate_unit.status.NoNewPrivileges == "yes"
+          - warpgate_unit.status.ProtectSystem == "strict"
+          - warpgate_unit.status.ProtectKernelTunables == "yes"
+          - "'/var/lib/warpgate' in warpgate_unit.status.ReadWritePaths.split()"
+          - warpgate_unit.status.AmbientCapabilities | default('') | length == 0
+          - (ansible_facts.tcp_listen | selectattr('port', 'equalto', 5432) | map(attribute='address') | list) == ['0.0.0.0']
           - (ansible_facts.tcp_listen | selectattr('port', 'equalto', 2223) | length ) > 0
           - (ansible_facts.tcp_listen | selectattr('port', 'equalto', 8888) | length ) > 0
           - (ansible_facts.tcp_listen | selectattr('port', 'equalto', 3306) | length ) > 0

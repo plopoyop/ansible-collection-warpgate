@@ -1,4 +1,13 @@
 ---
+- name: "Import validation tasks"
+  ansible.builtin.import_tasks: "validate.yml"
+
+- name: "Import release tasks"
+  ansible.builtin.import_tasks: "release.yml"
+
+- name: "Import systemd unit tasks"
+  ansible.builtin.import_tasks: "unit.yml"
+
 - name: "Import prepare tasks"
   ansible.builtin.import_tasks: "prepare.yml"
 

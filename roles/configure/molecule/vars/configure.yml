@@ -3,6 +3,7 @@ warpgate_api_host: "https://localhost:8888/@warpgate/admin/api/"
 warpgate_api_insecure: true
 warpgate_admin_username: "admin"
 warpgate_admin_password: "molecule-admin-secret"
+warpgate_github_token: "{{ lookup('ansible.builtin.env', 'GITHUB_TOKEN') }}"
 
 # Ephemeral outbound SSH client key, generated on the controller by prepare.yml
 # (never committed). The inline private_key import path is exercised here; the

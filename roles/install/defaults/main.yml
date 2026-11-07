@@ -18,6 +18,18 @@ warpgate_system_group: "warpgate"
 # warpgate version to install
 warpgate_version: 0.30.4
 
+# @var warpgate_checksum
+# @var warpgate_checksum:type: string
+# @var warpgate_checksum:description: >
+# Checksum of the Warpgate binary (e.g. "sha256:..."). When empty, the controller fetches the digest published on GitHub
+warpgate_checksum: ""
+
+# @var warpgate_github_token
+# @var warpgate_github_token:type: string
+# @var warpgate_github_token:description: >
+# GitHub token for the releases API (avoids the unauthenticated rate limit)
+warpgate_github_token: ""
+
 # @var warpgate_service_state
 # @var warpgate_service_state:type: string
 # @var warpgate_service_state:description: >
@@ -34,13 +46,13 @@ warpgate_service_enabled: true
 # @var warpgate_data_path
 # @var warpgate_data_path:type: string
 # @var warpgate_data_path:description: >
-# Warpgate data path
+# Warpgate data path. Its parent must be writable by root only; may be a root-owned symlink to a canonical path
 warpgate_data_path: "/var/lib/warpgate"
 
 # @var warpgate_config_file_path
 # @var warpgate_config_file_path:type: string
 # @var warpgate_config_file_path:description: >
-# Warpgate config path
+# Warpgate config path, in a warpgate* directory outside the data path whose parent is writable by root only
 warpgate_config_file_path: "{{ warpgate_config_file_directory }}/warpgate.yaml"
 
 # @var warpgate_http_port
@@ -69,7 +81,7 @@ warpgate_ssh_port: 2222
 # @var warpgate_database_url
 # @var warpgate_database_url:type: string
 # @var warpgate_database_url:description: >
-# Warpgate database URL
+# Warpgate database URL (absolute path for sqlite). With a shared external database, provide the config file on new nodes
 warpgate_database_url: "sqlite:{{ warpgate_data_path }}/warpgate.db"
 
 # @var warpgate_mysql_enabled
@@ -132,6 +144,18 @@ warpgate_sso_providers: []
 # Path where session recordings are stored
 warpgate_recordings_path: "{{ warpgate_data_path }}/recordings"
 
+# @var warpgate_extra_read_write_paths
+# @var warpgate_extra_read_write_paths:type: list
+# @var warpgate_extra_read_write_paths:description: >
+# Additional paths the sandboxed service may write to, with parents not writable by the service user (relative Warpgate paths resolve to <config dir>/data; /home and /root are not readable)
+warpgate_extra_read_write_paths: []
+
+# @var warpgate_listen_address
+# @var warpgate_listen_address:type: string
+# @var warpgate_listen_address:description: >
+# Default listen address ("[::]" = all interfaces; bracket IPv6 addresses)
+warpgate_listen_address: "[::]"
+
 # @var warpgate_tls_certificate_path
 # @var warpgate_tls_certificate_path:type: string
 # @var warpgate_tls_certificate_path:description: >
@@ -147,6 +171,12 @@ warpgate_tls_key_path: "{{ warpgate_data_path }}/tls.key.pem"
 # -----------------------------------------------------------------------------
 # SSH listener
 # -----------------------------------------------------------------------------
+
+# @var warpgate_ssh_listen_address
+# @var warpgate_ssh_listen_address:type: string
+# @var warpgate_ssh_listen_address:description: >
+# Address the SSH listener binds to
+warpgate_ssh_listen_address: "{{ warpgate_listen_address }}"
 
 # @var warpgate_ssh_external_host
 # @var warpgate_ssh_external_host:type: string
@@ -199,6 +229,12 @@ warpgate_ssh_target_handshake_timeout: "30s"
 # -----------------------------------------------------------------------------
 # HTTP listener
 # -----------------------------------------------------------------------------
+
+# @var warpgate_http_listen_address
+# @var warpgate_http_listen_address:type: string
+# @var warpgate_http_listen_address:description: >
+# Address the HTTP listener binds to
+warpgate_http_listen_address: "{{ warpgate_listen_address }}"
 
 # @var warpgate_http_external_host
 # @var warpgate_http_external_host:type: string
@@ -258,6 +294,12 @@ warpgate_http_proxy_protocol: false
 # Kubernetes listener
 # -----------------------------------------------------------------------------
 
+# @var warpgate_kubernetes_listen_address
+# @var warpgate_kubernetes_listen_address:type: string
+# @var warpgate_kubernetes_listen_address:description: >
+# Address the Kubernetes listener binds to
+warpgate_kubernetes_listen_address: "{{ warpgate_listen_address }}"
+
 # @var warpgate_kubernetes_external_host
 # @var warpgate_kubernetes_external_host:type: string
 # @var warpgate_kubernetes_external_host:description: >
@@ -297,6 +339,12 @@ warpgate_kubernetes_proxy_protocol: false
 # -----------------------------------------------------------------------------
 # MySQL listener
 # -----------------------------------------------------------------------------
+
+# @var warpgate_mysql_listen_address
+# @var warpgate_mysql_listen_address:type: string
+# @var warpgate_mysql_listen_address:description: >
+# Address the MySQL listener binds to
+warpgate_mysql_listen_address: "{{ warpgate_listen_address }}"
 
 # @var warpgate_mysql_external_host
 # @var warpgate_mysql_external_host:type: string
@@ -338,6 +386,12 @@ warpgate_mysql_advertised_version: "8.0.3-Warpgate"
 # PostgreSQL listener
 # -----------------------------------------------------------------------------
 
+# @var warpgate_postgres_listen_address
+# @var warpgate_postgres_listen_address:type: string
+# @var warpgate_postgres_listen_address:description: >
+# Address the PostgreSQL listener binds to
+warpgate_postgres_listen_address: "{{ warpgate_listen_address }}"
+
 # @var warpgate_postgres_external_host
 # @var warpgate_postgres_external_host:type: string
 # @var warpgate_postgres_external_host:description: >
@@ -371,6 +425,12 @@ warpgate_postgres_proxy_protocol: false
 # -----------------------------------------------------------------------------
 # VNC listener
 # -----------------------------------------------------------------------------
+
+# @var warpgate_vnc_listen_address
+# @var warpgate_vnc_listen_address:type: string
+# @var warpgate_vnc_listen_address:description: >
+# Address the VNC listener binds to
+warpgate_vnc_listen_address: "{{ warpgate_listen_address }}"
 
 # @var warpgate_vnc_enabled
 # @var warpgate_vnc_enabled:type: boolean
@@ -423,6 +483,12 @@ warpgate_vnc_enable_ard_auth: false
 # -----------------------------------------------------------------------------
 # RDP listener
 # -----------------------------------------------------------------------------
+
+# @var warpgate_rdp_listen_address
+# @var warpgate_rdp_listen_address:type: string
+# @var warpgate_rdp_listen_address:description: >
+# Address the RDP listener binds to
+warpgate_rdp_listen_address: "{{ warpgate_listen_address }}"
 
 # @var warpgate_rdp_enabled
 # @var warpgate_rdp_enabled:type: boolean

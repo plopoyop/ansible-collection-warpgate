@@ -1,0 +1,27 @@
+---
+- name: "Get Warpgate release metadata"
+  ansible.builtin.uri:
+    url: "{{ warpgate_release_api_base_url }}/v{{ warpgate_version }}"
+    headers: >-
+      {{ {"Accept": "application/vnd.github+json"}
+         | ansible.builtin.combine({"Authorization": "Bearer " ~ warpgate_github_token} if warpgate_github_token | length > 0 else {}) }}
+  register: "warpgate_release"
+  until: warpgate_release is succeeded or warpgate_release.status in [401, 403, 404]
+  retries: 3
+  delay: 5
+  delegate_to: "localhost"
+  become: false
+  check_mode: false
+  ignore_errors: "{{ ansible_check_mode }}"
+  no_log: "{{ warpgate_github_token | length > 0 }}"
+  when: warpgate_checksum | length == 0
+
+- name: "Set the expected checksum of the Warpgate binary"
+  ansible.builtin.set_fact:
+    warpgate_expected_checksum: >-
+      {{ warpgate_checksum if warpgate_checksum | length > 0 else
+         (warpgate_release.json.assets
+          | selectattr('name', 'equalto', warpgate_download_url | ansible.builtin.basename)
+          | map(attribute='digest') | select | first
+          | mandatory('No sha256 digest published for ' ~ (warpgate_download_url | ansible.builtin.basename))) }}
+  ignore_errors: "{{ ansible_check_mode }}"
