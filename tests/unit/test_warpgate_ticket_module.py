@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import warpgate_ticket
+from warpgate_client.client import WarpgateAPIError
 from warpgate_client.ticket import Ticket, TicketAndSecret
 
 # ---------------------------------------------------------------------------
@@ -97,9 +98,27 @@ class TestTicketCreate:
 
 
 class TestTicketDelete:
+    def _patch_existing(self, *ids):
+        return patch(
+            "warpgate_ticket.get_tickets", return_value=[Ticket(id=i) for i in ids]
+        )
+
+    def test_delete_missing_is_noop(self):
+        params = _base_params(state="absent", id="tk1")
+        with (
+            self._patch_existing("tk2"),
+            patch("warpgate_ticket.delete_ticket") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert result["changed"] is False
+
     def test_delete_ticket(self):
         params = _base_params(state="absent", id="tk1")
-        with patch("warpgate_ticket.delete_ticket") as mock_del:
+        with (
+            self._patch_existing("tk1"),
+            patch("warpgate_ticket.delete_ticket") as mock_del,
+        ):
             result, mod = _run_module(params)
         mock_del.assert_called_once()
         assert result["changed"] is True
@@ -108,7 +127,64 @@ class TestTicketDelete:
 
     def test_delete_check_mode(self):
         params = _base_params(state="absent", id="tk1")
-        with patch("warpgate_ticket.delete_ticket") as mock_del:
+        with (
+            self._patch_existing("tk1"),
+            patch("warpgate_ticket.delete_ticket") as mock_del,
+        ):
             result, mod = _run_module(params, check_mode=True)
         mock_del.assert_not_called()
         assert result["changed"] is True
+
+
+class TestTicketDeleteListingFallback:
+    def test_listing_error_falls_back_to_delete(self):
+        params = _base_params(state="absent", id="tk1")
+        with (
+            patch(
+                "warpgate_ticket.get_tickets",
+                side_effect=WarpgateAPIError(500, "inconsistent"),
+            ),
+            patch("warpgate_ticket.delete_ticket") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_called_once()
+        assert result["changed"] is True
+
+    def test_listing_error_and_missing_ticket_is_noop(self):
+        params = _base_params(state="absent", id="tk1")
+        with (
+            patch(
+                "warpgate_ticket.get_tickets",
+                side_effect=WarpgateAPIError(500, "inconsistent"),
+            ),
+            patch(
+                "warpgate_ticket.delete_ticket",
+                side_effect=WarpgateAPIError(404, "not found"),
+            ),
+        ):
+            result, mod = _run_module(params)
+        assert result["changed"] is False
+
+    def test_id_match_ignores_case(self):
+        params = _base_params(state="absent", id="TK1")
+        with (
+            patch("warpgate_ticket.get_tickets", return_value=[Ticket(id="tk1")]),
+            patch("warpgate_ticket.delete_ticket") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_called_once()
+
+
+class TestTicketDeleteCheckModeListingError:
+    def test_listing_error_fails_in_check_mode(self):
+        params = _base_params(state="absent", id="tk1")
+        with (
+            patch(
+                "warpgate_ticket.get_tickets",
+                side_effect=WarpgateAPIError(500, "inconsistent"),
+            ),
+            patch("warpgate_ticket.delete_ticket") as mock_del,
+        ):
+            result, mod = _run_module(params, check_mode=True)
+        mock_del.assert_not_called()
+        assert "inconsistent" in result["msg"]

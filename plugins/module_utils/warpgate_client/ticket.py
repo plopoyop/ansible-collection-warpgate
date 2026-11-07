@@ -113,6 +113,20 @@ def create_ticket(
     return TicketAndSecret.from_dict(response)
 
 
+def get_tickets(client) -> list[Ticket]:
+    """
+    Retrieves all tickets from the Warpgate API.
+
+    Args:
+        client: WarpgateClient instance
+
+    Returns:
+        List of Ticket objects
+    """
+    response = client._request("GET", "/tickets")
+    return [Ticket.from_dict(ticket) for ticket in response]
+
+
 def delete_ticket(client, ticket_id: str) -> None:
     """
     Removes a ticket from Warpgate by its ID.

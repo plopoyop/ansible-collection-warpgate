@@ -182,6 +182,7 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client 
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.ticket import (
     create_ticket,
     delete_ticket,
+    get_tickets,
 )
 
 
@@ -246,8 +247,23 @@ def main():
         )
 
         if state == "absent":
+            try:
+                ticket_ids = {t.id.lower() for t in get_tickets(client)}
+            except WarpgateAPIError:
+                # The listing fails as a whole on a single inconsistent ticket:
+                # fall back to deleting directly (404 = already gone).
+                if module.check_mode:
+                    raise
+                ticket_ids = None
+            if ticket_ids is not None and ticket_id.lower() not in ticket_ids:
+                module.exit_json(**result)
             if not module.check_mode:
-                delete_ticket(client, ticket_id)
+                try:
+                    delete_ticket(client, ticket_id)
+                except WarpgateAPIError as e:
+                    if ticket_ids is None and e.status_code == 404:
+                        module.exit_json(**result)
+                    raise
             result["changed"] = True
             result["id"] = ticket_id
             result["diff"] = {
