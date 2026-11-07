@@ -6,7 +6,8 @@
 
 ## 🐛 Bug Fixes
 
-- Fix/secrets no log [\#171](https://github.com/plopoyop/ansible-collection-warpgate/pull/171) ([plopoyop](https://github.com/plopoyop))
+- fix!: harden the install role against the service account [\#174](https://github.com/plopoyop/ansible-collection-warpgate/pull/174) ([plopoyop](https://github.com/plopoyop))
+- fix!: Secrets no log [\#171](https://github.com/plopoyop/ansible-collection-warpgate/pull/171) ([plopoyop](https://github.com/plopoyop))
 
 ## ⚙️ Dependencies
 
