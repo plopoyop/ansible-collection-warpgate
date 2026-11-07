@@ -93,6 +93,9 @@ warpgate_admin_roles: []
 # @var warpgate_users:description: >
 # Warpgate users. Optional per-user fields (v0.23+):
 # rate_limit_bytes_per_second, allowed_ip_ranges, admin_roles.
+# Passwords are only set when the user has none, unless update_password is "always"
+# (which also lets an explicit empty password_credentials list remove them). Leaving out
+# sso_credentials or admin_roles keeps the existing ones: set [] to remove them.
 # @var warpgate_users: example:
 # warpgate_users:
 #   - name: "test"
@@ -111,6 +114,7 @@ warpgate_admin_roles: []
 #     password_credentials:
 #       - "test"
 #       - "test2"
+#     update_password: "always"
 #     public_key_credentials:
 #       - label: "Work Laptop"
 #         public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPybWSk9tjp8btUNrHjLbVxSLD+Wopno8cpbJyTp5wlr"
