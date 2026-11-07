@@ -138,6 +138,9 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client 
     WarpgateClient,
     WarpgateClientError,
 )
+from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.user import (
+    get_user,
+)
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.credential import (
     add_public_key_credential,
     delete_public_key_credential,
@@ -202,6 +205,14 @@ def main():
             if not credential_id:
                 module.fail_json(msg="credential_id is required when state=absent")
 
+            existing_ids = {
+                c.id.lower() for c in get_public_key_credentials(client, user_id)
+            }
+            if credential_id.lower() not in existing_ids:
+                # Warpgate lists no credentials for an unknown user.
+                if get_user(client, user_id) is None:
+                    module.fail_json(msg=f"User with ID {user_id} not found")
+                module.exit_json(**result)
             if not module.check_mode:
                 delete_public_key_credential(client, user_id, credential_id)
             result["changed"] = True
@@ -218,7 +229,7 @@ def main():
                 creds = get_public_key_credentials(client, user_id)
                 existing_cred = None
                 for cred in creds:
-                    if cred.id == credential_id:
+                    if cred.id.lower() == credential_id.lower():
                         existing_cred = cred
                         break
 

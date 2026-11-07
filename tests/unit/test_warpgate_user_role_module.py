@@ -130,3 +130,17 @@ class TestUserRoleRemove:
             result, mod = _run_module(params, check_mode=True)
         mock_del.assert_not_called()
         assert result["changed"] is True
+
+
+class TestUserRoleIdCase:
+    def test_role_id_match_ignores_case(self):
+        params = _base_params(state="absent", role_id="R1")
+        with (
+            patch(
+                "warpgate_user_role.get_user_roles",
+                return_value=[UserRoleAssignment(id="r1", name="dev")],
+            ),
+            patch("warpgate_user_role.delete_user_role") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_called_once()
