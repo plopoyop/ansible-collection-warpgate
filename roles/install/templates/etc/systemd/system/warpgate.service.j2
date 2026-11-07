@@ -1,3 +1,16 @@
+{% set _ports = [warpgate_http_port]
+   + ([warpgate_ssh_port] if warpgate_ssh_enabled else [])
+   + ([warpgate_kubernetes_port] if warpgate_kubernetes_enabled else [])
+   + ([warpgate_mysql_port] if warpgate_mysql_enabled else [])
+   + ([warpgate_postgres_port] if warpgate_postgres_enabled else [])
+   + ([warpgate_vnc_port] if warpgate_vnc_enabled else [])
+   + ([warpgate_rdp_port] if warpgate_rdp_enabled else []) %}
+{% set _bind_capability = (_ports | map('int') | min) < 1024 %}
+{% set _rw = [warpgate_data_path, (warpgate_config_file_path | ansible.builtin.dirname) ~ '/data']
+   + ([warpgate_recordings_path, warpgate_sqlite_path] | select
+      | reject('ansible.builtin.match', (warpgate_data_path ~ '/') | ansible.builtin.regex_escape)
+      | map('regex_replace', '^', '-') | list)
+   + (warpgate_extra_read_write_paths | map('regex_replace', '^', '-') | list) %}
 [Unit]
 Description=Warpgate
 After=network-online.target
@@ -8,9 +21,34 @@ StartLimitIntervalSec=0
 Type=notify
 User={{ warpgate_system_user }}
 Group={{ warpgate_system_group }}
-ExecStart={{ warpgate_executable_path }} --config {{ warpgate_config_file_path }} run
+ExecStart={{ warpgate_executable_path }} --config {{ warpgate_config_file_path }} --skip-securing-files run
+{% if _bind_capability %}
 AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+{% else %}
+CapabilityBoundingSet=
+{% endif %}
+NoNewPrivileges=true
 PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ _rw | join(' ') }}
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+UMask=0027
 
 [Install]
 WantedBy=multi-user.target

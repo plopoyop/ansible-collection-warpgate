@@ -7,15 +7,19 @@ Install warpgate
 - [Requirements](#requirements)
 - [Default Variables](#default-variables)
   - [warpgate_admin_password](#warpgate_admin_password)
+  - [warpgate_checksum](#warpgate_checksum)
   - [warpgate_config_file_path](#warpgate_config_file_path)
   - [warpgate_data_path](#warpgate_data_path)
   - [warpgate_database_url](#warpgate_database_url)
   - [warpgate_external_host](#warpgate_external_host)
+  - [warpgate_extra_read_write_paths](#warpgate_extra_read_write_paths)
+  - [warpgate_github_token](#warpgate_github_token)
   - [warpgate_http_certificate](#warpgate_http_certificate)
   - [warpgate_http_cookie_max_age](#warpgate_http_cookie_max_age)
   - [warpgate_http_external_host](#warpgate_http_external_host)
   - [warpgate_http_external_port](#warpgate_http_external_port)
   - [warpgate_http_key](#warpgate_http_key)
+  - [warpgate_http_listen_address](#warpgate_http_listen_address)
   - [warpgate_http_port](#warpgate_http_port)
   - [warpgate_http_proxy_protocol](#warpgate_http_proxy_protocol)
   - [warpgate_http_session_max_age](#warpgate_http_session_max_age)
@@ -26,9 +30,11 @@ Install warpgate
   - [warpgate_kubernetes_external_host](#warpgate_kubernetes_external_host)
   - [warpgate_kubernetes_external_port](#warpgate_kubernetes_external_port)
   - [warpgate_kubernetes_key](#warpgate_kubernetes_key)
+  - [warpgate_kubernetes_listen_address](#warpgate_kubernetes_listen_address)
   - [warpgate_kubernetes_port](#warpgate_kubernetes_port)
   - [warpgate_kubernetes_proxy_protocol](#warpgate_kubernetes_proxy_protocol)
   - [warpgate_kubernetes_session_max_age](#warpgate_kubernetes_session_max_age)
+  - [warpgate_listen_address](#warpgate_listen_address)
   - [warpgate_log_audit_retention](#warpgate_log_audit_retention)
   - [warpgate_log_format](#warpgate_log_format)
   - [warpgate_log_retention](#warpgate_log_retention)
@@ -39,6 +45,7 @@ Install warpgate
   - [warpgate_mysql_external_host](#warpgate_mysql_external_host)
   - [warpgate_mysql_external_port](#warpgate_mysql_external_port)
   - [warpgate_mysql_key](#warpgate_mysql_key)
+  - [warpgate_mysql_listen_address](#warpgate_mysql_listen_address)
   - [warpgate_mysql_port](#warpgate_mysql_port)
   - [warpgate_mysql_proxy_protocol](#warpgate_mysql_proxy_protocol)
   - [warpgate_postgres_certificate](#warpgate_postgres_certificate)
@@ -46,6 +53,7 @@ Install warpgate
   - [warpgate_postgres_external_host](#warpgate_postgres_external_host)
   - [warpgate_postgres_external_port](#warpgate_postgres_external_port)
   - [warpgate_postgres_key](#warpgate_postgres_key)
+  - [warpgate_postgres_listen_address](#warpgate_postgres_listen_address)
   - [warpgate_postgres_port](#warpgate_postgres_port)
   - [warpgate_postgres_proxy_protocol](#warpgate_postgres_proxy_protocol)
   - [warpgate_rdp_certificate](#warpgate_rdp_certificate)
@@ -53,6 +61,7 @@ Install warpgate
   - [warpgate_rdp_external_host](#warpgate_rdp_external_host)
   - [warpgate_rdp_external_port](#warpgate_rdp_external_port)
   - [warpgate_rdp_key](#warpgate_rdp_key)
+  - [warpgate_rdp_listen_address](#warpgate_rdp_listen_address)
   - [warpgate_rdp_port](#warpgate_rdp_port)
   - [warpgate_rdp_proxy_protocol](#warpgate_rdp_proxy_protocol)
   - [warpgate_record_sessions](#warpgate_record_sessions)
@@ -66,6 +75,7 @@ Install warpgate
   - [warpgate_ssh_inactivity_timeout](#warpgate_ssh_inactivity_timeout)
   - [warpgate_ssh_keepalive_interval](#warpgate_ssh_keepalive_interval)
   - [warpgate_ssh_keys_path](#warpgate_ssh_keys_path)
+  - [warpgate_ssh_listen_address](#warpgate_ssh_listen_address)
   - [warpgate_ssh_port](#warpgate_ssh_port)
   - [warpgate_ssh_proxy_protocol](#warpgate_ssh_proxy_protocol)
   - [warpgate_ssh_target_handshake_timeout](#warpgate_ssh_target_handshake_timeout)
@@ -81,6 +91,7 @@ Install warpgate
   - [warpgate_vnc_external_host](#warpgate_vnc_external_host)
   - [warpgate_vnc_external_port](#warpgate_vnc_external_port)
   - [warpgate_vnc_key](#warpgate_vnc_key)
+  - [warpgate_vnc_listen_address](#warpgate_vnc_listen_address)
   - [warpgate_vnc_port](#warpgate_vnc_port)
   - [warpgate_vnc_proxy_protocol](#warpgate_vnc_proxy_protocol)
 - [Dependencies](#dependencies)
@@ -101,9 +112,21 @@ Warpgate admin password
 
 **_Type:_** string<br />
 
+### warpgate_checksum
+
+Checksum of the Warpgate binary (e.g. "sha256:..."). When empty, the controller fetches the digest published on GitHub
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_checksum: ''
+```
+
 ### warpgate_config_file_path
 
-Warpgate config path
+Warpgate config path, in a warpgate* directory outside the data path whose parent is writable by root only
 
 **_Type:_** string<br />
 
@@ -115,7 +138,7 @@ warpgate_config_file_path: '{{ warpgate_config_file_directory }}/warpgate.yaml'
 
 ### warpgate_data_path
 
-Warpgate data path
+Warpgate data path. Its parent must be writable by root only; may be a root-owned symlink to a canonical path
 
 **_Type:_** string<br />
 
@@ -127,7 +150,7 @@ warpgate_data_path: /var/lib/warpgate
 
 ### warpgate_database_url
 
-Warpgate database URL
+Warpgate database URL (absolute path for sqlite). With a shared external database, provide the config file on new nodes
 
 **_Type:_** string<br />
 
@@ -147,6 +170,30 @@ Warpgate external host
 
 ```YAML
 warpgate_external_host: localhost
+```
+
+### warpgate_extra_read_write_paths
+
+Additional paths the sandboxed service may write to, with parents not writable by the service user (relative Warpgate paths resolve to <config dir>/data; /home and /root are not readable)
+
+**_Type:_** list<br />
+
+#### Default value
+
+```YAML
+warpgate_extra_read_write_paths: []
+```
+
+### warpgate_github_token
+
+GitHub token for the releases API (avoids the unauthenticated rate limit)
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_github_token: ''
 ```
 
 ### warpgate_http_certificate
@@ -207,6 +254,18 @@ TLS key path for the HTTP listener
 
 ```YAML
 warpgate_http_key: '{{ warpgate_data_path }}/tls.key.pem'
+```
+
+### warpgate_http_listen_address
+
+Address the HTTP listener binds to
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_http_listen_address: '[::]'
 ```
 
 ### warpgate_http_port
@@ -329,6 +388,18 @@ TLS key path for the Kubernetes listener
 warpgate_kubernetes_key: '{{ warpgate_data_path }}/tls.key.pem'
 ```
 
+### warpgate_kubernetes_listen_address
+
+Address the Kubernetes listener binds to
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_kubernetes_listen_address: '[::]'
+```
+
 ### warpgate_kubernetes_port
 
 Warpgate Kubernetes port
@@ -363,6 +434,18 @@ Maximum lifetime of a Kubernetes session
 
 ```YAML
 warpgate_kubernetes_session_max_age: 30m
+```
+
+### warpgate_listen_address
+
+Default listen address ("[::]" = all interfaces; bracket IPv6 addresses)
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_listen_address: '[::]'
 ```
 
 ### warpgate_log_audit_retention
@@ -485,6 +568,18 @@ TLS key path for the MySQL listener
 warpgate_mysql_key: '{{ warpgate_data_path }}/tls.key.pem'
 ```
 
+### warpgate_mysql_listen_address
+
+Address the MySQL listener binds to
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_mysql_listen_address: '[::]'
+```
+
 ### warpgate_mysql_port
 
 Warpgate MySQL port
@@ -569,6 +664,18 @@ TLS key path for the PostgreSQL listener
 warpgate_postgres_key: '{{ warpgate_data_path }}/tls.key.pem'
 ```
 
+### warpgate_postgres_listen_address
+
+Address the PostgreSQL listener binds to
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_postgres_listen_address: '[::]'
+```
+
 ### warpgate_postgres_port
 
 Warpgate PostgreSQL port
@@ -651,6 +758,18 @@ TLS key path for the RDP listener
 
 ```YAML
 warpgate_rdp_key: '{{ warpgate_data_path }}/tls.key.pem'
+```
+
+### warpgate_rdp_listen_address
+
+Address the RDP listener binds to
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_rdp_listen_address: '[::]'
 ```
 
 ### warpgate_rdp_port
@@ -807,6 +926,18 @@ Directory holding Warpgate's SSH host keys
 
 ```YAML
 warpgate_ssh_keys_path: '{{ warpgate_data_path }}/ssh-keys'
+```
+
+### warpgate_ssh_listen_address
+
+Address the SSH listener binds to
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_ssh_listen_address: '[::]'
 ```
 
 ### warpgate_ssh_port
@@ -987,6 +1118,18 @@ TLS key path for the VNC listener
 
 ```YAML
 warpgate_vnc_key: '{{ warpgate_data_path }}/tls.key.pem'
+```
+
+### warpgate_vnc_listen_address
+
+Address the VNC listener binds to
+
+**_Type:_** string<br />
+
+#### Default value
+
+```YAML
+warpgate_vnc_listen_address: '[::]'
 ```
 
 ### warpgate_vnc_port

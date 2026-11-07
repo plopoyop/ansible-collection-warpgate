@@ -1,0 +1,121 @@
+---
+# Host installed by a previous release, with a symlink planted by the service user.
+- name: Prepare
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: "Load the role defaults"
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../../defaults/main.yml"
+        name: "warpgate_defaults"
+
+    - name: "Create the service group"
+      ansible.builtin.group:
+        name: "warpgateg"
+        system: true
+
+    - name: "Create the service account"
+      ansible.builtin.user:
+        name: "warpgateu"
+        group: "warpgateg"
+        create_home: false
+        shell: "/usr/sbin/nologin"
+        system: true
+
+    - name: "Create directories owned by the service account"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: "directory"
+        owner: "warpgateu"
+        group: "warpgateg"
+        mode: "0750"
+      loop:
+        - "/var/lib/warpgate"
+        - "/etc/warpgate"
+
+    - name: "Download Warpgate owned by the service account"
+      ansible.builtin.get_url:
+        url: "https://github.com/warp-tech/warpgate/releases/download/v{{ warpgate_defaults.warpgate_version }}/warpgate-v{{ warpgate_defaults.warpgate_version }}-x86_64-linux"
+        dest: "/usr/bin/warpgate"
+        owner: "warpgateu"
+        group: "warpgateg"
+        mode: "0750"
+
+    - name: "Run the initial setup as the service account"
+      ansible.builtin.command:
+        argv:
+          - "/usr/bin/warpgate"
+          - "--config"
+          - "/etc/warpgate/warpgate.yaml"
+          - "unattended-setup"
+          - "--data-path"
+          - "/var/lib/warpgate"
+          - "--http-port"
+          - "8888"
+          - "--database-url"
+          - "sqlite:/var/lib/warpgate/warpgate.db"
+          - "--external-host"
+          - "localhost"
+        creates: "/etc/warpgate/warpgate.yaml"
+      environment:
+        WARPGATE_ADMIN_PASSWORD: "admin"
+      become: true
+      become_user: "warpgateu"
+
+    - name: "Restrict the config file like a previous release did"
+      ansible.builtin.file:
+        path: "/etc/warpgate/warpgate.yaml"
+        owner: "warpgateu"
+        group: "warpgateg"
+        mode: "0600"
+
+    - name: "Install the systemd unit of a previous release"
+      ansible.builtin.copy:
+        content: |
+          [Unit]
+          Description=Warpgate
+          After=network-online.target
+          Wants=network-online.target
+          StartLimitIntervalSec=0
+
+          [Service]
+          Type=notify
+          User=warpgateu
+          Group=warpgateg
+          ExecStart=/usr/bin/warpgate --config /etc/warpgate/warpgate.yaml run
+          AmbientCapabilities=CAP_NET_BIND_SERVICE
+          PrivateTmp=true
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: "/etc/systemd/system/warpgate.service"
+        owner: "warpgateu"
+        group: "warpgateg"
+        mode: "0640"
+
+    - name: "Start the previous release"
+      ansible.builtin.systemd_service:
+        name: "warpgate"
+        state: "started"
+        enabled: true
+        daemon_reload: true
+
+    - name: "Plant a symlink to a root-owned directory in the config directory"
+      ansible.builtin.file:
+        src: "/etc/systemd/system"
+        dest: "/etc/warpgate/data"
+        state: "link"
+        owner: "warpgateu"
+        group: "warpgateg"
+        follow: false
+
+    # No mode: it would change the original inode.
+    - name: "Keep the original inodes around through hard links"  # noqa: risky-file-permissions
+      ansible.builtin.file:
+        src: "{{ item }}"
+        dest: "/root/previous-{{ item | ansible.builtin.basename }}"
+        state: "hard"
+      loop:
+        - "/usr/bin/warpgate"
+        - "/etc/warpgate/warpgate.yaml"
+        - "/etc/systemd/system/warpgate.service"

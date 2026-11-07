@@ -1,0 +1,99 @@
+---
+- name: "Validate settings"
+  ansible.builtin.assert:
+    that:
+      - not warpgate_database_url.startswith('sqlite:') or warpgate_database_url is match('sqlite:(///|/(?!/))')
+    fail_msg: "warpgate_database_url must use an absolute sqlite path (e.g. sqlite:/var/lib/warpgate/db)"
+    quiet: true
+
+- name: "Validate the checksum"
+  ansible.builtin.assert:
+    that:
+      - warpgate_checksum is match('^(sha1|sha224|sha256|sha384|sha512):[0-9A-Fa-f]+$')
+    fail_msg: "warpgate_checksum must be <algorithm>:<hex digest>, e.g. sha256:..."
+    quiet: true
+  when: warpgate_checksum | length > 0
+
+- name: "Validate the config directory"
+  ansible.builtin.assert:
+    that:
+      - (warpgate_config_file_path | ansible.builtin.dirname | ansible.builtin.basename) is match('warpgate')
+      - (warpgate_config_file_path | ansible.builtin.dirname) != warpgate_data_path
+      - not (warpgate_config_file_path | ansible.builtin.dirname).startswith(warpgate_data_path ~ "/")
+      - not warpgate_data_path.startswith((warpgate_config_file_path | ansible.builtin.dirname) ~ "/")
+    fail_msg: "warpgate_config_file_path must be in a directory dedicated to Warpgate, named warpgate* (e.g. /etc/warpgate), apart from warpgate_data_path"
+    quiet: true
+
+- name: "Validate the data path"
+  ansible.builtin.assert:
+    that:
+      - warpgate_data_path is match('^/.+') and warpgate_data_path != "/"
+      - warpgate_data_path == (warpgate_data_path | ansible.builtin.normpath)
+    fail_msg: "warpgate_data_path must be a normalised absolute directory other than / (no trailing slash)"
+    quiet: true
+
+- name: "Check the data path, the config directory and its parent"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  loop:
+    - "{{ warpgate_data_path }}"
+    - "{{ warpgate_config_file_path | ansible.builtin.dirname }}"
+    - "{{ warpgate_config_file_path | ansible.builtin.dirname | ansible.builtin.dirname }}"
+    - "{{ warpgate_config_file_path }}"
+  register: "warpgate_layout_stat"
+
+- name: "Validate the layout"
+  vars:
+    _data: "{{ warpgate_layout_stat.results[0].stat }}"
+    _config_dir: "{{ warpgate_layout_stat.results[1].stat }}"
+    _config_parent: "{{ warpgate_layout_stat.results[2].stat }}"
+    _config_file: "{{ warpgate_layout_stat.results[3].stat }}"
+  ansible.builtin.assert:
+    that:
+      - not (_data.islnk | default(false)) or (_data.uid == 0 and _data.lnk_target == _data.lnk_source)
+      - not (_config_dir.islnk | default(false))
+      - _config_parent.isdir | default(false)
+      - _config_parent.uid == 0 and not _config_parent.wgrp and not _config_parent.woth
+      - not (_config_file.isdir | default(false) and _config_file.uid == 0)
+    fail_msg: >-
+      warpgate_data_path may only be a root-owned symlink to a canonical absolute path; the config directory must not be a symlink and its
+      parent must be an existing root-owned directory writable by root only; the config path must not be a directory
+    quiet: true
+
+- name: "Resolve the data path"
+  ansible.builtin.set_fact:
+    warpgate_data_path_target: >-
+      {{ warpgate_layout_stat.results[0].stat.lnk_source
+         if warpgate_layout_stat.results[0].stat.islnk | default(false) else warpgate_data_path }}
+
+- name: "Check the parents of the data directory and of its symlink"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  loop: "{{ [warpgate_data_path_target | ansible.builtin.dirname, warpgate_data_path | ansible.builtin.dirname] | unique }}"
+  register: "warpgate_data_parent_stat"
+
+- name: "Validate the data directory"
+  vars:
+    _parents: "{{ warpgate_data_parent_stat.results | map(attribute='stat') | list }}"
+    _config_dir: "{{ warpgate_config_file_path | ansible.builtin.dirname }}"
+  ansible.builtin.assert:
+    that:
+      - warpgate_data_path_target != "/"
+      - _parents | rejectattr('isdir', 'defined') | list | length == 0
+      - _parents | selectattr('isdir') | list | length == _parents | length
+      - _parents | selectattr('uid', 'equalto', 0) | rejectattr('wgrp') | rejectattr('woth') | list | length == _parents | length
+      - warpgate_data_path_target != _config_dir
+      - not warpgate_data_path_target.startswith(_config_dir ~ "/")
+      - not _config_dir.startswith(warpgate_data_path_target ~ "/")
+    fail_msg: >-
+      The data directory ({{ warpgate_data_path_target }}) must be apart from the config directory, in an existing
+      root-owned parent writable by root only
+    quiet: true

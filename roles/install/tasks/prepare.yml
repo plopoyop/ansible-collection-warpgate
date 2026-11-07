@@ -1,4 +1,33 @@
 ---
+# An error counts as configured: these paths may be controlled by the service user.
+- name: "Check if Warpgate is already configured"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  failed_when: false
+  loop:
+    - "{{ warpgate_configured_marker_path }}"
+    - "{{ warpgate_config_file_path }}"
+    - "{{ warpgate_setup_config_file_path }}"
+    - "{{ (warpgate_sqlite_path ~ '/db.sqlite3') if warpgate_sqlite_path | length > 0 else warpgate_setup_config_file_path }}"
+  register: "warpgate_configured_stat"
+
+- name: "Check the TLS files unattended-setup would create"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  failed_when: false
+  loop:
+    - "{{ warpgate_data_path }}/tls.certificate.pem"
+    - "{{ warpgate_data_path }}/tls.key.pem"
+  register: "warpgate_tls_stat"
+
 - name: "Create Warpgate group"
   ansible.builtin.group:
     name: "{{ warpgate_system_group }}"
@@ -11,22 +40,3 @@
     create_home: false
     shell: "/usr/sbin/nologin"
     system: true
-
-- name: "Check if already installed"
-  ansible.builtin.stat:
-    path: "{{ warpgate_executable_path }}"
-  register: warpgate_exec
-
-- name: "Get version if warpgate is installed"
-  when: warpgate_exec.stat.exists
-  block:
-    - name: "Get version"
-      ansible.builtin.command: "{{ warpgate_executable_path }} version"
-      failed_when: false
-      changed_when: false
-      check_mode: false
-      register: warpgate_output
-
-    - name: "Set current installed version"
-      ansible.builtin.set_fact:
-        warpgate_current_version: "{{ warpgate_output.stdout_lines[0] | regex_search('^warpgate\\sv((0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*))-?(.*)?$', '\\1') | first }}"

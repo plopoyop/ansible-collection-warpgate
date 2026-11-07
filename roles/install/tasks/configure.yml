@@ -1,35 +1,187 @@
 ---
+# Written to the data path so the config directory can stay root-owned; the template replaces it.
 - name: "Create initial configuration"
-  ansible.builtin.command:
-    argv: >-
-      {{
-        ["/bin/sh", "-c", 'IFS= read -r WARPGATE_ADMIN_PASSWORD && export WARPGATE_ADMIN_PASSWORD && exec "$@"', "sh",
-         warpgate_executable_path, "--config", warpgate_config_file_path, "unattended-setup",
-         "--data-path", warpgate_data_path,
-         "--http-port", warpgate_http_port | string,
-         "--database-url", warpgate_database_url,
-         "--external-host", warpgate_external_host]
-        + (["--ssh-port", warpgate_ssh_port | string] if warpgate_ssh_enabled else [])
-        + (["--mysql-port", warpgate_mysql_port | string] if warpgate_mysql_enabled else [])
-        + (["--postgres-port", warpgate_postgres_port | string] if warpgate_postgres_enabled else [])
-        + (["--record-sessions"] if warpgate_record_sessions else [])
-      }}
-    creates: "{{ warpgate_config_file_path }}"
-    stdin: "{{ warpgate_admin_password }}"
-  become: true
-  become_user: "{{ warpgate_system_user }}"
-  no_log: true
+  when:
+    - not ansible_check_mode
+    - warpgate_configured_stat.results | rejectattr('stat', 'defined') | list | length == 0
+    - warpgate_configured_stat.results | selectattr('stat.exists') | list | length == 0
+  block:
+    - name: "Run unattended-setup"
+      ansible.builtin.command:
+        argv: >-
+          {{
+            ["/bin/sh", "-c", 'IFS= read -r WARPGATE_ADMIN_PASSWORD && export WARPGATE_ADMIN_PASSWORD && exec "$@"', "sh",
+             warpgate_executable_path, "--config", warpgate_setup_config_file_path, "unattended-setup",
+             "--data-path", warpgate_data_path,
+             "--http-port", warpgate_http_port | string,
+             "--database-url", warpgate_database_url,
+             "--external-host", warpgate_external_host]
+            + (["--ssh-port", warpgate_ssh_port | string] if warpgate_ssh_enabled else [])
+            + (["--mysql-port", warpgate_mysql_port | string] if warpgate_mysql_enabled else [])
+            + (["--postgres-port", warpgate_postgres_port | string] if warpgate_postgres_enabled else [])
+            + (["--record-sessions"] if warpgate_record_sessions else [])
+          }}
+        creates: "{{ warpgate_setup_config_file_path }}"
+        stdin: "{{ warpgate_admin_password }}"
+      become: true
+      become_user: "{{ warpgate_system_user }}"
+      no_log: true
+
+    - name: "Mark Warpgate as configured"
+      ansible.builtin.file:
+        path: "{{ warpgate_configured_marker_path }}"
+        state: "touch"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+        modification_time: "preserve"
+        access_time: "preserve"
+  rescue:
+    # Lets the next run retry.
+    - name: "Remove what the failed setup created"
+      become: true
+      become_user: "{{ warpgate_system_user }}"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: "absent"
+      loop: >-
+        {{ [warpgate_setup_config_file_path]
+           + (warpgate_tls_stat.results | selectattr('stat', 'defined') | rejectattr('stat.exists') | map(attribute='item') | list)
+           + (['db.sqlite3', 'db.sqlite3-wal', 'db.sqlite3-shm', 'db.sqlite3-journal']
+              | map('regex_replace', '^', warpgate_sqlite_path ~ '/') | list
+              if warpgate_sqlite_path | length > 0 else []) }}
+
+    - name: "Report the setup failure"
+      ansible.builtin.fail:
+        msg: "Warpgate unattended-setup failed"
+
+# Previous releases let the service user own (and hold open) the config: replace it, never chown it.
+- name: "Check the config file"
+  ansible.builtin.stat:
+    path: "{{ warpgate_config_file_path }}"
+    follow: false
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  register: "warpgate_config_file"
+
+# Renamed rather than removed: its content cannot block a rename. Reported by the final check.
+- name: "Set aside a directory planted in place of the config file"
+  when: not ansible_check_mode and warpgate_config_file.stat.isdir | default(false)
+  block:
+    - name: "Create a quarantine directory"
+      ansible.builtin.tempfile:
+        path: "{{ warpgate_config_file_path | ansible.builtin.dirname }}"
+        state: "directory"
+        prefix: "quarantine."
+      register: "warpgate_config_quarantine"
+
+    - name: "Move the planted directory into quarantine"
+      ansible.builtin.command:
+        argv: ["mv", "-T", "{{ warpgate_config_file_path }}", "{{ warpgate_config_quarantine.path }}/{{ warpgate_config_file_path | ansible.builtin.basename }}"]
+      changed_when: true
+
+- name: "Replace a config file not owned by root"
+  when: >-
+    not ansible_check_mode
+    and warpgate_config_file.stat.exists and not warpgate_config_file.stat.isdir
+    and (warpgate_config_file.stat.uid != 0 or warpgate_config_file.stat.nlink > 1 or not warpgate_config_file.stat.isreg)
+  block:
+    - name: "Create a temporary config file"
+      ansible.builtin.tempfile:
+        path: "{{ warpgate_config_file_path | ansible.builtin.dirname }}"
+        suffix: ".tmp"
+      register: "warpgate_config_tmp"
+
+    - name: "Render the new config file"
+      ansible.builtin.template:
+        src: "etc/warpgate/warpgate.yaml.j2"
+        dest: "{{ warpgate_config_tmp.path }}"
+        owner: "root"
+        group: "{{ warpgate_system_group }}"
+        mode: "0640"
+      diff: false
+
+    - name: "Record a pending restart"
+      ansible.builtin.file:
+        path: "{{ warpgate_restart_marker_path }}"
+        state: "touch"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+        modification_time: "preserve"
+        access_time: "preserve"
+
+    - name: "Install the new config file"
+      ansible.builtin.command:
+        argv: ["mv", "-fT", "{{ warpgate_config_tmp.path }}", "{{ warpgate_config_file_path }}"]
+      changed_when: true
+      notify:
+        - "Restart Warpgate"
+  always:
+    - name: "Remove the temporary config file"
+      ansible.builtin.file:
+        path: "{{ warpgate_config_tmp.path }}"
+        state: "absent"
+      when: warpgate_config_tmp.path is defined
 
 - name: "Update config file"
+  when: >-
+    not (ansible_check_mode
+         and ((warpgate_installed_files.results[2].stat.uid | default(0)) != 0
+              or (warpgate_config_file.stat.exists
+                  and (warpgate_config_file.stat.uid != 0 or warpgate_config_file.stat.nlink > 1 or not warpgate_config_file.stat.isreg))))
   ansible.builtin.template:
     src: "etc/warpgate/warpgate.yaml.j2"
     dest: "{{ warpgate_config_file_path }}"
-    owner: "{{ warpgate_system_user }}"
+    owner: "root"
     group: "{{ warpgate_system_group }}"
-    mode: "0600"
+    mode: "0640"
   diff: false
   notify:
     - "Restart Warpgate"
+
+# Catches a restart lost by a previous run that failed before the handlers.
+- name: "Check for a pending restart"
+  ansible.builtin.stat:
+    path: "{{ warpgate_restart_marker_path }}"
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  register: "warpgate_restart_marker"
+
+- name: "Schedule the pending restart"
+  ansible.builtin.debug:
+    msg: "Files were replaced by a previous run that did not restart Warpgate"
+  changed_when: true
+  notify:
+    - "Reload Systemd"
+    - "Restart Warpgate"
+  when: warpgate_restart_marker.stat.exists
+
+- name: "Get the Warpgate service status"
+  ansible.builtin.systemd_service:
+    name: "{{ warpgate_service_name }}"
+  register: "warpgate_service_status"
+  failed_when: false
+  check_mode: true
+
+- name: "Schedule a reload of the replaced unit"
+  ansible.builtin.debug:
+    msg: "systemd still uses a previous version of the Warpgate unit"
+  changed_when: true
+  notify:
+    - "Reload Systemd"
+    - "Restart Warpgate"
+  when: (warpgate_service_status.status.NeedDaemonReload | default('no')) == "yes"
+
+- name: "Apply pending service changes"
+  ansible.builtin.meta: flush_handlers
+
+- name: "Clear the pending restart"
+  ansible.builtin.file:
+    path: "{{ warpgate_restart_marker_path }}"
+    state: "absent"
 
 - name: "Ensure service is in correct state"
   ansible.builtin.service:
@@ -37,3 +189,31 @@
     state: "{{ warpgate_service_state }}"
     enabled: "{{ warpgate_service_enabled }}"
   when: not ansible_check_mode
+
+# Last, so it cannot prevent the files above from being secured.
+- name: "Look for entries the service user left in the config directory"
+  when: not ansible_check_mode or warpgate_layout_stat.results[1].stat.exists
+  ansible.builtin.find:
+    paths: "{{ warpgate_config_file_path | ansible.builtin.dirname }}"
+    file_type: "any"
+    hidden: true
+    excludes:
+      - "{{ warpgate_config_file_path | ansible.builtin.basename }}"
+      - "data"
+  register: "warpgate_config_dir_entries"
+
+- name: "Refuse entries the service user owns in the config directory"
+  when: warpgate_config_dir_entries is not skipped
+  ansible.builtin.assert:
+    that:
+      - warpgate_config_dir_entries.files | rejectattr('uid', 'equalto', 0) | list | length == 0
+      - warpgate_config_dir_entries.skipped_paths | default({}) | length == 0
+      - not (ansible_check_mode and warpgate_config_file.stat.isdir | default(false))
+      - warpgate_config_dir_entries.files | selectattr('path', 'search', '/quarantine\.[^/]*$') | list | length == 0
+    fail_msg: >-
+      Entries left by the service user (owned by it, unreadable, or set aside in quarantine.*) found in the
+      config directory; every run fails until they are reviewed and removed:
+      {{ (warpgate_config_dir_entries.files | rejectattr('uid', 'equalto', 0) | map(attribute='path') | list
+          + (warpgate_config_dir_entries.skipped_paths | default({}) | list)
+          + (warpgate_config_dir_entries.files | selectattr('path', 'search', '/quarantine\.[^/]*$') | map(attribute='path') | list)) | join(', ') }}
+    quiet: true
