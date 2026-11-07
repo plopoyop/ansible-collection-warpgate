@@ -240,6 +240,9 @@ class TestDelete:
         params = _base_params(state="absent")
         with (
             patch(
+                "warpgate_ssh_client_key.get_ssh_client_keys", return_value=[existing]
+            ),
+            patch(
                 "warpgate_ssh_client_key.find_ssh_client_key_by_label",
                 return_value=existing,
             ),
@@ -254,6 +257,9 @@ class TestDelete:
         existing = _existing()
         params = _base_params(state="absent")
         with (
+            patch(
+                "warpgate_ssh_client_key.get_ssh_client_keys", return_value=[existing]
+            ),
             patch(
                 "warpgate_ssh_client_key.find_ssh_client_key_by_label",
                 return_value=existing,
@@ -286,3 +292,73 @@ class TestSession:
         ):
             _run_module(params, client_mock=client)
         client.logout.assert_called_once_with()
+
+
+class TestSshClientKeyDeleteById:
+    def test_id_match_ignores_case(self):
+        key = SSHClientKey(id="abc-def", label="default-client-key")
+        params = _base_params(state="absent", id="ABC-DEF")
+        with (
+            patch("warpgate_ssh_client_key.get_ssh_client_keys", return_value=[key]),
+            patch("warpgate_ssh_client_key.delete_ssh_client_key") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_called_once()
+        assert result["changed"] is True
+
+    def test_other_label_fails(self):
+        key = SSHClientKey(id="k1", label="other-key")
+        params = _base_params(state="absent", id="k1")
+        with (
+            patch("warpgate_ssh_client_key.get_ssh_client_keys", return_value=[key]),
+            patch("warpgate_ssh_client_key.delete_ssh_client_key") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert "other-key" in result["msg"]
+
+
+class TestSshClientKeyDeleteByLabel:
+    def test_every_key_with_the_label_is_removed(self):
+        keys = [
+            SSHClientKey(id="k1", label="default-client-key"),
+            SSHClientKey(id="k2", label="default-client-key"),
+            SSHClientKey(id="k3", label="other"),
+        ]
+        params = _base_params(state="absent")
+        with (
+            patch("warpgate_ssh_client_key.get_ssh_client_keys", return_value=keys),
+            patch(
+                "warpgate_ssh_client_key.find_ssh_client_key_by_label",
+                return_value=keys[0],
+            ),
+            patch("warpgate_ssh_client_key.delete_ssh_client_key") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        assert sorted(c.args[1] for c in mock_del.call_args_list) == ["k1", "k2"]
+
+
+class TestSshClientKeyPartialDelete:
+    def test_failure_after_a_deletion_reports_changed(self):
+        keys = [
+            SSHClientKey(id="k1", label="default-client-key"),
+            SSHClientKey(id="k2", label="default-client-key"),
+        ]
+        params = _base_params(state="absent")
+        with (
+            patch("warpgate_ssh_client_key.get_ssh_client_keys", return_value=keys),
+            patch(
+                "warpgate_ssh_client_key.find_ssh_client_key_by_label",
+                return_value=keys[0],
+            ),
+            patch(
+                "warpgate_ssh_client_key.delete_ssh_client_key",
+                side_effect=[
+                    None,
+                    WarpgateAPIError(400, "At least one SSH client key"),
+                ],
+            ),
+        ):
+            result, mod = _run_module(params)
+        assert result["changed"] is True
+        assert "at least one client key" in result["msg"]

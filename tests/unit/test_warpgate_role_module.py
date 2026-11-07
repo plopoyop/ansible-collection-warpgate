@@ -237,3 +237,40 @@ class TestRoleDelete:
             result, mod = _run_module(params, check_mode=True)
         mock_del.assert_not_called()
         assert result["changed"] is True
+
+
+class TestRoleDeleteById:
+    def test_other_name_fails(self):
+        params = _base_params(state="absent", id="r1")
+        with (
+            patch("warpgate_role.get_role", return_value=Role(id="r1", name="ops")),
+            patch("warpgate_role.delete_role") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert "ops" in result["msg"]
+
+    def test_unknown_id_with_recreated_name_fails(self):
+        params = _base_params(state="absent", id="r1")
+        with (
+            patch("warpgate_role.get_role", return_value=None),
+            patch(
+                "warpgate_role.get_roles",
+                return_value=[Role(id="r2", name="developers")],
+            ),
+            patch("warpgate_role.delete_role") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert "r2" in result["msg"]
+
+    def test_unknown_id_without_name_is_noop(self):
+        params = _base_params(state="absent", id="r1")
+        with (
+            patch("warpgate_role.get_role", return_value=None),
+            patch("warpgate_role.get_roles", return_value=[]),
+            patch("warpgate_role.delete_role") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert result["changed"] is False

@@ -49,6 +49,7 @@ options:
     id:
         description:
             - SSH client key ID (alternative to O(label) for update/delete).
+            - With O(state=absent), the deletion fails if the object found by ID is not named O(label).
         type: str
         required: false
     label:
@@ -231,7 +232,12 @@ def main():
         existing = None
         if key_id:
             existing = next(
-                (k for k in get_ssh_client_keys(client) if k.id == key_id), None
+                (
+                    k
+                    for k in get_ssh_client_keys(client)
+                    if k.id.lower() == key_id.lower()
+                ),
+                None,
             )
         else:
             existing = find_ssh_client_key_by_label(client, label)
@@ -240,22 +246,41 @@ def main():
             module.fail_json(msg=f"No SSH client key found with id '{key_id}'")
 
         if state == "absent":
+            if key_id and not existing:
+                other = find_ssh_client_key_by_label(client, label)
+                if other:
+                    module.fail_json(
+                        msg=f"SSH client key {key_id} not found, but '{label}' exists with ID {other.id}"
+                    )
+            if existing and key_id and existing.label != label:
+                module.fail_json(
+                    msg=f"SSH client key {key_id} is named '{existing.label}', not '{label}'"
+                )
             if not existing:
                 module.exit_json(**result)
+            # Labels are not unique: by label, remove every key carrying it.
+            to_delete = (
+                [existing]
+                if key_id
+                else [k for k in get_ssh_client_keys(client) if k.label == label]
+            )
             if not module.check_mode:
-                try:
-                    delete_ssh_client_key(client, existing.id)
-                except WarpgateAPIError as e:
-                    if e.status_code == 400:
+                for key in to_delete:
+                    try:
+                        delete_ssh_client_key(client, key.id)
+                        result["changed"] = True
+                    except WarpgateAPIError as e:
                         module.fail_json(
                             msg=(
                                 "Cannot delete SSH client key '%s': Warpgate "
                                 "requires at least one client key to remain (%s)"
-                                % (existing.label, e.message)
+                                % (key.label, e.message)
+                                if e.status_code == 400
+                                else f"Warpgate API error: {e.message}"
                             ),
                             status_code=e.status_code,
+                            changed=result["changed"],
                         )
-                    raise
             result["changed"] = True
             result["id"] = existing.id
             result["diff"] = {
@@ -283,6 +308,7 @@ def main():
                     updated = update_ssh_client_key(
                         client, existing.id, label, is_default
                     )
+                    result["changed"] = True
                     result["id"] = updated.id
                     result["kind"] = updated.kind
                     result["public_key"] = updated.public_key
@@ -345,12 +371,14 @@ def main():
 
     except WarpgateAPIError as e:
         module.fail_json(
-            msg=f"Warpgate API error: {e.message}", status_code=e.status_code
+            msg=f"Warpgate API error: {e.message}",
+            status_code=e.status_code,
+            changed=result["changed"],
         )
     except WarpgateClientError as e:
-        module.fail_json(msg=f"Warpgate client error: {e!s}")
+        module.fail_json(msg=f"Warpgate client error: {e!s}", changed=result["changed"])
     except Exception as e:
-        module.fail_json(msg=f"Unexpected error: {e!s}")
+        module.fail_json(msg=f"Unexpected error: {e!s}", changed=result["changed"])
     finally:
         if client is not None:
             client.logout()

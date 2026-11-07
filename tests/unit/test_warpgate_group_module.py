@@ -169,6 +169,19 @@ class TestGroupDelete:
             result, mod = _run_module(params)
         assert result["changed"] is False
 
+    def test_delete_by_id_with_other_name_fails(self):
+        params = _base_params(state="absent", id="g1")
+        with (
+            patch(
+                "warpgate_group.get_target_group",
+                return_value=TargetGroup(id="g1", name="staging"),
+            ),
+            patch("warpgate_group.delete_target_group") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert "staging" in result["msg"]
+
     def test_delete_check_mode(self):
         existing = TargetGroup(
             id="g1", name="production", description="Prod servers", color="Danger"

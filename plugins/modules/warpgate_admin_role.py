@@ -46,6 +46,7 @@ options:
     id:
         description:
             - Admin role ID (for update/delete operations by ID).
+            - With O(state=absent), the deletion fails if the object found by ID is not named O(name).
         type: str
         required: false
     name:
@@ -244,6 +245,18 @@ def main():
                     break
 
         if state == "absent":
+            if role_id and not existing:
+                other = next(
+                    (r for r in get_admin_roles(client) if r.name == name), None
+                )
+                if other:
+                    module.fail_json(
+                        msg=f"Admin role {role_id} not found, but '{name}' exists with ID {other.id}"
+                    )
+            if existing and role_id and existing.name != name:
+                module.fail_json(
+                    msg=f"Admin role {role_id} is named '{existing.name}', not '{name}'"
+                )
             if existing is not None:
                 if not module.check_mode:
                     delete_admin_role(client, existing.id)
