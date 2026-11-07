@@ -148,9 +148,10 @@ class TestFindByExactName:
         assert item is not None
         assert item.id == "id-alpha"
 
-    def test_full_list_api_error_returns_none(self, mock_client):
+    def test_full_list_api_error_raises(self, mock_client):
         list_fn = MagicMock(side_effect=WarpgateAPIError(500, "boom"))
-        assert find_by_exact_name(list_fn, mock_client, "alpha") is None
+        with pytest.raises(WarpgateAPIError):
+            find_by_exact_name(list_fn, mock_client, "alpha")
 
 
 class TestFindIdByExactName:
@@ -161,3 +162,39 @@ class TestFindIdByExactName:
     def test_returns_none_when_missing(self, mock_client):
         list_fn = MagicMock(return_value=[])
         assert find_id_by_exact_name(list_fn, mock_client, "alpha") is None
+
+
+class TestFindByExactNameUsernameCase:
+    def test_username_match_ignores_case(self, mock_client):
+        users = [SimpleNamespace(id="u1", username="alice")]
+        list_fn = MagicMock(return_value=users)
+        assert find_by_exact_name(list_fn, mock_client, "Alice").id == "u1"
+
+    def test_name_match_keeps_case(self, mock_client):
+        list_fn = MagicMock(return_value=[SimpleNamespace(id="r1", name="ops")])
+        assert find_by_exact_name(list_fn, mock_client, "OPS") is None
+
+
+class TestFindByExactNameUsernameAmbiguity:
+    def test_exact_match_preferred(self, mock_client):
+        users = [
+            SimpleNamespace(id="u1", username="Alice"),
+            SimpleNamespace(id="u2", username="alice"),
+        ]
+        list_fn = MagicMock(return_value=users)
+        assert find_by_exact_name(list_fn, mock_client, "alice").id == "u2"
+
+    def test_ambiguous_case_insensitive_match_raises(self, mock_client):
+        users = [
+            SimpleNamespace(id="u1", username="Alice"),
+            SimpleNamespace(id="u2", username="ALICE"),
+        ]
+        list_fn = MagicMock(return_value=users)
+        with pytest.raises(ValueError):
+            find_by_exact_name(list_fn, mock_client, "alice")
+
+
+class TestFindByExactNameUsernameAsciiFold:
+    def test_non_ascii_case_is_significant(self, mock_client):
+        list_fn = MagicMock(return_value=[SimpleNamespace(id="u1", username="Élodie")])
+        assert find_by_exact_name(list_fn, mock_client, "élodie") is None

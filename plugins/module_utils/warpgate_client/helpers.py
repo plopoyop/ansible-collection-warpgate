@@ -6,11 +6,19 @@ Provides common functionality used across multiple modules:
 - Robust by-name lookup with search-then-list-all fallback
 """
 
+import string
 from collections.abc import Callable
 from typing import Any
 
 from .client import WarpgateAPIError
 from .role import get_role, get_roles
+
+_ASCII_LOWER = str.maketrans(string.ascii_uppercase, string.ascii_lowercase)
+
+
+def fold_username(username: str) -> str:
+    """Lower-case ASCII letters only, as Warpgate does on SQLite."""
+    return (username or "").translate(_ASCII_LOWER)
 
 
 def find_by_exact_name(
@@ -26,7 +34,8 @@ def find_by_exact_name(
     that the API tokenizes (notably spaces). When the search-based pass
     returns no exact match, this helper falls back to listing the full
     collection and re-scanning client-side. Both attempts compare on the
-    full ``name`` (or ``username`` for users) string for equality.
+    full ``name`` string for equality (``username`` for users, falling back to a
+    unique match ignoring ASCII case).
 
     Args:
         list_fn: collection getter accepting ``(client, search=…)``
@@ -36,8 +45,15 @@ def find_by_exact_name(
 
     Returns:
         The matching entity object, or ``None`` if no exact match exists.
+
+    Raises:
+        WarpgateAPIError: if the full listing fails, so that a lookup error is
+            never mistaken for an absent entity.
     """
 
+    # Warpgate matches usernames case-insensitively, but databases older than
+    # 0.27 may hold both "Alice" and "alice": prefer the exact match and refuse
+    # an ambiguous one.
     def _scan(items: list[Any]) -> Any | None:
         for item in items:
             if (
@@ -45,7 +61,14 @@ def find_by_exact_name(
                 or getattr(item, "username", None) == name
             ):
                 return item
-        return None
+        folded = [
+            item
+            for item in items
+            if fold_username(getattr(item, "username", None)) == fold_username(name)
+        ]
+        if len(folded) > 1:
+            raise ValueError(f"Several users match '{name}' when ignoring case")
+        return folded[0] if folded else None
 
     try:
         match = _scan(list_fn(client, search=name))
@@ -57,10 +80,7 @@ def find_by_exact_name(
 
     # Fallback: full listing — the search filter sometimes misses entries
     # whose name contains spaces or other tokenized characters.
-    try:
-        return _scan(list_fn(client))
-    except WarpgateAPIError:
-        return None
+    return _scan(list_fn(client))
 
 
 def find_id_by_exact_name(
