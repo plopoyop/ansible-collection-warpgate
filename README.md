@@ -187,6 +187,9 @@ collection is returned.
 > Keep the account used for the API calls (and any SSO-provisioned user) out of the
 > deletion loop, otherwise the next run will lock itself out.
 
+> `warpgate_target_info` masks target credentials (`password`, `token`, `private_key`),
+> HTTP header values and URL userinfo as `********`; `secret://` references are kept as is.
+
 > Ansible redacts the value of any `no_log` parameter from module output. If your
 > `api_password` or `token` happens to be the exact name of a user, role or target,
 > that name comes back as `VALUE_SPECIFIED_IN_NO_LOG_PARAMETER` and a prune loop
@@ -225,11 +228,17 @@ collection is returned.
     expiry: "2026-12-31T23:59:59Z"
     number_of_uses: 1
   register: ticket
-
-- name: Show ticket secret
-  ansible.builtin.debug:
-    msg: "Ticket: {{ ticket.secret }}"
+  no_log: true  # the ticket secret is returned in clear text
 ```
+
+> The `*_options` of `warpgate_target` are validated against their documented
+> suboptions: unknown keys are rejected, and an unused protocol must be left out
+> (or set to `omit`), not passed as `{}`; enable public key auth with
+> `public_key_auth: {}`. Credentials inside them are `no_log`, except
+> `http_options.headers` and credentials embedded in `http_options.url`, which are
+> masked in the diff only: set `no_log` on the task when they carry secrets.
+> `recordings_storage` of `warpgate_parameters` is validated the same way (`kind`,
+> and `credentials.mode` when set, are required).
 
 With ansible-core >= 2.12 it is possible to specify default parameters for all modules in this collection using [Module defaults groups](https://docs.ansible.com/ansible/latest/user_guide/playbooks_module_defaults.html#module-defaults-groups). Use it like this:
 

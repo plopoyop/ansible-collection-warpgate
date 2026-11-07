@@ -150,6 +150,8 @@
   loop: "{{ warpgate_users }}"
   loop_control:
     loop_var: "warpgate_current_user"
+    label: "{{ warpgate_current_user.name }}"
+  no_log: true
 
 - name: Handle Warpgate target groups
   warpgate_group:
@@ -177,13 +179,15 @@
     group: "{{ warpgate_current_target.group | default('') }}"
     description: "{{ warpgate_current_target.description | default('') }}"
     rate_limit_bytes_per_second: "{{ warpgate_current_target.rate_limit_bytes_per_second | default(omit) }}"
-    ssh_options: "{{ warpgate_current_target.ssh_options | default({}) }}"
-    http_options: "{{ warpgate_current_target.http_options | default({}) }}"
-    mysql_options: "{{ warpgate_current_target.mysql_options | default({}) }}"
-    postgres_options: "{{ warpgate_current_target.postgres_options | default({}) }}"
-    kubernetes_options: "{{ warpgate_current_target.kubernetes_options | default({}) }}"
+    ssh_options: "{{ warpgate_current_target.ssh_options | default(omit) }}"
+    http_options: "{{ warpgate_current_target.http_options | default(omit) }}"
+    mysql_options: "{{ warpgate_current_target.mysql_options | default(omit) }}"
+    postgres_options: "{{ warpgate_current_target.postgres_options | default(omit) }}"
+    kubernetes_options: "{{ warpgate_current_target.kubernetes_options | default(omit) }}"
     roles: "{{ warpgate_current_target.roles | default([]) }}"
     state: "{{ warpgate_current_target.state | default('present') }}"
   loop: "{{ warpgate_targets }}"
   loop_control:
     loop_var: "warpgate_current_target"
+    label: "{{ warpgate_current_target.name }}"
+  no_log: true

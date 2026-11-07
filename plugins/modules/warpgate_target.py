@@ -101,7 +101,9 @@ options:
                         type: str
                         required: true
             public_key_auth:
-                description: Public key authentication
+                description:
+                    - Public key authentication. Set it to C({}) to enable it;
+                      an empty value (C(null)) is treated as unset.
                 type: dict
             iam_role:
                 description:
@@ -120,7 +122,11 @@ options:
         required: false
         suboptions:
             url:
-                description: HTTP server URL
+                description:
+                    - HTTP server URL.
+                    - Credentials embedded in the URL (C(user:pass@)) are masked
+                      in the diff but not in the module invocation log; set
+                      C(no_log) on the task when using them.
                 type: str
                 required: true
             tls:
@@ -138,7 +144,11 @@ options:
                         type: bool
                         required: true
             headers:
-                description: Custom HTTP headers
+                description:
+                    - Custom HTTP headers.
+                    - Values are masked in the diff but not in the module
+                      invocation log; set C(no_log) on the task when they carry
+                      credentials.
                 type: dict
             external_host:
                 description: External host for HTTP requests
@@ -462,6 +472,7 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.
     delete_target,
     get_target,
     get_targets,
+    redact_options,
     update_target,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.target_group import (
@@ -527,7 +538,8 @@ def build_target_options(module):
         }
 
         if bool(ssh_options.get("iam_role")) and (
-            ssh_options.get("password_auth") or "public_key_auth" in ssh_options
+            ssh_options.get("password_auth")
+            or ssh_options.get("public_key_auth") is not None
         ):
             module.fail_json(
                 msg="ssh_options: iam_role is mutually exclusive with "
@@ -539,7 +551,7 @@ def build_target_options(module):
                 "kind": "Password",
                 "password": ssh_options["password_auth"]["password"],
             }
-        elif "public_key_auth" in ssh_options:
+        elif ssh_options.get("public_key_auth") is not None:
             # public_key_auth can be {} (empty dict) meaning "use public key auth"
             options["auth"] = {"kind": "PublicKey"}
         elif ssh_options.get("iam_role"):
@@ -828,6 +840,25 @@ def manage_target_roles(
     return changed, final_role_ids
 
 
+_TLS_OPTIONS = dict(
+    mode=dict(type="str", required=True, choices=["Disabled", "Preferred", "Required"]),
+    verify=dict(type="bool", required=True),
+)
+
+
+def _database_options(**extra):
+    return dict(
+        host=dict(type="str", required=True),
+        port=dict(type="int", required=True),
+        username=dict(type="str", required=True),
+        password=dict(type="str", no_log=True),
+        iam_role=dict(type="bool", default=False),
+        tls=dict(type="dict", required=True, options=_TLS_OPTIONS),
+        default_database_name=dict(type="str"),
+        **extra,
+    )
+
+
 def main():
     module_args = dict(
         host=dict(type="str", required=True),
@@ -839,11 +870,72 @@ def main():
         description=dict(type="str", required=False, default=""),
         group=dict(type="str", required=False, default=""),
         rate_limit_bytes_per_second=dict(type="int", required=False),
-        ssh_options=dict(type="dict", required=False),
-        http_options=dict(type="dict", required=False),
-        mysql_options=dict(type="dict", required=False),
-        postgres_options=dict(type="dict", required=False),
-        kubernetes_options=dict(type="dict", required=False),
+        ssh_options=dict(
+            type="dict",
+            required=False,
+            options=dict(
+                host=dict(type="str", required=True),
+                port=dict(type="int", required=True),
+                username=dict(type="str", required=True),
+                allow_insecure_algos=dict(type="bool", default=False),
+                password_auth=dict(
+                    type="dict",
+                    no_log=False,
+                    options=dict(
+                        password=dict(type="str", required=True, no_log=True),
+                    ),
+                ),
+                public_key_auth=dict(type="dict"),
+                iam_role=dict(type="bool", default=False),
+                jump_host=dict(type="str"),
+            ),
+        ),
+        http_options=dict(
+            type="dict",
+            required=False,
+            options=dict(
+                url=dict(type="str", required=True),
+                tls=dict(type="dict", required=True, options=_TLS_OPTIONS),
+                headers=dict(type="dict"),
+                external_host=dict(type="str"),
+            ),
+        ),
+        mysql_options=dict(
+            type="dict",
+            required=False,
+            options=_database_options(),
+        ),
+        postgres_options=dict(
+            type="dict",
+            required=False,
+            options=_database_options(
+                idle_timeout=dict(type="str"),
+                protocol_version=dict(type="str", choices=["3.0", "3.2"]),
+            ),
+        ),
+        kubernetes_options=dict(
+            type="dict",
+            required=False,
+            options=dict(
+                cluster_url=dict(type="str", required=True),
+                tls=dict(type="dict", required=True, options=_TLS_OPTIONS),
+                token_auth=dict(
+                    type="dict",
+                    no_log=False,
+                    options=dict(
+                        token=dict(type="str", required=True, no_log=True),
+                    ),
+                ),
+                certificate_auth=dict(
+                    type="dict",
+                    options=dict(
+                        certificate=dict(type="str", required=True),
+                        private_key=dict(type="str", required=True, no_log=True),
+                    ),
+                ),
+                iam_role=dict(type="bool", default=False),
+            ),
+        ),
         roles=dict(type="list", elements="str", required=False),
         state=dict(type="str", choices=["present", "absent"], default="present"),
         insecure=dict(type="bool", default=False),
@@ -940,14 +1032,14 @@ def main():
                     "name": existing_target.name,
                     "description": existing_target.description or "",
                     "group_id": existing_target.group_id or "",
-                    "options": existing_target.options or {},
+                    "options": redact_options(existing_target.options or {}),
                     "rate_limit_bytes_per_second": existing_target.rate_limit_bytes_per_second,
                 }
                 diff_after = {
                     "name": name,
                     "description": description,
                     "group_id": group_id or "",
-                    "options": target_options or {},
+                    "options": redact_options(target_options or {}),
                     "rate_limit_bytes_per_second": rate_limit_bytes_per_second,
                 }
 
@@ -1115,7 +1207,7 @@ def main():
                         "description": description,
                         "group": group,
                         "rate_limit_bytes_per_second": rate_limit_bytes_per_second,
-                        "options": target_options or {},
+                        "options": redact_options(target_options or {}),
                         "roles": roles or [],
                     },
                 }

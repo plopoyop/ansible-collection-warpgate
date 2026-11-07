@@ -304,6 +304,50 @@ options:
               report C(changed) on every run; omit the secret to keep the
               stored one.
         type: dict
+        suboptions:
+            kind:
+                description: Storage backend.
+                type: str
+                required: true
+                choices: ["Disk", "S3"]
+            path:
+                description: Recordings directory (C(Disk) only).
+                type: str
+            bucket:
+                description: S3 bucket name.
+                type: str
+            region:
+                description: S3 region.
+                type: str
+            endpoint:
+                description: Custom endpoint for S3-compatible services (e.g. MinIO).
+                type: str
+            path_style:
+                description: Use path-style addressing, required by most S3-compatible services.
+                type: bool
+            prefix:
+                description: Key prefix prepended to every object path.
+                type: str
+            scratch_path:
+                description: Local directory buffering recordings before upload.
+                type: str
+            credentials:
+                description: S3 credentials.
+                type: dict
+                suboptions:
+                    mode:
+                        description:
+                            - C(Auto) uses the ambient AWS credential chain,
+                              C(Static) uses the keys below.
+                        type: str
+                        required: true
+                        choices: ["Auto", "Static"]
+                    access_key_id:
+                        description: S3 access key ID (C(Static) only).
+                        type: str
+                    secret_access_key:
+                        description: S3 secret access key (C(Static) only).
+                        type: str
     insecure:
         description:
             - Disables SSL certificate verification
@@ -416,6 +460,12 @@ def _sanitize_params(params):
     return sanitized
 
 
+def _drop_none(value):
+    if isinstance(value, dict):
+        return {k: _drop_none(v) for k, v in value.items() if v is not None}
+    return value
+
+
 def build_desired_parameters(module, current):
     """Merges module parameters over the current server values.
 
@@ -445,6 +495,10 @@ def build_desired_parameters(module, current):
             desired[field] = merged_policy
         elif field == "logo":
             if _logo_etag(value) != current.get("logo_etag"):
+                desired[field] = value
+        elif field == "recordings_storage":
+            value = _drop_none(value)
+            if value != _drop_none(current.get(field)):
                 desired[field] = value
         else:
             desired[field] = value
@@ -554,7 +608,30 @@ def main():
         ),
         analytics_normal=dict(type="bool", required=False),
         recordings_enable=dict(type="bool", required=False),
-        recordings_storage=dict(type="dict", required=False),
+        recordings_storage=dict(
+            type="dict",
+            required=False,
+            options=dict(
+                kind=dict(type="str", required=True, choices=["Disk", "S3"]),
+                path=dict(type="str"),
+                bucket=dict(type="str"),
+                region=dict(type="str"),
+                endpoint=dict(type="str"),
+                path_style=dict(type="bool"),
+                prefix=dict(type="str"),
+                scratch_path=dict(type="str"),
+                credentials=dict(
+                    type="dict",
+                    options=dict(
+                        mode=dict(
+                            type="str", required=True, choices=["Auto", "Static"]
+                        ),
+                        access_key_id=dict(type="str"),
+                        secret_access_key=dict(type="str", no_log=True),
+                    ),
+                ),
+            ),
+        ),
         insecure=dict(type="bool", default=False),
         timeout=dict(type="int", default=30),
     )

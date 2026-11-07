@@ -18,6 +18,9 @@ description:
     - "B(Note): Tickets are inherently non-idempotent. Each call with
       state=present creates a new ticket with a unique secret. Tickets
       cannot be updated. Use state=absent with a ticket ID to delete."
+    - "B(Security): The ticket secret is returned in clear text. Set
+      C(no_log: true) on the task so it does not end up in the output or
+      the logs."
 
 version_added: "1.0.0"
 
@@ -114,11 +117,14 @@ EXAMPLES = """
     target_name: "internal-web-app"
     state: present
   register: ticket_result
+  no_log: true
 
-- name: Display the ticket secret
-  ansible.builtin.debug:
-    msg: "Ticket secret: {{ ticket_result.secret }}"
-  when: ticket_result.secret is defined
+- name: Store the ticket secret in a protected file
+  ansible.builtin.copy:
+    content: "{{ ticket_result.secret }}"
+    dest: "/root/.warpgate-ticket"
+    mode: "0600"
+  no_log: true
 
 - name: Delete a ticket
   plopoyop.warpgate.warpgate_ticket:
@@ -134,10 +140,9 @@ id:
     type: str
     returned: when created
 secret:
-    description: Ticket secret (only available at creation)
+    description: Ticket secret (only available at creation). Returned in clear text.
     type: str
     returned: when created
-    no_log: true
 username:
     description: Ticket username
     type: str

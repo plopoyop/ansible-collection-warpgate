@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import warpgate_target
+from ansible.module_utils.common.arg_spec import ArgumentSpecValidator
 from warpgate_client.client import WarpgateAPIError
 from warpgate_client.role import Role
 from warpgate_client.target import Target
@@ -565,6 +566,7 @@ class TestTargetModuleCreate:
         assert result["changed"] is True
         assert result["diff"]["before"] == {}
         assert result["diff"]["after"]["name"] == "prod-ssh"
+        assert result["diff"]["after"]["options"]["auth"]["password"] == "********"
 
     def test_create_check_mode(self):
         group = TargetGroup(id="g1", name="production")
@@ -614,6 +616,8 @@ class TestTargetModuleUpdate:
         assert result["changed"] is True
         assert result["diff"]["before"]["description"] == "Old"
         assert result["diff"]["after"]["description"] == "Prod server"
+        assert result["diff"]["before"]["options"]["auth"]["password"] == "********"
+        assert result["diff"]["after"]["options"]["auth"]["password"] == "********"
 
     def test_no_change_when_identical(self):
         opts = {
@@ -663,3 +667,236 @@ class TestTargetModuleDelete:
         with patch("warpgate_target.get_targets", return_value=[]):
             result, mod = _run_module(params)
         assert result["changed"] is False
+
+
+# ---------------------------------------------------------------------------
+# argument_spec: secrets nested in *_options must be no_log
+# ---------------------------------------------------------------------------
+
+
+def _argument_spec():
+    with patch("warpgate_target.AnsibleModule") as mock_cls:
+        mock_cls.side_effect = SystemExit
+        with pytest.raises(SystemExit):
+            warpgate_target.main()
+    return mock_cls.call_args.kwargs["argument_spec"]
+
+
+def _validate(**params):
+    base = {"host": "https://wg", "token": "api-token", "name": "t"}
+    base.update(params)
+    return ArgumentSpecValidator(_argument_spec()).validate(base)
+
+
+_TLS = {"mode": "Required", "verify": True}
+
+
+class TestArgumentSpecNoLog:
+    @pytest.mark.parametrize(
+        "options_key, options, secrets",
+        [
+            (
+                "ssh_options",
+                {
+                    "host": "10.0.0.1",
+                    "port": 22,
+                    "username": "deploy",
+                    "password_auth": {"password": "ssh-pass"},
+                },
+                ["ssh-pass"],
+            ),
+            (
+                "mysql_options",
+                {
+                    "host": "db",
+                    "port": 3306,
+                    "username": "deploy",
+                    "password": "mysql-pass",
+                    "tls": _TLS,
+                },
+                ["mysql-pass"],
+            ),
+            (
+                "postgres_options",
+                {
+                    "host": "db",
+                    "port": 5432,
+                    "username": "deploy",
+                    "password": "pg-pass",
+                    "tls": _TLS,
+                },
+                ["pg-pass"],
+            ),
+            (
+                "kubernetes_options",
+                {
+                    "cluster_url": "https://k8s:6443",
+                    "tls": _TLS,
+                    "token_auth": {"token": "k8s-token"},
+                },
+                ["k8s-token"],
+            ),
+            (
+                "kubernetes_options",
+                {
+                    "cluster_url": "https://k8s:6443",
+                    "tls": _TLS,
+                    "certificate_auth": {
+                        "certificate": "CERT-PEM",
+                        "private_key": "KEY-PEM",
+                    },
+                },
+                ["KEY-PEM"],
+            ),
+        ],
+    )
+    def test_secrets_are_no_log(self, options_key, options, secrets):
+        result = _validate(**{options_key: options})
+        assert result.error_messages == []
+        for secret in secrets:
+            assert secret in result._no_log_values
+        assert "deploy" not in result._no_log_values
+        assert "CERT-PEM" not in result._no_log_values
+
+    def test_validated_ssh_public_key_params_build(self):
+        result = _validate(
+            ssh_options={
+                "host": "10.0.0.1",
+                "port": 22,
+                "username": "deploy",
+                "public_key_auth": {},
+            }
+        )
+        mod = MagicMock()
+        mod.params = result.validated_parameters
+        opts = warpgate_target.build_target_options(mod)
+        assert opts["auth"] == {"kind": "PublicKey"}
+
+    def test_validated_ssh_password_params_build(self):
+        result = _validate(
+            ssh_options={
+                "host": "10.0.0.1",
+                "port": 22,
+                "username": "deploy",
+                "password_auth": {"password": "ssh-pass"},
+            }
+        )
+        mod = MagicMock()
+        mod.params = result.validated_parameters
+        mod.fail_json = MagicMock(side_effect=SystemExit)
+        opts = warpgate_target.build_target_options(mod)
+        assert opts["auth"] == {"kind": "Password", "password": "ssh-pass"}
+
+    def test_unknown_suboption_rejected(self):
+        result = _validate(
+            ssh_options={
+                "host": "10.0.0.1",
+                "port": 22,
+                "username": "deploy",
+                "pasword_auth": {"password": "typo"},
+            }
+        )
+        assert any("pasword_auth" in m for m in result.error_messages)
+
+    def test_header_values_are_not_no_log(self):
+        result = _validate(
+            http_options={"url": "https://app", "tls": _TLS, "headers": {"X-A": "1"}}
+        )
+        assert result.error_messages == []
+        assert "1" not in result._no_log_values
+
+    def test_public_key_auth_null_is_unset(self):
+        result = _validate(
+            ssh_options={
+                "host": "10.0.0.1",
+                "port": 22,
+                "username": "deploy",
+                "public_key_auth": None,
+            }
+        )
+        mod = MagicMock()
+        mod.params = result.validated_parameters
+        mod.fail_json = MagicMock(side_effect=SystemExit)
+        with pytest.raises(SystemExit):
+            warpgate_target.build_target_options(mod)
+
+    @pytest.mark.parametrize(
+        "options_key, options, server_options",
+        [
+            (
+                "mysql_options",
+                {
+                    "host": "db",
+                    "port": 3306,
+                    "username": "deploy",
+                    "password": "mysql-pass",
+                    "tls": _TLS,
+                },
+                {
+                    "kind": "MySql",
+                    "host": "db",
+                    "port": 3306,
+                    "username": "deploy",
+                    "auth": {"kind": "Password", "password": "mysql-pass"},
+                    "tls": _TLS,
+                    "default_database_name": None,
+                },
+            ),
+            (
+                "postgres_options",
+                {
+                    "host": "db",
+                    "port": 5432,
+                    "username": "deploy",
+                    "iam_role": True,
+                    "tls": _TLS,
+                    "protocol_version": 3.0,
+                },
+                {
+                    "kind": "Postgres",
+                    "host": "db",
+                    "port": 5432,
+                    "username": "deploy",
+                    "auth": {"kind": "IamRole"},
+                    "tls": _TLS,
+                    "protocol_version": "3.0",
+                    "idle_timeout": None,
+                },
+            ),
+            (
+                "http_options",
+                {"url": "https://app", "tls": _TLS},
+                {
+                    "kind": "Http",
+                    "url": "https://app",
+                    "tls": _TLS,
+                    "headers": None,
+                    "external_host": None,
+                },
+            ),
+            (
+                "kubernetes_options",
+                {
+                    "cluster_url": "https://k8s:6443",
+                    "tls": _TLS,
+                    "token_auth": {"token": "k8s-token"},
+                },
+                {
+                    "kind": "Kubernetes",
+                    "cluster_url": "https://k8s:6443",
+                    "tls": _TLS,
+                    "auth": {"kind": "Token", "token": "k8s-token"},
+                },
+            ),
+        ],
+    )
+    def test_validated_params_match_server_echo(
+        self, options_key, options, server_options
+    ):
+        result = _validate(**{options_key: options})
+        assert result.error_messages == []
+        mod = MagicMock()
+        mod.params = result.validated_parameters
+        mod.fail_json = MagicMock(side_effect=SystemExit)
+        opts = warpgate_target.build_target_options(mod)
+        assert warpgate_target.options_equal(server_options, opts)

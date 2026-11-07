@@ -119,7 +119,10 @@ targets:
             type: list
             elements: str
         options:
-            description: Protocol-specific options (ssh, http, mysql, postgres, kubernetes)
+            description:
+                - Protocol-specific options (ssh, http, mysql, postgres, kubernetes)
+                - Credentials (C(password), C(token), C(private_key)), HTTP header values
+                  and URL userinfo are replaced by C(********).
             type: dict
         rate_limit_bytes_per_second:
             description: Per-target bandwidth limit in bytes/second (v0.23+), null when unset

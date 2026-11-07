@@ -297,6 +297,62 @@ class TestTarget:
         }
         assert Target.from_dict(data).to_dict() == data
 
+    def test_to_dict_redacts_credentials(self):
+        target = Target(
+            id="t1",
+            name="k8s",
+            options={
+                "kind": "Kubernetes",
+                "cluster_url": "https://k8s:6443",
+                "auth": {
+                    "kind": "Certificate",
+                    "certificate": "CERT-PEM",
+                    "private_key": "KEY-PEM",
+                },
+            },
+        )
+        auth = target.to_dict()["options"]["auth"]
+        assert auth["private_key"] == "********"
+        assert auth["certificate"] == "CERT-PEM"
+        assert target.options["auth"]["private_key"] == "KEY-PEM"
+
+    def test_to_dict_redacts_password_token_and_headers(self):
+        ssh = Target(
+            id="t1",
+            name="ssh",
+            options={"kind": "Ssh", "auth": {"kind": "Password", "password": "p"}},
+        )
+        k8s = Target(
+            id="t2",
+            name="k8s",
+            options={"kind": "Kubernetes", "auth": {"kind": "Token", "token": "t"}},
+        )
+        http = Target(
+            id="t3",
+            name="http",
+            options={"kind": "Http", "headers": {"Authorization": "Bearer x"}},
+        )
+        assert ssh.to_dict()["options"]["auth"]["password"] == "********"
+        assert k8s.to_dict()["options"]["auth"]["token"] == "********"
+        assert http.to_dict()["options"]["headers"] == {"Authorization": "********"}
+
+    def test_to_dict_redacts_url_userinfo(self):
+        target = Target(
+            id="t1",
+            name="http",
+            options={"kind": "Http", "url": "https://user:pass@app.local/path"},
+        )
+        assert target.to_dict()["options"]["url"] == "https://********@app.local/path"
+
+    def test_to_dict_keeps_secret_references(self):
+        ref = "secret://vault/secret/db#password"
+        target = Target(
+            id="t1",
+            name="db",
+            options={"kind": "Postgres", "auth": {"kind": "Password", "password": ref}},
+        )
+        assert target.to_dict()["options"]["auth"]["password"] == ref
+
 
 # ---------------------------------------------------------------------------
 # TargetGroup

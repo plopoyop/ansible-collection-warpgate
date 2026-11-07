@@ -3,7 +3,9 @@
 import hashlib
 from unittest.mock import MagicMock, patch
 
+import pytest
 import warpgate_parameters
+from ansible.module_utils.common.arg_spec import ArgumentSpecValidator
 from warpgate_client.parameters import get_parameters, update_parameters
 
 # ---------------------------------------------------------------------------
@@ -421,6 +423,84 @@ class TestParametersModule:
         sent = mock_update.call_args[0][1]
         assert sent["ssh_host_key_verification"] == "AutoReject"
         assert result["changed"] is True
+
+    def test_recordings_storage_drops_unset_suboptions(self):
+        storage = {
+            "kind": "Disk",
+            "path": "/var/lib/warpgate/recordings",
+            "bucket": None,
+            "region": None,
+            "endpoint": None,
+            "path_style": None,
+            "prefix": None,
+            "scratch_path": None,
+            "credentials": None,
+        }
+        params = _base_params(recordings_storage=storage)
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            _run_module(params)
+        sent = mock_update.call_args[0][1]
+        assert sent["recordings_storage"] == {
+            "kind": "Disk",
+            "path": "/var/lib/warpgate/recordings",
+        }
+
+    def test_recordings_storage_s3_idempotent_against_null_echo(self):
+        echoed = {
+            "kind": "S3",
+            "bucket": "recordings",
+            "region": "eu-west-1",
+            "endpoint": None,
+            "path_style": False,
+            "prefix": "",
+            "scratch_path": None,
+            "credentials": {
+                "mode": "Static",
+                "access_key_id": "AKIAEXAMPLE",
+                "secret_access_key": None,
+            },
+        }
+        storage = dict(echoed, credentials=dict(echoed["credentials"]))
+        current = dict(CURRENT, recordings_storage=echoed)
+        params = _base_params(recordings_storage=storage)
+        with (
+            patch("warpgate_parameters.get_parameters", return_value=current),
+            patch("warpgate_parameters.update_parameters") as mock_update,
+        ):
+            result, mod = _run_module(params)
+        assert result["changed"] is False
+        mock_update.assert_not_called()
+
+    def test_recordings_storage_secret_is_no_log(self):
+        with patch("warpgate_parameters.AnsibleModule") as mock_cls:
+            mock_cls.side_effect = SystemExit
+            with pytest.raises(SystemExit):
+                warpgate_parameters.main()
+        spec = mock_cls.call_args.kwargs["argument_spec"]
+        result = ArgumentSpecValidator(spec).validate(
+            {
+                "host": "https://wg",
+                "token": "api-token",
+                "recordings_storage": {
+                    "kind": "S3",
+                    "bucket": "recordings",
+                    "region": "eu-west-1",
+                    "path_style": False,
+                    "prefix": "",
+                    "credentials": {
+                        "mode": "Static",
+                        "access_key_id": "AKIAEXAMPLE",
+                        "secret_access_key": "s3-secret",
+                    },
+                },
+            }
+        )
+        assert result.error_messages == []
+        assert "s3-secret" in result._no_log_values
+        assert "AKIAEXAMPLE" not in result._no_log_values
 
     def test_recordings_storage_preserved_when_unset(self):
         params = _base_params(recordings_enable=True)
