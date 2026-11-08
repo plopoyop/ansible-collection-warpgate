@@ -1,11 +1,12 @@
 # Changelog
 
-## [3.0.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/3.0.0) (2026-11-07)
+## [3.0.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/3.0.0) (2026-11-08)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.4.0...3.0.0)
 
 ## 🐛 Bug Fixes
 
+- fix!: make revocations and credential rotation reliable [\#175](https://github.com/plopoyop/ansible-collection-warpgate/pull/175) ([plopoyop](https://github.com/plopoyop))
 - fix!: harden the install role against the service account [\#174](https://github.com/plopoyop/ansible-collection-warpgate/pull/174) ([plopoyop](https://github.com/plopoyop))
 - fix!: Secrets no log [\#171](https://github.com/plopoyop/ansible-collection-warpgate/pull/171) ([plopoyop](https://github.com/plopoyop))
 
