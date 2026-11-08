@@ -7,7 +7,7 @@ This module provides functions to manage Warpgate users and their credential pol
 import urllib.parse
 from typing import Any
 
-from .client import WarpgateAPIError
+from .client import WarpgateAPIError, path_segment
 
 # Credential kind constants
 CREDENTIAL_KIND_PASSWORD = "Password"
@@ -141,7 +141,7 @@ def get_user(client, user_id: str) -> User | None:
         User object if found, None otherwise
     """
     try:
-        response = client._request("GET", f"/users/{user_id}")
+        response = client._request("GET", f"/users/{path_segment(user_id)}")
         return User.from_dict(response)
     except WarpgateAPIError as e:
         if e.status_code == 404:
@@ -204,7 +204,7 @@ def update_user(
     if allowed_ip_ranges is not None:
         body["allowed_ip_ranges"] = list(allowed_ip_ranges)
 
-    response = client._request("PUT", f"/users/{user_id}", body)
+    response = client._request("PUT", f"/users/{path_segment(user_id)}", body)
     return User.from_dict(response)
 
 
@@ -216,4 +216,4 @@ def delete_user(client, user_id: str) -> None:
         client: WarpgateClient instance
         user_id: User ID to delete
     """
-    client._request("DELETE", f"/users/{user_id}")
+    client._request("DELETE", f"/users/{path_segment(user_id)}")

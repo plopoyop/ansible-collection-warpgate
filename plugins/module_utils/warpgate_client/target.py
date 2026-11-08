@@ -7,7 +7,7 @@ This module provides functions to manage Warpgate targets (SSH, HTTP, MySQL, Pos
 import urllib.parse
 from typing import Any
 
-from .client import WarpgateAPIError
+from .client import WarpgateAPIError, path_segment
 
 # TLS mode constants
 TLS_MODE_DISABLED = "Disabled"
@@ -135,7 +135,7 @@ def get_target(client, target_id: str) -> Target | None:
         Target object if found, None otherwise
     """
     try:
-        response = client._request("GET", f"/targets/{target_id}")
+        response = client._request("GET", f"/targets/{path_segment(target_id)}")
         return Target.from_dict(response)
     except WarpgateAPIError as e:
         if e.status_code == 404:
@@ -235,7 +235,7 @@ def update_target(
         body["group_id"] = group_id
     if rate_limit_bytes_per_second is not None:
         body["rate_limit_bytes_per_second"] = rate_limit_bytes_per_second
-    response = client._request("PUT", f"/targets/{target_id}", body)
+    response = client._request("PUT", f"/targets/{path_segment(target_id)}", body)
     return Target.from_dict(response)
 
 
@@ -247,4 +247,4 @@ def delete_target(client, target_id: str) -> None:
         client: WarpgateClient instance
         target_id: Target ID to delete
     """
-    client._request("DELETE", f"/targets/{target_id}")
+    client._request("DELETE", f"/targets/{path_segment(target_id)}")

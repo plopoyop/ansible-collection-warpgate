@@ -11,7 +11,7 @@ carry an ``expires_at`` timestamp; this is exposed through the new
 import urllib.parse
 from typing import Any
 
-from .client import WarpgateAPIError
+from .client import WarpgateAPIError, path_segment
 
 
 class Role:
@@ -117,7 +117,7 @@ def get_role(client, role_id: str) -> Role | None:
         Role object if found, None otherwise
     """
     try:
-        response = client._request("GET", f"/role/{role_id}")
+        response = client._request("GET", f"/role/{path_segment(role_id)}")
         return Role.from_dict(response)
     except WarpgateAPIError as e:
         if e.status_code == 404:
@@ -172,7 +172,7 @@ def update_role(
     body: dict[str, Any] = {"name": name, "description": description}
     if is_default is not None:
         body["is_default"] = is_default
-    response = client._request("PUT", f"/role/{role_id}", body)
+    response = client._request("PUT", f"/role/{path_segment(role_id)}", body)
     return Role.from_dict(response)
 
 
@@ -184,7 +184,7 @@ def delete_role(client, role_id: str) -> None:
         client: WarpgateClient instance
         role_id: Role ID to delete
     """
-    client._request("DELETE", f"/role/{role_id}")
+    client._request("DELETE", f"/role/{path_segment(role_id)}")
 
 
 def get_user_roles(client, user_id: str) -> list[UserRoleAssignment]:
@@ -196,14 +196,16 @@ def get_user_roles(client, user_id: str) -> list[UserRoleAssignment]:
     objects instead of bare roles. Callers that only need ``.id`` can use the
     returned :class:`UserRoleAssignment` unchanged.
     """
-    response = client._request("GET", f"/users/{user_id}/roles")
+    response = client._request("GET", f"/users/{path_segment(user_id)}/roles")
     return [UserRoleAssignment.from_dict(r) for r in response]
 
 
 def get_user_role(client, user_id: str, role_id: str) -> UserRoleAssignment | None:
     """Retrieves a single user-role assignment (v0.23+)."""
     try:
-        response = client._request("GET", f"/users/{user_id}/roles/{role_id}")
+        response = client._request(
+            "GET", f"/users/{path_segment(user_id)}/roles/{path_segment(role_id)}"
+        )
         return UserRoleAssignment.from_dict(response)
     except WarpgateAPIError as e:
         if e.status_code == 404:
@@ -231,7 +233,9 @@ def add_user_role(
     if expires_at:
         body["expires_at"] = expires_at
     response = client._request(
-        "POST", f"/users/{user_id}/roles/{role_id}", body if body else None
+        "POST",
+        f"/users/{path_segment(user_id)}/roles/{path_segment(role_id)}",
+        body if body else None,
     )
     if isinstance(response, dict) and response.get("id"):
         return UserRoleAssignment.from_dict(response)
@@ -247,7 +251,9 @@ def update_user_role(
     permanent; pass an ISO-8601 string to set a new expiry.
     """
     body: dict[str, Any] = {"expires_at": expires_at}
-    response = client._request("PUT", f"/users/{user_id}/roles/{role_id}", body)
+    response = client._request(
+        "PUT", f"/users/{path_segment(user_id)}/roles/{path_segment(role_id)}", body
+    )
     return UserRoleAssignment.from_dict(response)
 
 
@@ -260,7 +266,9 @@ def delete_user_role(client, user_id: str, role_id: str) -> None:
         user_id: User ID
         role_id: Role ID to remove
     """
-    client._request("DELETE", f"/users/{user_id}/roles/{role_id}")
+    client._request(
+        "DELETE", f"/users/{path_segment(user_id)}/roles/{path_segment(role_id)}"
+    )
 
 
 def get_target_roles(client, target_id: str) -> list[Role]:
@@ -274,7 +282,7 @@ def get_target_roles(client, target_id: str) -> list[Role]:
     Returns:
         List of Role objects assigned to the target
     """
-    response = client._request("GET", f"/targets/{target_id}/roles")
+    response = client._request("GET", f"/targets/{path_segment(target_id)}/roles")
     return [Role.from_dict(role) for role in response]
 
 
@@ -287,7 +295,9 @@ def add_target_role(client, target_id: str, role_id: str) -> None:
         target_id: Target ID
         role_id: Role ID to assign
     """
-    client._request("POST", f"/targets/{target_id}/roles/{role_id}")
+    client._request(
+        "POST", f"/targets/{path_segment(target_id)}/roles/{path_segment(role_id)}"
+    )
 
 
 def delete_target_role(client, target_id: str, role_id: str) -> None:
@@ -299,4 +309,6 @@ def delete_target_role(client, target_id: str, role_id: str) -> None:
         target_id: Target ID
         role_id: Role ID to remove
     """
-    client._request("DELETE", f"/targets/{target_id}/roles/{role_id}")
+    client._request(
+        "DELETE", f"/targets/{path_segment(target_id)}/roles/{path_segment(role_id)}"
+    )

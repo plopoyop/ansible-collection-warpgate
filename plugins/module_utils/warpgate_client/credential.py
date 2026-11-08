@@ -7,7 +7,7 @@ This module provides functions to manage user credentials (password, public key,
 import json
 from typing import Any
 
-from .client import WarpgateAPIError
+from .client import WarpgateAPIError, path_segment
 
 # Human-readable labels for the PasswordPolicyViolation enum returned by the
 # API (HTTP 422) when a password does not satisfy the password policy
@@ -29,13 +29,20 @@ def format_password_policy_error(error: WarpgateAPIError) -> str | None:
     """
     if getattr(error, "status_code", None) != 422:
         return None
-    try:
-        violations = json.loads(error.message)
-    except (TypeError, ValueError):
-        return None
+    violations = getattr(error, "details", None)
+    if violations is None:
+        try:
+            violations = json.loads(error.message)
+        except (TypeError, ValueError):
+            return None
     if not isinstance(violations, list) or not violations:
         return None
-    labels = [PASSWORD_POLICY_VIOLATION_LABELS.get(str(v), str(v)) for v in violations]
+    # The body is not masked here: only report known variants.
+    if not all(
+        isinstance(v, str) and v in PASSWORD_POLICY_VIOLATION_LABELS for v in violations
+    ):
+        return None
+    labels = [PASSWORD_POLICY_VIOLATION_LABELS[v] for v in violations]
     return "Password rejected by the server password policy: " + ", ".join(labels)
 
 
@@ -111,7 +118,9 @@ def add_password_credential(client, user_id: str, password: str) -> PasswordCred
         Created PasswordCredential object
     """
     body = {"password": password}
-    response = client._request("POST", f"/users/{user_id}/credentials/passwords", body)
+    response = client._request(
+        "POST", f"/users/{path_segment(user_id)}/credentials/passwords", body
+    )
     return PasswordCredential.from_dict(response)
 
 
@@ -128,7 +137,9 @@ def get_password_credentials(client, user_id: str) -> list[PasswordCredential]:
         List of PasswordCredential objects (with IDs only, no password values)
     """
     try:
-        response = client._request("GET", f"/users/{user_id}/credentials/passwords")
+        response = client._request(
+            "GET", f"/users/{path_segment(user_id)}/credentials/passwords"
+        )
         return [PasswordCredential.from_dict(cred) for cred in response]
     except WarpgateAPIError as e:
         if e.status_code == 404:
@@ -146,7 +157,10 @@ def delete_password_credential(client, user_id: str, credential_id: str) -> None
         user_id: User ID
         credential_id: Credential ID to delete
     """
-    client._request("DELETE", f"/users/{user_id}/credentials/passwords/{credential_id}")
+    client._request(
+        "DELETE",
+        f"/users/{path_segment(user_id)}/credentials/passwords/{path_segment(credential_id)}",
+    )
 
 
 def add_public_key_credential(
@@ -166,7 +180,7 @@ def add_public_key_credential(
     """
     body = {"label": label, "openssh_public_key": public_key}
     response = client._request(
-        "POST", f"/users/{user_id}/credentials/public-keys", body
+        "POST", f"/users/{path_segment(user_id)}/credentials/public-keys", body
     )
     return PublicKeyCredential.from_dict(response)
 
@@ -182,7 +196,9 @@ def get_public_key_credentials(client, user_id: str) -> list[PublicKeyCredential
     Returns:
         List of PublicKeyCredential objects
     """
-    response = client._request("GET", f"/users/{user_id}/credentials/public-keys")
+    response = client._request(
+        "GET", f"/users/{path_segment(user_id)}/credentials/public-keys"
+    )
     return [PublicKeyCredential.from_dict(cred) for cred in response]
 
 
@@ -204,7 +220,9 @@ def update_public_key_credential(
     """
     body = {"label": label, "openssh_public_key": public_key}
     response = client._request(
-        "PUT", f"/users/{user_id}/credentials/public-keys/{credential_id}", body
+        "PUT",
+        f"/users/{path_segment(user_id)}/credentials/public-keys/{path_segment(credential_id)}",
+        body,
     )
     return PublicKeyCredential.from_dict(response)
 
@@ -219,7 +237,8 @@ def delete_public_key_credential(client, user_id: str, credential_id: str) -> No
         credential_id: Credential ID to delete
     """
     client._request(
-        "DELETE", f"/users/{user_id}/credentials/public-keys/{credential_id}"
+        "DELETE",
+        f"/users/{path_segment(user_id)}/credentials/public-keys/{path_segment(credential_id)}",
     )
 
 
@@ -234,7 +253,7 @@ def get_sso_credentials(client, user_id: str) -> list[SsoCredential]:
     Returns:
         List of SsoCredential objects
     """
-    response = client._request("GET", f"/users/{user_id}/credentials/sso")
+    response = client._request("GET", f"/users/{path_segment(user_id)}/credentials/sso")
     return [SsoCredential.from_dict(cred) for cred in response]
 
 
@@ -256,7 +275,9 @@ def add_sso_credential(
     body: dict[str, Any] = {"email": email}
     if provider:
         body["provider"] = provider
-    response = client._request("POST", f"/users/{user_id}/credentials/sso", body)
+    response = client._request(
+        "POST", f"/users/{path_segment(user_id)}/credentials/sso", body
+    )
     return SsoCredential.from_dict(response)
 
 
@@ -280,7 +301,9 @@ def update_sso_credential(
     if provider:
         body["provider"] = provider
     response = client._request(
-        "PUT", f"/users/{user_id}/credentials/sso/{credential_id}", body
+        "PUT",
+        f"/users/{path_segment(user_id)}/credentials/sso/{path_segment(credential_id)}",
+        body,
     )
     return SsoCredential.from_dict(response)
 
@@ -294,7 +317,10 @@ def delete_sso_credential(client, user_id: str, credential_id: str) -> None:
         user_id: User ID
         credential_id: Credential ID to delete
     """
-    client._request("DELETE", f"/users/{user_id}/credentials/sso/{credential_id}")
+    client._request(
+        "DELETE",
+        f"/users/{path_segment(user_id)}/credentials/sso/{path_segment(credential_id)}",
+    )
 
 
 class CertificateCredential:
@@ -357,7 +383,9 @@ def get_certificate_credentials(client, user_id: str) -> list[CertificateCredent
         List of CertificateCredential objects
     """
     try:
-        response = client._request("GET", f"/users/{user_id}/credentials/certificates")
+        response = client._request(
+            "GET", f"/users/{path_segment(user_id)}/credentials/certificates"
+        )
         return [CertificateCredential.from_dict(cred) for cred in response]
     except WarpgateAPIError as e:
         if e.status_code == 404:
@@ -383,7 +411,7 @@ def issue_certificate_credential(
     """
     body = {"label": label, "public_key_pem": public_key_pem}
     response = client._request(
-        "POST", f"/users/{user_id}/credentials/certificates", body
+        "POST", f"/users/{path_segment(user_id)}/credentials/certificates", body
     )
     return IssuedCertificateCredential.from_dict(response)
 
@@ -405,7 +433,9 @@ def update_certificate_credential(
     """
     body = {"label": label}
     response = client._request(
-        "PATCH", f"/users/{user_id}/credentials/certificates/{credential_id}", body
+        "PATCH",
+        f"/users/{path_segment(user_id)}/credentials/certificates/{path_segment(credential_id)}",
+        body,
     )
     return CertificateCredential.from_dict(response)
 
@@ -420,5 +450,6 @@ def delete_certificate_credential(client, user_id: str, credential_id: str) -> N
         credential_id: Credential ID to revoke
     """
     client._request(
-        "DELETE", f"/users/{user_id}/credentials/certificates/{credential_id}"
+        "DELETE",
+        f"/users/{path_segment(user_id)}/credentials/certificates/{path_segment(credential_id)}",
     )

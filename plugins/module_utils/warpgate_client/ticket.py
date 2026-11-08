@@ -6,6 +6,8 @@ This module provides functions to manage Warpgate access tickets.
 
 from typing import Any
 
+from .client import path_segment
+
 
 class Ticket:
     """Represents a Warpgate ticket"""
@@ -135,4 +137,4 @@ def delete_ticket(client, ticket_id: str) -> None:
         client: WarpgateClient instance
         ticket_id: Ticket ID to delete
     """
-    client._request("DELETE", f"/tickets/{ticket_id}")
+    client._request("DELETE", f"/tickets/{path_segment(ticket_id)}")
