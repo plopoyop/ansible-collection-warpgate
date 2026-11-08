@@ -12,6 +12,7 @@ managed key by its ``label``.
 """
 
 from typing import Any
+from .client import path_segment
 
 
 class SSHClientKey:
@@ -93,10 +94,10 @@ def update_ssh_client_key(
 ) -> SSHClientKey:
     """Update an SSH client key's metadata (label / default flag)."""
     body = {"label": label, "is_default": bool(is_default)}
-    response = client._request("PUT", f"/ssh/own-keys/{key_id}", body)
+    response = client._request("PUT", f"/ssh/own-keys/{path_segment(key_id)}", body)
     return SSHClientKey.from_dict(response)
 
 
 def delete_ssh_client_key(client, key_id: str) -> None:
     """Delete an SSH client key by ID."""
-    client._request("DELETE", f"/ssh/own-keys/{key_id}")
+    client._request("DELETE", f"/ssh/own-keys/{path_segment(key_id)}")

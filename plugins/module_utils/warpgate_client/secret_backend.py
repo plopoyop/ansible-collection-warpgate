@@ -10,7 +10,7 @@ so a managed backend with an ``auth`` secret cannot be fully compared.
 
 from typing import Any
 
-from .client import WarpgateAPIError
+from .client import WarpgateAPIError, path_segment
 
 BACKEND_TYPES = ("vault", "openbao")
 
@@ -101,7 +101,9 @@ def get_secret_backends(client, search: str = "") -> list[SecretBackend]:
 def get_secret_backend(client, backend_id: str) -> SecretBackend | None:
     """Retrieve a secret backend by ID. Returns None if not found."""
     try:
-        response = client._request("GET", f"/secret-backends/{backend_id}")
+        response = client._request(
+            "GET", f"/secret-backends/{path_segment(backend_id)}"
+        )
         return SecretBackend.from_dict(response)
     except WarpgateAPIError as e:
         if e.status_code == 404:
@@ -142,10 +144,12 @@ def update_secret_backend(
     body = _body(
         name, backend_type, address, auth, namespace, tls_skip_verify, allowed_paths
     )
-    response = client._request("PUT", f"/secret-backends/{backend_id}", body)
+    response = client._request(
+        "PUT", f"/secret-backends/{path_segment(backend_id)}", body
+    )
     return SecretBackend.from_dict(response)
 
 
 def delete_secret_backend(client, backend_id: str) -> None:
     """Delete a secret backend by ID."""
-    client._request("DELETE", f"/secret-backends/{backend_id}")
+    client._request("DELETE", f"/secret-backends/{path_segment(backend_id)}")

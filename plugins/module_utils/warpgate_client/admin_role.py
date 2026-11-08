@@ -8,7 +8,7 @@ sessions, view recordings, etc.) rather than access to backends.
 
 from typing import Any
 
-from .client import WarpgateAPIError
+from .client import WarpgateAPIError, path_segment
 
 PERMISSION_FIELDS = (
     "targets_create",
@@ -89,7 +89,7 @@ def get_admin_roles(client) -> list[AdminRole]:
 def get_admin_role(client, role_id: str) -> AdminRole | None:
     """Retrieve a single admin role by ID. Returns None if not found."""
     try:
-        response = client._request("GET", f"/admin-roles/{role_id}")
+        response = client._request("GET", f"/admin-roles/{path_segment(role_id)}")
         return AdminRole.from_dict(response)
     except WarpgateAPIError as e:
         if e.status_code == 404:
@@ -116,18 +116,22 @@ def update_admin_role(
     permissions: dict[str, bool] | None = None,
 ) -> AdminRole:
     role = AdminRole(name=name, description=description, permissions=permissions)
-    response = client._request("PUT", f"/admin-roles/{role_id}", role.to_request_body())
+    response = client._request(
+        "PUT", f"/admin-roles/{path_segment(role_id)}", role.to_request_body()
+    )
     return AdminRole.from_dict(response)
 
 
 def delete_admin_role(client, role_id: str) -> None:
-    client._request("DELETE", f"/admin-roles/{role_id}")
+    client._request("DELETE", f"/admin-roles/{path_segment(role_id)}")
 
 
 def get_admin_role_users(client, role_id: str) -> list[dict[str, Any]]:
     """List users that hold a given admin role (raw dicts from the API)."""
     try:
-        return client._request("GET", f"/admin-roles/{role_id}/users") or []
+        return (
+            client._request("GET", f"/admin-roles/{path_segment(role_id)}/users") or []
+        )
     except WarpgateAPIError as e:
         if e.status_code == 404:
             return []
@@ -137,7 +141,9 @@ def get_admin_role_users(client, role_id: str) -> list[dict[str, Any]]:
 def get_user_admin_roles(client, user_id: str) -> list[AdminRole]:
     """List the admin roles held by a given user."""
     try:
-        response = client._request("GET", f"/users/{user_id}/admin-roles") or []
+        response = (
+            client._request("GET", f"/users/{path_segment(user_id)}/admin-roles") or []
+        )
     except WarpgateAPIError as e:
         if e.status_code == 404:
             return []
@@ -147,12 +153,16 @@ def get_user_admin_roles(client, user_id: str) -> list[AdminRole]:
 
 def add_user_admin_role(client, user_id: str, role_id: str) -> None:
     """Grant an admin role to a user."""
-    client._request("POST", f"/users/{user_id}/admin-roles/{role_id}")
+    client._request(
+        "POST", f"/users/{path_segment(user_id)}/admin-roles/{path_segment(role_id)}"
+    )
 
 
 def delete_user_admin_role(client, user_id: str, role_id: str) -> None:
     """Revoke an admin role from a user."""
-    client._request("DELETE", f"/users/{user_id}/admin-roles/{role_id}")
+    client._request(
+        "DELETE", f"/users/{path_segment(user_id)}/admin-roles/{path_segment(role_id)}"
+    )
 
 
 def resolve_admin_role_id(client, spec: str) -> str:

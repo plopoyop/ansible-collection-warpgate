@@ -7,7 +7,7 @@ This module provides functions to manage Warpgate target groups.
 import urllib.parse
 from typing import Any
 
-from .client import WarpgateAPIError
+from .client import WarpgateAPIError, path_segment
 
 
 class TargetGroup:
@@ -55,7 +55,7 @@ def get_target_groups(client, search: str = "") -> list[TargetGroup]:
 def get_target_group(client, group_id: str) -> TargetGroup | None:
     """Retrieves a specific target group by ID. Returns None if not found."""
     try:
-        response = client._request("GET", f"/target-groups/{group_id}")
+        response = client._request("GET", f"/target-groups/{path_segment(group_id)}")
         return TargetGroup.from_dict(response)
     except WarpgateAPIError as e:
         if e.status_code == 404:
@@ -89,10 +89,10 @@ def update_target_group(
     if color:
         body["color"] = color
 
-    response = client._request("PUT", f"/target-groups/{group_id}", body)
+    response = client._request("PUT", f"/target-groups/{path_segment(group_id)}", body)
     return TargetGroup.from_dict(response)
 
 
 def delete_target_group(client, group_id: str) -> None:
     """Deletes a target group by ID."""
-    client._request("DELETE", f"/target-groups/{group_id}")
+    client._request("DELETE", f"/target-groups/{path_segment(group_id)}")
