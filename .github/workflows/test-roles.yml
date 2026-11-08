@@ -18,6 +18,9 @@ on:
       - devbox.json
       - devbox.lock
 
+permissions:
+  contents: "read"
+
 jobs:
   install:
     uses: ./.github/workflows/test-role.yaml
