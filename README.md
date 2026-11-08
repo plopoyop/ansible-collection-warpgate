@@ -305,6 +305,7 @@ This project uses [devbox](https://www.jetify.com/devbox) for reproducible devel
 devbox shell
 task lint          # yamllint + ansible-lint + ruff
 task test:modules  # pytest unit tests
+task test:sanity   # ansible-test sanity (add `-- --docker default` for every target Python)
 task test:role -- install    # molecule test for install role
 task test:role -- configure  # molecule test for configure role
 ```

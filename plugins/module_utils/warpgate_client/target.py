@@ -4,6 +4,8 @@ Target management for the Warpgate API
 This module provides functions to manage Warpgate targets (SSH, HTTP, MySQL, PostgreSQL).
 """
 
+from __future__ import annotations
+
 import urllib.parse
 from typing import Any
 

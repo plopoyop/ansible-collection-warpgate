@@ -6,6 +6,8 @@ permissions on the admin UI / API itself (create targets, terminate
 sessions, view recordings, etc.) rather than access to backends.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 from .client import WarpgateAPIError, path_segment

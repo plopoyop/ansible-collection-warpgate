@@ -8,6 +8,8 @@ secret id) that the API never returns (it is blanked in ``GET`` responses),
 so a managed backend with an ``auth`` secret cannot be fully compared.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 from .client import WarpgateAPIError, path_segment

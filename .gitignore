@@ -1,4 +1,5 @@
 .ansible/
+collections/
 .task
 __pycache__/
 .pytest_cache/

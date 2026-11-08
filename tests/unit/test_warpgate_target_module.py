@@ -459,7 +459,7 @@ class TestManageTargetRoles:
             "warpgate_target.add_target_role",
             side_effect=WarpgateAPIError(409, "conflict"),
         ):
-            changed, _ = warpgate_target.manage_target_roles(
+            changed, _result = warpgate_target.manage_target_roles(
                 mock_client,
                 "t1",
                 ["r1", "r2"],
@@ -473,7 +473,7 @@ class TestManageTargetRoles:
         """When current_role_ids_from_target is empty, falls back to API."""
         roles = [Role(id="r1", name="dev")]
         with patch("warpgate_target.get_target_roles", return_value=roles):
-            changed, _ = warpgate_target.manage_target_roles(
+            changed, _result = warpgate_target.manage_target_roles(
                 mock_client,
                 "t1",
                 ["r1"],

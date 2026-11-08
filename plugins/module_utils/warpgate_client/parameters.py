@@ -35,6 +35,8 @@ stored data URL), never the image itself, so callers compare
 ``sha256(logo)`` with ``logo_etag`` to stay idempotent.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 # Fields accepted by the /parameters endpoint (ParameterUpdate schema).

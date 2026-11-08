@@ -11,6 +11,8 @@ label, kind and ``is_default`` flag are listed. Callers therefore identify a
 managed key by its ``label``.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 from .client import path_segment

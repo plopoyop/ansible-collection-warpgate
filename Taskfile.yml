@@ -43,6 +43,19 @@ tasks:
     cmds:
       - PYTHONPATH=${PYTHONPATH}:${PWD} pytest tests/
 
+  test:sanity:
+    desc: "Run ansible-test sanity"
+    cmds:
+      - |
+        dir="$(mktemp -d)"
+        trap 'rm -rf "$dir"' EXIT
+        dest="$dir/ansible_collections/plopoyop/warpgate"
+        mkdir -p "$dest"
+        git ls-files -z -co --exclude-standard --deduplicate \
+          | xargs -0 sh -c 'for f do if [ -e "$f" ] || [ -L "$f" ]; then printf "%s\0" "$f"; fi; done' sh \
+          | xargs -0 cp -P --parents -t "$dest"
+        cd "$dest" && ansible-test sanity --color no {{.CLI_ARGS}}
+
   test:role:*:
     desc: "Run tests on a specific role"
     dir: 'roles/{{.ROLE_NAME}}'

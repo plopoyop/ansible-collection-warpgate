@@ -4,6 +4,8 @@ Target group management for the Warpgate API
 This module provides functions to manage Warpgate target groups.
 """
 
+from __future__ import annotations
+
 import urllib.parse
 from typing import Any
 

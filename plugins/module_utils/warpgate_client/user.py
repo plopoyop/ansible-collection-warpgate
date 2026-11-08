@@ -4,6 +4,8 @@ User management for the Warpgate API
 This module provides functions to manage Warpgate users and their credential policies.
 """
 
+from __future__ import annotations
+
 import urllib.parse
 from typing import Any
 

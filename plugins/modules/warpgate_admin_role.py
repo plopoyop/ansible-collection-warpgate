@@ -79,11 +79,13 @@ options:
             access_roles_assign: {description: Assign access roles to users/targets., type: bool, default: false}
             sessions_view: {description: View live sessions., type: bool, default: false}
             sessions_terminate: {description: Terminate live sessions., type: bool, default: false}
+            approve_sessions: {description: Approve session requests (Warpgate >= 0.29)., type: bool, default: false}
             recordings_view: {description: View session recordings., type: bool, default: false}
             tickets_create: {description: Create tickets., type: bool, default: false}
             tickets_delete: {description: Delete tickets., type: bool, default: false}
             config_edit: {description: Edit server configuration., type: bool, default: false}
             admin_roles_manage: {description: Manage admin roles themselves., type: bool, default: false}
+            ticket_requests_manage: {description: Manage ticket requests., type: bool, default: false}
     state:
         description:
             - Desired state of the admin role.

@@ -118,7 +118,6 @@ options:
         type: list
         elements: str
         required: false
-        no_log: true
     update_password:
         description:
             - C(on_create) will only set passwords when the user has no existing password credentials.

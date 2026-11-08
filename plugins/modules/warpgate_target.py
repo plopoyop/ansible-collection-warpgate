@@ -108,7 +108,8 @@ options:
                 type: dict
             iam_role:
                 description:
-                    - "Use AWS IAM role authentication (emits auth kind=IamRole, Warpgate >= 0.25). Mutually exclusive with C(password_auth) and C(public_key_auth)."
+                    - "Use AWS IAM role authentication (emits auth kind=IamRole, Warpgate >= 0.25)."
+                    - "Mutually exclusive with C(password_auth) and C(public_key_auth)."
                 type: bool
                 default: false
             jump_host:
@@ -174,7 +175,9 @@ options:
                 required: true
             password:
                 description:
-                    - "MySQL password. When provided, the module emits the v0.23+ auth structure (kind=Password) on the wire; the deprecated flat password field is no longer sent."
+                    - "MySQL password."
+                    - "When provided, the module emits the v0.23+ auth structure (kind=Password) on the wire;
+                      the deprecated flat password field is no longer sent."
                 type: str
             iam_role:
                 description:
@@ -218,7 +221,9 @@ options:
                 required: true
             password:
                 description:
-                    - "PostgreSQL password. When provided, the module emits the v0.23+ auth structure (kind=Password) on the wire; the deprecated flat password field is no longer sent."
+                    - "PostgreSQL password."
+                    - "When provided, the module emits the v0.23+ auth structure (kind=Password) on the wire;
+                      the deprecated flat password field is no longer sent."
                 type: str
             iam_role:
                 description:
@@ -302,7 +307,8 @@ options:
                         required: true
             iam_role:
                 description:
-                    - "Use AWS IAM role authentication (emits auth kind=IamRole, Warpgate >= 0.25). Mutually exclusive with C(token_auth) and C(certificate_auth)."
+                    - "Use AWS IAM role authentication (emits auth kind=IamRole, Warpgate >= 0.25)."
+                    - "Mutually exclusive with C(token_auth) and C(certificate_auth)."
                 type: bool
                 default: false
     roles:

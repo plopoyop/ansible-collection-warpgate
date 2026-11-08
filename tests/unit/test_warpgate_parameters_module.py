@@ -71,7 +71,6 @@ def _base_params(**overrides):
         ssh_client_auth_password=None,
         ssh_client_auth_keyboard_interactive=None,
         ssh_host_key_verification=None,
-        minimize_password_login=None,
         password_login_mode=None,
         mfa_enforcement=None,
         mfa_policy_exempt_sso_users=None,
@@ -331,33 +330,6 @@ class TestParametersModule:
             patch("warpgate_parameters.update_parameters") as mock_update,
         ):
             result, mod = _run_module(params)
-        sent = mock_update.call_args[0][1]
-        assert sent["password_login_mode"] == "Disabled"
-        assert result["changed"] is True
-
-    def test_minimize_password_login_maps_to_mode(self):
-        params = _base_params(minimize_password_login=True)
-        with (
-            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
-            patch("warpgate_parameters.update_parameters") as mock_update,
-        ):
-            result, mod = _run_module(params)
-        mod.deprecate.assert_called_once()
-        sent = mock_update.call_args[0][1]
-        assert sent["password_login_mode"] == "Minimized"
-        assert result["changed"] is True
-
-    def test_minimize_password_login_warns_without_overriding_mode(self):
-        params = _base_params(
-            minimize_password_login=False, password_login_mode="Disabled"
-        )
-        with (
-            patch("warpgate_parameters.get_parameters", return_value=dict(CURRENT)),
-            patch("warpgate_parameters.update_parameters") as mock_update,
-        ):
-            result, mod = _run_module(params)
-        # Deprecation is still reported, but the explicit mode wins.
-        mod.deprecate.assert_called_once()
         sent = mock_update.call_args[0][1]
         assert sent["password_login_mode"] == "Disabled"
         assert result["changed"] is True
