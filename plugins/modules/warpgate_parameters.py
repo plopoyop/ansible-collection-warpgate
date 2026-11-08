@@ -62,13 +62,6 @@ options:
         description:
             - Enable SSH keyboard-interactive authentication for clients.
         type: bool
-    minimize_password_login:
-        description:
-            - Hide username/password fields behind a link, emphasizing SSO buttons.
-            - Deprecated since Warpgate 0.26; superseded by O(password_login_mode).
-              When O(password_login_mode) is not set, V(true) maps to V(Minimized)
-              and V(false) maps to V(Enabled).
-        type: bool
     password_login_mode:
         description:
             - How the password login form is presented on the gateway login page
@@ -229,9 +222,7 @@ options:
         description:
             - Custom banner displayed to clients on connection (Warpgate >= 0.27).
               Set to an empty string to disable.
-            - Renamed from O(ssh_banner) in Warpgate 0.27.
         type: str
-        aliases: ["ssh_banner"]
     logo:
         description:
             - Custom logo shown on the login page, as an image data URL
@@ -246,9 +237,7 @@ options:
         description:
             - Enable the in-browser clients (WebSSH terminal and web target
               clients, Warpgate >= 0.27).
-            - Renamed from O(web_ssh_enabled) in Warpgate 0.27.
         type: bool
-        aliases: ["web_ssh_enabled"]
     ssh_host_key_verification:
         description:
             - How Warpgate verifies upstream SSH host keys (Warpgate >= 0.27).
@@ -521,7 +510,6 @@ def main():
             required=False,
             choices=["Prompt", "AutoAccept", "AutoReject", "Ignore"],
         ),
-        minimize_password_login=dict(type="bool", required=False, no_log=False),
         password_login_mode=dict(
             type="str",
             required=False,
@@ -576,29 +564,9 @@ def main():
         lp_user_auto_unlock=dict(type="bool", required=False),
         lp_user_lockout_duration_seconds=dict(type="int", required=False),
         lp_user_exempt_admins=dict(type="bool", required=False),
-        banner=dict(
-            type="str",
-            required=False,
-            deprecated_aliases=[
-                dict(
-                    name="ssh_banner",
-                    version="2.0.0",
-                    collection_name="plopoyop.warpgate",
-                )
-            ],
-        ),
+        banner=dict(type="str", required=False),
         logo=dict(type="str", required=False),
-        web_clients_enabled=dict(
-            type="bool",
-            required=False,
-            deprecated_aliases=[
-                dict(
-                    name="web_ssh_enabled",
-                    version="2.0.0",
-                    collection_name="plopoyop.warpgate",
-                )
-            ],
-        ),
+        web_clients_enabled=dict(type="bool", required=False),
         web_auth_max_age_seconds=dict(type="int", required=False),
         web_approval_grace_period_seconds=dict(type="int", required=False),
         admin_approval_timeout_seconds=dict(type="int", required=False),
@@ -650,20 +618,6 @@ def main():
         module.fail_json(
             msg="Provide either token or both api_username and api_password"
         )
-
-    # minimize_password_login was replaced by password_login_mode in Warpgate 0.26
-    # and removed from the API in 0.29.
-    if module.params.get("minimize_password_login") is not None:
-        module.deprecate(
-            "minimize_password_login is deprecated since Warpgate 0.26 and was "
-            "removed from the Warpgate API in 0.29; use password_login_mode instead.",
-            version="2.0.0",
-            collection_name="plopoyop.warpgate",
-        )
-        if module.params.get("password_login_mode") is None:
-            module.params["password_login_mode"] = (
-                "Minimized" if module.params["minimize_password_login"] else "Enabled"
-            )
 
     insecure = module.params["insecure"]
     timeout = module.params["timeout"]
