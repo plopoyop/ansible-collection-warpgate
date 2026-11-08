@@ -26,6 +26,13 @@ MAX_ERROR_BODY_BYTES = 1000
 MAX_ERROR_SCAN_BYTES = 64 * 1024
 
 
+_OTHER_SCHEME = re.compile(r"[a-z][a-z0-9+.-]*:(?!\d|$)", re.IGNORECASE)
+_INVALID_HOST = (
+    "host must be an http(s) URL without credentials, query, fragment, spaces "
+    "or control characters"
+)
+
+
 def _user_api_base(admin_base: str) -> str:
     """Derive user API base URL from admin API base (e.g. .../admin/api -> .../api/)."""
     base = admin_base.rstrip("/")
@@ -286,9 +293,29 @@ class WarpgateClient:
         if not token and not (username and password):
             raise ValueError("Provide either token or both username and password")
 
-        if not host.startswith(("http://", "https://")):
+        if not host.lower().startswith(("http://", "https://")):
+            # A mistyped or other scheme ("https:/h", "ftp://h") would end up
+            # in the path, credentials included.
+            if _OTHER_SCHEME.match(host):
+                raise ValueError(_INVALID_HOST)
             host = f"https://{host}"
-        if host.startswith("http://"):
+        try:
+            parts = urllib.parse.urlsplit(host)
+            _ = parts.port  # raises on an invalid port
+        except ValueError:
+            parts = None
+        # Refused without quoting the host, which may hold credentials.
+        if (
+            parts is None
+            or parts.hostname in (None, "", "http", "https")
+            or "@" in parts.netloc
+            or "?" in host
+            or "#" in host
+            or not host.isprintable()
+            or " " in host
+        ):
+            raise ValueError(_INVALID_HOST)
+        if parts.scheme.lower() == "http":
             warn(
                 "The Warpgate API is reached over plain HTTP: the API token or "
                 "credentials are sent unencrypted."

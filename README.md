@@ -292,7 +292,10 @@ large number of resources.
 The API is reached over HTTPS (a `host` without a scheme gets `https://`). A
 plain `http://` host still works but triggers a warning, since the token or the
 credentials then travel unencrypted. Redirects to another scheme, host or port
-are refused so that they are never sent elsewhere.
+are refused so that they are never sent elsewhere. A `host` with another scheme,
+credentials (`https://user:pass@...`), a query, a fragment, spaces or control
+characters is refused. Give internationalized domain names in their ASCII
+(`xn--`) form.
 
 ## Development
 

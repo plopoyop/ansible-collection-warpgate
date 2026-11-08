@@ -968,3 +968,57 @@ class TestEchoForms:
             servers, "X-Warpgate-Token: tok-abcdef-123", None, token="tok-abcdef-123"
         )
         assert "tok-abcdef" not in error.message
+
+
+class TestHostCredentials:
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "https://admin:S3cretPass@h/api",
+            "admin:S3cretPass@h",
+            "https://tok@h",
+            "HTTPS://admin:S3cretPass@h\n",
+            "https:/admin:S3cretPass@h\x7f",
+            "https:/admin:S3cretPass@h",
+            "https//admin:S3cretPass@h",
+            "http:/admin:S3cretPass@h",
+            "ftp://u:S3cretPass@h",
+            "h\x00S3cretPass",
+            "https://h\x7fS3cretPass",
+            "warpgate\u200b.example",
+            "https://h:8888#@S3cretPass",
+            "h/path?q=S3cretPass",
+            "https://h?",
+            "https://h/?",
+            "h#",
+            "https://h:S3cretPass/api",
+            "https://[S3cretPass/api",
+            "https:///S3cretPass",
+            "https://h/S3cretPass tok",
+        ],
+    )
+    def test_credentials_in_host_are_refused(self, host):
+        with pytest.raises(ValueError) as exc:
+            WarpgateClient(host, token="t")
+        assert "S3cret" not in str(exc.value) and "tok" not in str(exc.value)
+
+    @pytest.mark.parametrize("host", ["HTTP://h", "Http://h:8888/x"])
+    def test_scheme_is_case_insensitive(self, host):
+        with patch("warpgate_client.client.warn") as warn:
+            c = WarpgateClient(host, token="t")
+        warn.assert_called_once()
+        assert c.base_url == host.rstrip("/")
+
+    @pytest.mark.parametrize(
+        "host",
+        [
+            "h:8888",
+            "localhost:",
+            "[::1]:8888",
+            "https://[::1]:8888/@warpgate/admin/api/",
+            "bastión.example:8888",
+            "localhost:8888/@warpgate/admin/api/",
+        ],
+    )
+    def test_legitimate_hosts_are_accepted(self, host):
+        assert WarpgateClient(host, token="t").base_url.startswith("https://")
