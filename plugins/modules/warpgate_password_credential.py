@@ -61,7 +61,6 @@ options:
             - Required when C(state=present).
         type: str
         required: false
-        no_log: true
     update_password:
         description:
             - C(on_create) will only set the password if the user has no existing password credential (default).

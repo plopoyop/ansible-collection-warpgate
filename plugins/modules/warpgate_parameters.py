@@ -560,7 +560,7 @@ def main():
                 require_special=dict(type="bool", required=False),
             ),
         ),
-        max_api_token_duration_seconds=dict(type="int", required=False),
+        max_api_token_duration_seconds=dict(type="int", required=False, no_log=False),
         record_scp=dict(type="bool", required=False),
         record_desktop_keyboard_input=dict(type="bool", required=False),
         login_protection_enabled=dict(type="bool", required=False),
