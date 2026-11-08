@@ -6,6 +6,7 @@
 
 ## 🐛 Bug Fixes
 
+- fix\(client\): refuse cross-origin redirects and encode API path ids [\#177](https://github.com/plopoyop/ansible-collection-warpgate/pull/177) ([plopoyop](https://github.com/plopoyop))
 - fix!: make revocations and credential rotation reliable [\#175](https://github.com/plopoyop/ansible-collection-warpgate/pull/175) ([plopoyop](https://github.com/plopoyop))
 - fix!: harden the install role against the service account [\#174](https://github.com/plopoyop/ansible-collection-warpgate/pull/174) ([plopoyop](https://github.com/plopoyop))
 - fix!: Secrets no log [\#171](https://github.com/plopoyop/ansible-collection-warpgate/pull/171) ([plopoyop](https://github.com/plopoyop))
