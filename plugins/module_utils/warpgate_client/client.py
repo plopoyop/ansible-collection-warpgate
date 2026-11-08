@@ -4,6 +4,7 @@ Base client for the Warpgate API
 This module provides the core HTTP client functionality for interacting with the Warpgate API.
 """
 
+import http.client
 import json
 import ssl
 import urllib.parse
@@ -16,6 +17,7 @@ from ansible.module_utils.common.warnings import warn
 # Responses larger than this are refused (protects against a misbehaving server
 # or proxy streaming an unbounded body).
 MAX_RESPONSE_BYTES = 64 * 1024 * 1024
+READ_CHUNK_BYTES = 1024 * 1024
 # Server error bodies are reported in module messages: keep them short.
 MAX_ERROR_BODY_BYTES = 1000
 
@@ -39,20 +41,53 @@ def path_segment(value: Any) -> str:
 
 
 def _error_body(error: HTTPError) -> str:
-    if not error.fp:
-        return str(error)
-    with error:
-        raw = error.read(MAX_ERROR_BODY_BYTES + 1)
+    try:
+        with error:
+            raw = error.read(MAX_ERROR_BODY_BYTES + 1)
+    except (http.client.HTTPException, OSError, ValueError) as exc:
+        return f"<unreadable error body: {_short(exc)}>"
     body = raw[:MAX_ERROR_BODY_BYTES].decode("utf-8", errors="replace")
     if len(raw) > MAX_ERROR_BODY_BYTES:
         body += "... (truncated)"
     return body
 
 
+def _bounded(text: str) -> str:
+    if len(text) > MAX_ERROR_BODY_BYTES:
+        return text[:MAX_ERROR_BODY_BYTES] + "... (truncated)"
+    return text
+
+
+def _short(error: Exception) -> str:
+    """Describe a network error without repr(): a UnicodeError's repr embeds the
+    whole string being encoded (e.g. a header holding the token)."""
+    return _bounded(f"{type(error).__name__}: {error}")
+
+
+def _read_bounded(response) -> bytes:
+    chunks = []
+    size = 0
+    while chunk := response.read(READ_CHUNK_BYTES):
+        size += len(chunk)
+        if size > MAX_RESPONSE_BYTES:
+            raise WarpgateClientError(
+                f"Response larger than {MAX_RESPONSE_BYTES} bytes"
+            )
+        chunks.append(chunk)
+    # read(amt) does not raise IncompleteRead on a body cut short: http.client
+    # keeps the number of bytes still expected from Content-Length.
+    remaining = getattr(response, "length", None)
+    if isinstance(remaining, int) and remaining > 0:
+        raise WarpgateClientError(
+            f"Incomplete response: {remaining} bytes missing after {size}"
+        )
+    return b"".join(chunks)
+
+
 def _origin(url: str) -> tuple:
     parts = urllib.parse.urlsplit(url)
     default_port = {"http": 80, "https": 443}.get(parts.scheme)
-    return parts.scheme, (parts.hostname or "").lower(), parts.port or default_port
+    return parts.scheme, parts.hostname or "", parts.port or default_port
 
 
 class WarpgateClientError(Exception):
@@ -75,12 +110,18 @@ class _SameOriginRedirectHandler(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         target = urllib.parse.urljoin(req.full_url, newurl)
         new = urllib.parse.urlsplit(target)
-        if _origin(req.full_url) != _origin(target) or new.username:
+        try:
+            same_origin = _origin(req.full_url) == _origin(target)
+        except ValueError:
+            same_origin = False
+        if not same_origin or "@" in new.netloc:
             fp.close()
             old = urllib.parse.urlsplit(req.full_url)
             raise WarpgateClientError(
-                f"Refusing to follow a redirect from {old.scheme}://{old.hostname} "
-                f"to {new.scheme}://{new.hostname}"
+                _bounded(
+                    f"Refusing to follow a redirect from {old.scheme}://{old.hostname} "
+                    f"to {new.scheme}://{new.hostname}"
+                )
             )
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
@@ -129,6 +170,13 @@ class WarpgateClient:
             )
 
         self.base_url = host.rstrip("/")
+        # Anything but printable ASCII (a trailing newline, a zero-width space
+        # or a BOM pasted with the token) makes http.client fail on the header,
+        # with the token in its error.
+        if token and not (token.isascii() and token.isprintable()):
+            raise ValueError(
+                "The API token must only contain printable ASCII characters"
+            )
         self._token = token
         self._username = username
         self._password = password
@@ -174,7 +222,11 @@ class WarpgateClient:
         except HTTPError as e:
             raise WarpgateClientError(f"Login failed: {e.code} {_error_body(e)}")
         except URLError as e:
-            raise WarpgateClientError(f"Login request failed: {e.reason}")
+            raise WarpgateClientError(
+                f"Login request failed: {_bounded(str(e.reason))}"
+            )
+        except (http.client.HTTPException, OSError, ValueError) as e:
+            raise WarpgateClientError(f"Login request failed: {_short(e)}")
 
     def logout(self) -> None:
         """
@@ -196,7 +248,9 @@ class WarpgateClient:
         try:
             with self._opener.open(req, timeout=self.timeout):
                 pass
-        except (HTTPError, URLError, OSError, WarpgateClientError):
+        except HTTPError as e:
+            e.close()
+        except (OSError, ValueError, http.client.HTTPException, WarpgateClientError):
             pass
         finally:
             self._session_cookie = None
@@ -242,12 +296,7 @@ class WarpgateClient:
         try:
             with self._opener.open(req, timeout=self.timeout) as response:
                 status_code = response.getcode()
-                raw = response.read(MAX_RESPONSE_BYTES + 1)
-                if len(raw) > MAX_RESPONSE_BYTES:
-                    raise WarpgateClientError(
-                        f"Response larger than {MAX_RESPONSE_BYTES} bytes"
-                    )
-                response_body = raw.decode("utf-8")
+                response_body = _read_bounded(response).decode("utf-8")
 
                 if status_code == 204:  # No Content
                     return {}
@@ -263,3 +312,5 @@ class WarpgateClient:
             raise WarpgateClientError(f"Request failed: {e.reason}")
         except json.JSONDecodeError as e:
             raise WarpgateClientError(f"Failed to decode response: {e}")
+        except (http.client.HTTPException, OSError, ValueError) as e:
+            raise WarpgateClientError(f"Request failed: {_short(e)}")

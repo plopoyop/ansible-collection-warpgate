@@ -5,6 +5,7 @@ This module provides functions to manage Warpgate access tickets.
 """
 
 from typing import Any
+
 from .client import path_segment
 
 

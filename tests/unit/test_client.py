@@ -1,9 +1,11 @@
 """Tests for WarpgateClient initialisation and URL helpers."""
 
+import socket
 import threading
+from http.client import IncompleteRead
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest.mock import MagicMock, patch
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request
 
 import pytest
@@ -11,7 +13,9 @@ from warpgate_client.client import (
     WarpgateAPIError,
     WarpgateClient,
     WarpgateClientError,
+    _error_body,
     _SameOriginRedirectHandler,
+    _short,
     _user_api_base,
     path_segment,
 )
@@ -107,7 +111,8 @@ class TestClientRequest:
         mock_urlopen = mock_build.return_value.open
         resp = MagicMock()
         resp.getcode.return_value = 200
-        resp.read.return_value = b'{"ok": true}'
+        resp.read.side_effect = [b'{"ok": true}', b""]
+        resp.headers = {}
         resp.__enter__ = MagicMock(return_value=resp)
         resp.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = resp
@@ -126,7 +131,8 @@ class TestClientRequest:
 
         resp = MagicMock()
         resp.getcode.return_value = 200
-        resp.read.return_value = b'{"ok": true}'
+        resp.read.side_effect = [b'{"ok": true}', b""]
+        resp.headers = {}
         resp.__enter__ = MagicMock(return_value=resp)
         resp.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = resp
@@ -230,7 +236,9 @@ def servers():
     def start(routes):
         handler = type("H", (_Handler,), {"routes": routes, "seen": _Handler.seen})
         server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
-        threading.Thread(target=server.serve_forever, daemon=True).start()
+        threading.Thread(
+            target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
+        ).start()
         started.append(server)
         return server
 
@@ -322,8 +330,12 @@ class TestRedirectOrigins:
         "old, new, allowed",
         [
             ("https://h/api/x", "http://h/api/x", False),
+            ("https://h:8888/x", "http://h:8888/x", False),
             ("https://h/api/x", "https://h:8443/api/x", False),
             ("https://h/api/x", "https://evil@h/api/x", False),
+            ("https://h/api/x", "https://:pw@h/api/x", False),
+            ("https://h/api/x", "https://h:99999/api/x", False),
+            ("https://h/api/x", "https://h:abc/api/x", False),
             ("https://h/api/x", "https://H:443/api/y", True),
             ("https://h/api/x", "https://h/api/y", True),
         ],
@@ -339,12 +351,21 @@ class TestRedirectOrigins:
                 handler.redirect_request(req, fp, 302, "Found", {}, new)
             fp.close.assert_called_once()
 
+    def test_refused_redirect_message_is_bounded(self):
+        handler = _SameOriginRedirectHandler()
+        target = "https://" + "a" * 3000 + ".example/x"
+        with pytest.raises(WarpgateClientError) as exc:
+            handler.redirect_request(
+                Request("https://h/x"), MagicMock(), 302, "", {}, target
+            )
+        assert len(str(exc.value)) < 1100
+
     def test_login_redirect_to_other_origin_is_refused(self, servers):
         other = servers({})
         api = servers(
             {
                 "/@warpgate/api/auth/login": (
-                    307,
+                    302,
                     {"Location": f"http://127.0.0.1:{other.server_port}/steal"},
                     b"",
                 )
@@ -355,14 +376,14 @@ class TestRedirectOrigins:
             username="u",
             password="secret",
         )
-        with pytest.raises(WarpgateClientError):
+        with pytest.raises(WarpgateClientError, match="Refusing to follow a redirect"):
             c._request("GET", "/users")
         assert all(port != other.server_port for port, _, _ in _Handler.seen)
 
 
 class TestErrorBodyBytes:
     def test_multibyte_body_is_marked_truncated(self, servers):
-        api = servers({"/api/x": (500, {}, "é".encode() * 600)})
+        api = servers({"/api/x": (500, {}, "é".encode() * 1200)})
         c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="t")
         with pytest.raises(WarpgateAPIError) as exc:
             c._request("GET", "/x")
@@ -371,3 +392,256 @@ class TestErrorBodyBytes:
     def test_none_path_segment_rejected(self):
         with pytest.raises(ValueError):
             path_segment(None)
+
+
+class TestLogoutAndBoundaries:
+    def test_logout_swallows_a_refused_redirect(self, servers):
+        api = servers(
+            {
+                "/@warpgate/api/auth/logout": (
+                    302,
+                    {"Location": "http://127.0.0.1:99999/x"},
+                    b"",
+                )
+            }
+        )
+        c = WarpgateClient(
+            f"http://127.0.0.1:{api.server_port}/@warpgate/admin/api",
+            username="u",
+            password="p",
+        )
+        c._session_cookie = "warpgate-session=abc"
+        c.logout()
+        assert c._session_cookie is None
+
+    def test_multibyte_char_cut_at_the_limit(self, servers):
+        api = servers({"/api/x": (500, {}, b"a" * 999 + "é".encode() * 10)})
+        c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="t")
+        with pytest.raises(WarpgateAPIError) as exc:
+            c._request("GET", "/x")
+        assert exc.value.message.endswith("(truncated)")
+        assert exc.value.message.startswith("a" * 999)
+
+
+class TestBoundedRead:
+    def test_large_body_read_in_chunks(self, servers, monkeypatch):
+        monkeypatch.setattr("warpgate_client.client.READ_CHUNK_BYTES", 4)
+        api = servers({"/api/x": (200, {}, b'{"data": "0123456789"}')})
+        c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="t")
+        assert c._request("GET", "/x") == {"data": "0123456789"}
+
+    def test_limit_applies_across_chunks(self, servers, monkeypatch):
+        monkeypatch.setattr("warpgate_client.client.READ_CHUNK_BYTES", 4)
+        monkeypatch.setattr("warpgate_client.client.MAX_RESPONSE_BYTES", 10)
+        api = servers({"/api/x": (200, {}, b'{"data": "0123456789"}')})
+        c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="t")
+        with pytest.raises(WarpgateClientError, match="larger than"):
+            c._request("GET", "/x")
+
+
+class _RawServer:
+    """Serves one raw HTTP response, to send what BaseHTTPRequestHandler won't."""
+
+    def __init__(self, payload):
+        self.sock = socket.socket()
+        self.sock.bind(("127.0.0.1", 0))
+        self.sock.listen(1)
+        self.port = self.sock.getsockname()[1]
+        self.payload = payload
+        self.stop = threading.Event()
+        threading.Thread(target=self._serve, daemon=True).start()
+
+    def _serve(self):
+        conn, _ = self.sock.accept()
+        with conn:
+            request = b""
+            while b"\r\n\r\n" not in request:
+                data = conn.recv(65536)
+                if not data:
+                    break
+                request += data
+            if self.payload is None:
+                self.stop.wait(10)
+            else:
+                conn.sendall(self.payload)
+
+    def close(self):
+        self.stop.set()
+        self.sock.close()
+
+
+class TestResponseEdgeCases:
+    def test_no_content_with_content_length_is_accepted(self):
+        raw = _RawServer(
+            b"HTTP/1.1 204 No Content\r\nContent-Length: 5\r\nConnection: close\r\n\r\n"
+        )
+        try:
+            c = WarpgateClient(f"http://127.0.0.1:{raw.port}/api", token="t")
+            assert c._request("DELETE", "/x") == {}
+        finally:
+            raw.close()
+
+    def test_truncated_chunked_body_is_a_client_error(self):
+        raw = _RawServer(
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n"
+            b'a\r\n[{"a": 1'
+        )
+        try:
+            c = WarpgateClient(f"http://127.0.0.1:{raw.port}/api", token="t")
+            with pytest.raises(WarpgateClientError):
+                c._request("GET", "/x")
+        finally:
+            raw.close()
+
+    def test_truncated_body_is_refused(self):
+        raw = _RawServer(
+            b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\nConnection: close\r\n\r\n"
+            b'[{"a": 1}]'
+        )
+        try:
+            c = WarpgateClient(f"http://127.0.0.1:{raw.port}/api", token="t")
+            with pytest.raises(WarpgateClientError, match="Incomplete response"):
+                c._request("GET", "/x")
+        finally:
+            raw.close()
+
+    def test_logout_swallows_protocol_errors(self):
+        raw = _RawServer(b"NOT-HTTP garbage\r\n\r\n")
+        try:
+            c = WarpgateClient(
+                f"http://127.0.0.1:{raw.port}/@warpgate/admin/api",
+                username="u",
+                password="p",
+            )
+            c._session_cookie = "warpgate-session=abc"
+            c.logout()
+            assert c._session_cookie is None
+        finally:
+            raw.close()
+
+    def test_responses_are_read_in_bounded_chunks(self, monkeypatch):
+        sizes = []
+        resp = MagicMock()
+        resp.getcode.return_value = 200
+        resp.headers = {}
+        resp.read.side_effect = lambda n=-1: (
+            sizes.append(n) or (b'{"ok": true}' if len(sizes) == 1 else b"")
+        )
+        resp.__enter__ = MagicMock(return_value=resp)
+        resp.__exit__ = MagicMock(return_value=False)
+        with patch("warpgate_client.client.build_opener") as mock_build:
+            mock_build.return_value.open.return_value = resp
+            WarpgateClient("https://host", token="t")._request("GET", "/x")
+        assert sizes and all(0 < n <= 1024 * 1024 for n in sizes)
+
+    def test_logout_error_response_is_closed(self):
+        fp = MagicMock()
+        error = HTTPError("https://host/x", 500, "Error", {}, fp)
+        with patch("warpgate_client.client.build_opener") as mock_build:
+            mock_build.return_value.open.side_effect = error
+            c = WarpgateClient("https://host", username="u", password="p")
+            c._session_cookie = "s=1"
+            c.logout()
+        fp.close.assert_called_once()
+
+
+class TestNetworkErrors:
+    def test_login_protocol_error_is_a_client_error(self):
+        raw = _RawServer(b"garbage\r\n\r\n")
+        try:
+            c = WarpgateClient(
+                f"http://127.0.0.1:{raw.port}/@warpgate/admin/api",
+                username="u",
+                password="p",
+            )
+            with pytest.raises(WarpgateClientError, match="Login request failed"):
+                c._request("GET", "/users")
+        finally:
+            raw.close()
+
+    def test_long_status_line_is_truncated(self):
+        raw = _RawServer(b"X" * 60000 + b"\r\n\r\n")
+        try:
+            c = WarpgateClient(f"http://127.0.0.1:{raw.port}/api", token="t")
+            with pytest.raises(WarpgateClientError) as exc:
+                c._request("GET", "/x")
+            assert len(str(exc.value)) < 1100
+        finally:
+            raw.close()
+
+    def test_non_utf8_body_is_a_client_error(self, servers):
+        api = servers({"/api/x": (200, {}, b"\xff\xfe")})
+        c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="t")
+        with pytest.raises(WarpgateClientError):
+            c._request("GET", "/x")
+
+    def test_error_body_read_is_bounded(self):
+        error = MagicMock()
+        error.read.return_value = b"x"
+        error.__enter__ = MagicMock(return_value=error)
+        error.__exit__ = MagicMock(return_value=False)
+        _error_body(error)
+        error.read.assert_called_once_with(1000 + 1)
+
+    def test_error_without_body_does_not_report_the_reason(self):
+        error = HTTPError("https://h/x", 502, "echo S3cretPass", {}, None)
+        assert _error_body(error) == ""
+
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            TimeoutError("timed out"),
+            ConnectionResetError(),
+            IncompleteRead(b""),
+            ValueError("I/O operation on closed file"),
+        ],
+    )
+    def test_unreadable_error_body_keeps_the_status(self, exc):
+        error = MagicMock()
+        error.read.side_effect = exc
+        error.__enter__ = MagicMock(return_value=error)
+        error.__exit__ = MagicMock(return_value=False)
+        assert _error_body(error).startswith("<unreadable error body: ")
+
+    @pytest.mark.parametrize(
+        "token", ["abc\n", "abc\r", "a\x00b", "abc\u200bxyz", "\ufeffabc", "abcé"]
+    )
+    def test_token_with_control_characters_is_refused(self, token):
+        with pytest.raises(ValueError) as exc:
+            WarpgateClient("https://host", token=token)
+        assert token not in str(exc.value)
+
+
+class TestLoginNetworkErrors:
+    def test_login_timeout_is_a_client_error(self):
+        raw = _RawServer(None)
+        try:
+            c = WarpgateClient(
+                f"http://127.0.0.1:{raw.port}/@warpgate/admin/api",
+                username="u",
+                password="p",
+                timeout=1,
+            )
+            with pytest.raises(WarpgateClientError, match="Login request failed"):
+                c._request("GET", "/users")
+        finally:
+            raw.close()
+
+    def test_login_invalid_redirect_url_is_a_client_error(self):
+        raw = _RawServer(
+            b"HTTP/1.1 302 Found\r\nLocation: http://[::1/x\r\nContent-Length: 0\r\n\r\n"
+        )
+        try:
+            c = WarpgateClient(
+                f"http://127.0.0.1:{raw.port}/@warpgate/admin/api",
+                username="u",
+                password="p",
+            )
+            with pytest.raises(WarpgateClientError, match="Login request failed"):
+                c._request("GET", "/users")
+        finally:
+            raw.close()
+
+    def test_error_messages_do_not_embed_encoded_strings(self):
+        error = UnicodeEncodeError("latin-1", "SECRETTOKEN\u200bxyz", 11, 12, "x")
+        assert "SECRETTOKEN" not in _short(error)

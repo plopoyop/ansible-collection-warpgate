@@ -12,6 +12,7 @@ managed key by its ``label``.
 """
 
 from typing import Any
+
 from .client import path_segment
 
 
