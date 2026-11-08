@@ -289,6 +289,11 @@ out when it finishes, so no session is left behind. Token authentication does
 not open any session at all — prefer it when the `configure` role manages a
 large number of resources.
 
+The API is reached over HTTPS (a `host` without a scheme gets `https://`). A
+plain `http://` host still works but triggers a warning, since the token or the
+credentials then travel unencrypted. Redirects to another scheme, host or port
+are refused so that they are never sent elsewhere.
+
 ## Development
 
 This project uses [devbox](https://www.jetify.com/devbox) for reproducible development environments:

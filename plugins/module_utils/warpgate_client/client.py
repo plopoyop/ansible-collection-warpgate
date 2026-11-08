@@ -6,9 +6,18 @@ This module provides the core HTTP client functionality for interacting with the
 
 import json
 import ssl
+import urllib.parse
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
+
+from ansible.module_utils.common.warnings import warn
+
+# Responses larger than this are refused (protects against a misbehaving server
+# or proxy streaming an unbounded body).
+MAX_RESPONSE_BYTES = 64 * 1024 * 1024
+# Server error bodies are reported in module messages: keep them short.
+MAX_ERROR_BODY_BYTES = 1000
 
 
 def _user_api_base(admin_base: str) -> str:
@@ -17,6 +26,33 @@ def _user_api_base(admin_base: str) -> str:
     admin_suffix = "/@warpgate/admin/api"
     base = base.removesuffix(admin_suffix)
     return base + "/@warpgate/api/"
+
+
+def path_segment(value: Any) -> str:
+    """Encode a value used as one segment of an API path."""
+    if value is None:
+        raise ValueError("Missing path segment")
+    segment = str(value)
+    if segment in ("", ".", ".."):
+        raise ValueError(f"Invalid path segment: {segment!r}")
+    return urllib.parse.quote(segment, safe="")
+
+
+def _error_body(error: HTTPError) -> str:
+    if not error.fp:
+        return str(error)
+    with error:
+        raw = error.read(MAX_ERROR_BODY_BYTES + 1)
+    body = raw[:MAX_ERROR_BODY_BYTES].decode("utf-8", errors="replace")
+    if len(raw) > MAX_ERROR_BODY_BYTES:
+        body += "... (truncated)"
+    return body
+
+
+def _origin(url: str) -> tuple:
+    parts = urllib.parse.urlsplit(url)
+    default_port = {"http": 80, "https": 443}.get(parts.scheme)
+    return parts.scheme, (parts.hostname or "").lower(), parts.port or default_port
 
 
 class WarpgateClientError(Exception):
@@ -30,6 +66,23 @@ class WarpgateAPIError(WarpgateClientError):
         self.status_code = status_code
         self.message = message
         super().__init__(f"API request failed with status {status_code}: {message}")
+
+
+class _SameOriginRedirectHandler(HTTPRedirectHandler):
+    """Refuse redirects to another scheme, host or port: the API token and the
+    session cookie would be sent there."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        target = urllib.parse.urljoin(req.full_url, newurl)
+        new = urllib.parse.urlsplit(target)
+        if _origin(req.full_url) != _origin(target) or new.username:
+            fp.close()
+            old = urllib.parse.urlsplit(req.full_url)
+            raise WarpgateClientError(
+                f"Refusing to follow a redirect from {old.scheme}://{old.hostname} "
+                f"to {new.scheme}://{new.hostname}"
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 class WarpgateClient:
@@ -69,6 +122,11 @@ class WarpgateClient:
 
         if not host.startswith(("http://", "https://")):
             host = f"https://{host}"
+        if host.startswith("http://"):
+            warn(
+                "The Warpgate API is reached over plain HTTP: the API token or "
+                "credentials are sent unencrypted."
+            )
 
         self.base_url = host.rstrip("/")
         self._token = token
@@ -83,6 +141,9 @@ class WarpgateClient:
             self.ssl_context = ssl.create_default_context()
             self.ssl_context.check_hostname = False
             self.ssl_context.verify_mode = ssl.CERT_NONE
+        self._opener = build_opener(
+            HTTPSHandler(context=self.ssl_context), _SameOriginRedirectHandler()
+        )
 
     @property
     def token(self) -> str | None:
@@ -101,9 +162,7 @@ class WarpgateClient:
         login_req.add_header("Accept", "application/json; charset=utf-8")
 
         try:
-            with urlopen(
-                login_req, timeout=self.timeout, context=self.ssl_context
-            ) as resp:
+            with self._opener.open(login_req, timeout=self.timeout) as resp:
                 if resp.getcode() not in (200, 201):
                     raise WarpgateClientError(f"Login returned {resp.getcode()}")
                 set_cookie = resp.headers.get("Set-Cookie")
@@ -113,8 +172,7 @@ class WarpgateClient:
                     )
                 self._session_cookie = set_cookie.split(";")[0].strip()
         except HTTPError as e:
-            body = e.read().decode("utf-8") if e.fp else str(e)
-            raise WarpgateClientError(f"Login failed: {e.code} {body}")
+            raise WarpgateClientError(f"Login failed: {e.code} {_error_body(e)}")
         except URLError as e:
             raise WarpgateClientError(f"Login request failed: {e.reason}")
 
@@ -136,9 +194,9 @@ class WarpgateClient:
         req.add_header("Cookie", self._session_cookie)
 
         try:
-            with urlopen(req, timeout=self.timeout, context=self.ssl_context):
+            with self._opener.open(req, timeout=self.timeout):
                 pass
-        except (HTTPError, URLError, OSError):
+        except (HTTPError, URLError, OSError, WarpgateClientError):
             pass
         finally:
             self._session_cookie = None
@@ -182,11 +240,14 @@ class WarpgateClient:
             req.add_header("Cookie", self._session_cookie)
 
         try:
-            with urlopen(
-                req, timeout=self.timeout, context=self.ssl_context
-            ) as response:
+            with self._opener.open(req, timeout=self.timeout) as response:
                 status_code = response.getcode()
-                response_body = response.read().decode("utf-8")
+                raw = response.read(MAX_RESPONSE_BYTES + 1)
+                if len(raw) > MAX_RESPONSE_BYTES:
+                    raise WarpgateClientError(
+                        f"Response larger than {MAX_RESPONSE_BYTES} bytes"
+                    )
+                response_body = raw.decode("utf-8")
 
                 if status_code == 204:  # No Content
                     return {}
@@ -197,8 +258,7 @@ class WarpgateClient:
                 return json.loads(response_body)
 
         except HTTPError as e:
-            error_body = e.read().decode("utf-8") if e.fp else str(e)
-            raise WarpgateAPIError(e.code, error_body)
+            raise WarpgateAPIError(e.code, _error_body(e))
         except URLError as e:
             raise WarpgateClientError(f"Request failed: {e.reason}")
         except json.JSONDecodeError as e:
