@@ -20,6 +20,7 @@
 **Merged pull requests:**
 
 - fix\(deps\): update python313packages.ruff \(0.17.2 → 0.17.3\) [\#168](https://github.com/plopoyop/ansible-collection-warpgate/pull/168) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update prek \(0.5.5 → 0.5.7\) [\#167](https://github.com/plopoyop/ansible-collection-warpgate/pull/167) ([plopoyop](https://github.com/plopoyop))
 
 ## [2.4.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/2.4.0) (2026-11-01)
 
