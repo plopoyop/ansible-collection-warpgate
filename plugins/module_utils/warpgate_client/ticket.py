@@ -4,6 +4,8 @@ Ticket management for the Warpgate API
 This module provides functions to manage Warpgate access tickets.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 from .client import path_segment

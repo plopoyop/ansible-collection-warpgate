@@ -6,6 +6,8 @@ Provides common functionality used across multiple modules:
 - Robust by-name lookup with search-then-list-all fallback
 """
 
+from __future__ import annotations
+
 import string
 from collections.abc import Callable
 from typing import Any

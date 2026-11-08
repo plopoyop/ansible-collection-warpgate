@@ -8,6 +8,8 @@ carry an ``expires_at`` timestamp; this is exposed through the new
 ``get_user_role`` helpers.
 """
 
+from __future__ import annotations
+
 import urllib.parse
 from typing import Any
 

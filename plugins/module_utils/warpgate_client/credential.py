@@ -4,6 +4,8 @@ Credential management for the Warpgate API
 This module provides functions to manage user credentials (password, public key, SSO, certificate).
 """
 
+from __future__ import annotations
+
 import json
 from typing import Any
 

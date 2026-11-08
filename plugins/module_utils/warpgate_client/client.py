@@ -4,6 +4,8 @@ Base client for the Warpgate API
 This module provides the core HTTP client functionality for interacting with the Warpgate API.
 """
 
+from __future__ import annotations
+
 import html
 import http.client
 import json
@@ -37,7 +39,8 @@ def _user_api_base(admin_base: str) -> str:
     """Derive user API base URL from admin API base (e.g. .../admin/api -> .../api/)."""
     base = admin_base.rstrip("/")
     admin_suffix = "/@warpgate/admin/api"
-    base = base.removesuffix(admin_suffix)
+    if base.endswith(admin_suffix):
+        base = base[: -len(admin_suffix)]
     return base + "/@warpgate/api/"
 
 
