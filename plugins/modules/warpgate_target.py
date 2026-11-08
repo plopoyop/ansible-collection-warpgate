@@ -43,6 +43,7 @@ options:
     id:
         description:
             - Target ID (for update/delete operations)
+            - With O(state=absent), the deletion fails if the object found by ID is not named O(name).
         type: str
         required: false
     name:
@@ -747,7 +748,12 @@ def resolve_group_id(client, group_name: str, module) -> str:
 
 
 def manage_target_roles(
-    client, target_id, desired_role_ids, module, current_role_ids_from_target=None
+    client,
+    target_id,
+    desired_role_ids,
+    module,
+    current_role_ids_from_target=None,
+    result=None,
 ):
     """
     Manages target roles to match the desired list exactly.
@@ -791,11 +797,11 @@ def manage_target_roles(
             current_roles = get_target_roles(client, target_id)
             current_role_ids = _to_role_id_set(current_roles)
         except WarpgateAPIError as e:
-            if e.status_code != 404:
-                module.fail_json(
-                    msg=f"Failed to get target roles: {e.message}",
-                    status_code=e.status_code,
-                )
+            module.fail_json(
+                msg=f"Failed to get target roles: {e.message}",
+                status_code=e.status_code,
+                changed=bool(result and result["changed"]),
+            )
     desired_role_ids_set = set(desired_role_ids)
 
     # Idempotence: do nothing if current already matches desired
@@ -811,12 +817,15 @@ def manage_target_roles(
                 try:
                     add_target_role(client, target_id, role_id)
                     actually_added = True
+                    if result is not None:
+                        result["changed"] = True
                 except WarpgateAPIError as e:
                     if e.status_code == 409:
                         continue  # Already assigned
                     module.fail_json(
                         msg=f"Failed to add role {role_id} to target: {e.message}",
                         status_code=e.status_code,
+                        changed=bool(result and result["changed"]),
                     )
         if actually_added or module.check_mode:
             changed = True
@@ -828,10 +837,13 @@ def manage_target_roles(
             for role_id in roles_to_remove:
                 try:
                     delete_target_role(client, target_id, role_id)
+                    if result is not None:
+                        result["changed"] = True
                 except WarpgateAPIError as e:
                     module.fail_json(
                         msg=f"Failed to remove role {role_id} from target: {e.message}",
                         status_code=e.status_code,
+                        changed=bool(result and result["changed"]),
                     )
         changed = True
 
@@ -994,7 +1006,20 @@ def main():
 
         # If state=absent, delete the target
         if state == "absent":
-            if not target_id:
+            if target_id:
+                existing = get_target(client, target_id)
+                if existing is None:
+                    other_id = find_id_by_exact_name(get_targets, client, name)
+                    if other_id:
+                        module.fail_json(
+                            msg=f"Target {target_id} not found, but '{name}' exists with ID {other_id}"
+                        )
+                    target_id = None
+                elif existing.name != name:
+                    module.fail_json(
+                        msg=f"Target {target_id} is named '{existing.name}', not '{name}'"
+                    )
+            else:
                 # Search for target by name
                 target_id = find_id_by_exact_name(get_targets, client, name)
 
@@ -1074,6 +1099,7 @@ def main():
                             target_options,
                             rate_limit_bytes_per_second=rate_limit_bytes_per_second,
                         )
+                        result["changed"] = True
                         result["id"] = updated_target.id
                         result["description"] = updated_target.description
                         result["group"] = group
@@ -1120,6 +1146,7 @@ def main():
                         resolved_role_ids,
                         module,
                         current_role_ids_from_target=current_from_target,
+                        result=result,
                     )
                     if roles_changed:
                         result["changed"] = True
@@ -1142,6 +1169,7 @@ def main():
                         target_options,
                         rate_limit_bytes_per_second=rate_limit_bytes_per_second,
                     )
+                    result["changed"] = True
                     target_id = new_target.id
 
                     if (
@@ -1180,6 +1208,7 @@ def main():
                             resolved_role_ids,
                             module,
                             current_role_ids_from_target=current_from_target,
+                            result=result,
                         )
                         if roles_changed:
                             result["changed"] = True
@@ -1216,12 +1245,14 @@ def main():
 
     except WarpgateAPIError as e:
         module.fail_json(
-            msg=f"Warpgate API error: {e.message}", status_code=e.status_code
+            msg=f"Warpgate API error: {e.message}",
+            status_code=e.status_code,
+            changed=result["changed"],
         )
     except WarpgateClientError as e:
-        module.fail_json(msg=f"Warpgate client error: {e!s}")
+        module.fail_json(msg=f"Warpgate client error: {e!s}", changed=result["changed"])
     except Exception as e:
-        module.fail_json(msg=f"Unexpected error: {e!s}")
+        module.fail_json(msg=f"Unexpected error: {e!s}", changed=result["changed"])
     finally:
         if client is not None:
             client.logout()

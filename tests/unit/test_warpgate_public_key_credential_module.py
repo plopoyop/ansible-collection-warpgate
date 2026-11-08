@@ -173,11 +173,35 @@ class TestPublicKeyCredentialUpdate:
 
 
 class TestPublicKeyCredentialDelete:
+    def _patch_existing(self, *ids):
+        return patch(
+            "warpgate_public_key_credential.get_public_key_credentials",
+            return_value=[
+                PublicKeyCredential(id=i, label=i, openssh_public_key="k") for i in ids
+            ],
+        )
+
+    def test_delete_missing_is_noop(self):
+        params = _base_params(state="absent", credential_id="pk1")
+        with (
+            self._patch_existing("pk2"),
+            patch("warpgate_public_key_credential.get_user", return_value=object()),
+            patch(
+                "warpgate_public_key_credential.delete_public_key_credential"
+            ) as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert result["changed"] is False
+
     def test_delete_credential(self):
         params = _base_params(state="absent", credential_id="pk1")
-        with patch(
-            "warpgate_public_key_credential.delete_public_key_credential"
-        ) as mock_del:
+        with (
+            self._patch_existing("pk1"),
+            patch(
+                "warpgate_public_key_credential.delete_public_key_credential"
+            ) as mock_del,
+        ):
             result, mod = _run_module(params)
         mock_del.assert_called_once()
         assert result["changed"] is True
@@ -186,9 +210,31 @@ class TestPublicKeyCredentialDelete:
 
     def test_delete_check_mode(self):
         params = _base_params(state="absent", credential_id="pk1")
-        with patch(
-            "warpgate_public_key_credential.delete_public_key_credential"
-        ) as mock_del:
+        with (
+            self._patch_existing("pk1"),
+            patch(
+                "warpgate_public_key_credential.delete_public_key_credential"
+            ) as mock_del,
+        ):
+            result, mod = _run_module(params, check_mode=True)
+        mock_del.assert_not_called()
+        assert result["changed"] is True
+
+
+class TestPublicKeyCredentialDeleteCase:
+    def test_credential_id_match_ignores_case(self):
+        params = _base_params(state="absent", credential_id="PK1")
+        with (
+            patch(
+                "warpgate_public_key_credential.get_public_key_credentials",
+                return_value=[
+                    PublicKeyCredential(id="pk1", label="x", openssh_public_key="k")
+                ],
+            ),
+            patch(
+                "warpgate_public_key_credential.delete_public_key_credential"
+            ) as mock_del,
+        ):
             result, mod = _run_module(params, check_mode=True)
         mock_del.assert_not_called()
         assert result["changed"] is True

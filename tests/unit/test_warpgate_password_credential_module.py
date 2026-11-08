@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import warpgate_password_credential
+from warpgate_client.client import WarpgateAPIError
 from warpgate_client.credential import PasswordCredential
 
 # ---------------------------------------------------------------------------
@@ -115,6 +116,67 @@ class TestPasswordCredentialCreate:
         assert result["changed"] is True
         assert result["diff"]["before"]["password_credentials_count"] == 1
 
+    def test_always_keeps_old_password_when_new_one_is_rejected(self):
+        params = _base_params(update_password="always")
+        with (
+            patch(
+                "warpgate_password_credential.get_password_credentials",
+                return_value=[PasswordCredential(id="c1")],
+            ),
+            patch(
+                "warpgate_password_credential.delete_password_credential"
+            ) as mock_del,
+            patch(
+                "warpgate_password_credential.add_password_credential",
+                side_effect=WarpgateAPIError(400, "rejected"),
+            ),
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert "rejected" in result["msg"]
+
+    def test_always_adds_before_deleting(self):
+        calls = []
+        params = _base_params(update_password="always")
+        with (
+            patch(
+                "warpgate_password_credential.get_password_credentials",
+                return_value=[PasswordCredential(id="c1")],
+            ),
+            patch(
+                "warpgate_password_credential.delete_password_credential",
+                side_effect=lambda *a: calls.append("delete"),
+            ),
+            patch(
+                "warpgate_password_credential.add_password_credential",
+                side_effect=lambda *a: (
+                    calls.append("add") or PasswordCredential(id="c2")
+                ),
+            ),
+        ):
+            result, mod = _run_module(params)
+        assert calls == ["add", "delete"]
+
+    def test_always_delete_error_fails(self):
+        params = _base_params(update_password="always")
+        with (
+            patch(
+                "warpgate_password_credential.get_password_credentials",
+                return_value=[PasswordCredential(id="c1")],
+            ),
+            patch(
+                "warpgate_password_credential.delete_password_credential",
+                side_effect=WarpgateAPIError(500, "boom"),
+            ),
+            patch(
+                "warpgate_password_credential.add_password_credential",
+                return_value=PasswordCredential(id="c2"),
+            ),
+        ):
+            result, mod = _run_module(params)
+        assert "boom" in result["msg"]
+        assert result["changed"] is True
+
     def test_create_check_mode(self):
         params = _base_params()
         with (
@@ -134,11 +196,20 @@ class TestPasswordCredentialCreate:
 
 
 class TestPasswordCredentialDelete:
+    def _patch_existing(self, *ids):
+        return patch(
+            "warpgate_password_credential.get_password_credentials",
+            return_value=[PasswordCredential(id=i) for i in ids],
+        )
+
     def test_delete_credential(self):
         params = _base_params(state="absent", credential_id="c1", password=None)
-        with patch(
-            "warpgate_password_credential.delete_password_credential"
-        ) as mock_del:
+        with (
+            self._patch_existing("c1"),
+            patch(
+                "warpgate_password_credential.delete_password_credential"
+            ) as mock_del,
+        ):
             result, mod = _run_module(params)
         mock_del.assert_called_once()
         assert result["changed"] is True
@@ -147,9 +218,67 @@ class TestPasswordCredentialDelete:
 
     def test_delete_check_mode(self):
         params = _base_params(state="absent", credential_id="c1", password=None)
-        with patch(
-            "warpgate_password_credential.delete_password_credential"
-        ) as mock_del:
+        with (
+            self._patch_existing("c1"),
+            patch(
+                "warpgate_password_credential.delete_password_credential"
+            ) as mock_del,
+        ):
             result, mod = _run_module(params, check_mode=True)
         mock_del.assert_not_called()
+        assert result["changed"] is True
+
+    def test_delete_missing_is_noop(self):
+        params = _base_params(state="absent", credential_id="c1", password=None)
+        with (
+            self._patch_existing("c2"),
+            patch("warpgate_password_credential.get_user", return_value=object()),
+            patch(
+                "warpgate_password_credential.delete_password_credential"
+            ) as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert result["changed"] is False
+
+
+class TestPasswordCredentialDeleteUnknownUser:
+    def test_unknown_user_fails(self):
+        params = _base_params(state="absent", credential_id="c1", password=None)
+        with (
+            patch(
+                "warpgate_password_credential.get_password_credentials",
+                return_value=[],
+            ),
+            patch("warpgate_password_credential.get_user", return_value=None),
+            patch(
+                "warpgate_password_credential.delete_password_credential"
+            ) as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert "not found" in result["msg"]
+
+
+class TestPasswordCredentialTransportError:
+    def test_client_error_after_add_reports_changed(self):
+        from warpgate_client.client import WarpgateClientError
+
+        params = _base_params(update_password="always")
+        with (
+            patch(
+                "warpgate_password_credential.get_password_credentials",
+                return_value=[PasswordCredential(id="c1")],
+            ),
+            patch(
+                "warpgate_password_credential.add_password_credential",
+                return_value=PasswordCredential(id="c2"),
+            ),
+            patch(
+                "warpgate_password_credential.delete_password_credential",
+                side_effect=WarpgateClientError("timeout"),
+            ),
+        ):
+            result, mod = _run_module(params)
+        assert "timeout" in result["msg"]
         assert result["changed"] is True

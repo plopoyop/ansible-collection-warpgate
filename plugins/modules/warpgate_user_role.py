@@ -218,7 +218,9 @@ def main():
         # Find the existing assignment (if any). ``get_user_roles`` returns
         # UserRoleAssignment objects since v0.23 — with id/name/expires_at.
         user_roles = get_user_roles(client, user_id)
-        existing_assignment = next((r for r in user_roles if r.id == role_id), None)
+        existing_assignment = next(
+            (r for r in user_roles if r.id.lower() == role_id.lower()), None
+        )
         current_role_ids = [r.id for r in user_roles]
 
         if state == "present":

@@ -204,3 +204,32 @@ class TestSession:
         ):
             _run_module(params, client_mock=client)
         client.logout.assert_called_once_with()
+
+
+class TestSecretBackendDeleteById:
+    def test_other_name_fails(self):
+        params = _base_params(state="absent", id="b1")
+        with (
+            patch(
+                "warpgate_secret_backend.get_secret_backend",
+                return_value=SecretBackend(id="b1", name="vault-dev"),
+            ),
+            patch("warpgate_secret_backend.delete_secret_backend") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert "vault-dev" in result["msg"]
+
+    def test_unknown_id_with_recreated_name_fails(self):
+        params = _base_params(state="absent", id="b1")
+        with (
+            patch("warpgate_secret_backend.get_secret_backend", return_value=None),
+            patch(
+                "warpgate_secret_backend.get_secret_backends",
+                return_value=[SecretBackend(id="b2", name="vault-prod")],
+            ),
+            patch("warpgate_secret_backend.delete_secret_backend") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert "b2" in result["msg"]

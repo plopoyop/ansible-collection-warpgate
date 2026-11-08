@@ -181,15 +181,16 @@ collection is returned.
     token: "{{ warpgate_api_token }}"
     username: "{{ item }}"
     state: absent
-  loop: >-
-    {{ warpgate_existing_users.users
-       | map(attribute='username')
-       | difference(warpgate_users | map(attribute='name') | list)
-       | difference(['admin']) }}
+  loop: "{{ warpgate_existing_users.users | map(attribute='username') | list }}"
+  when: >-
+    (item | lower) not in
+    ((warpgate_users | map(attribute='name') | list) + ['admin']) | map('lower') | list
 ```
 
 > Keep the account used for the API calls (and any SSO-provisioned user) out of the
 > deletion loop, otherwise the next run will lock itself out.
+> Warpgate usernames are case-insensitive: compare them in lower case, but pass the
+> username as Warpgate returns it to the module, as above.
 
 > `warpgate_target_info` masks target credentials (`password`, `token`, `private_key`),
 > HTTP header values and URL userinfo as `********`; `secret://` references are kept as is.

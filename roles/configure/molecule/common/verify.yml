@@ -550,9 +550,10 @@
     - name: "Compute the entries that are no longer declared"
       ansible.builtin.set_fact:
         _prune_users: >-
-          {{ _prune_users_before.users | map(attribute='username') | list
-             | ansible.builtin.difference((warpgate_users | map(attribute='name') | list) + [warpgate_admin_username])
-             | sort }}
+          {{ _prune_users_before.users | map(attribute='username') | map('lower')
+             | ansible.builtin.zip(_prune_users_before.users | map(attribute='username'))
+             | rejectattr('0', 'in', ((warpgate_users | map(attribute='name') | list) + [warpgate_admin_username]) | map('lower') | list)
+             | map(attribute='1') | sort }}
         _prune_targets: >-
           {{ _prune_targets_before.targets | map(attribute='name') | list
              | ansible.builtin.difference(warpgate_targets | map(attribute='name') | list)
@@ -563,7 +564,7 @@
         that:
           - "'molecule-stray-user' in _prune_users"
           - "'molecule-stray-target' in _prune_targets"
-          - "(_prune_users | ansible.builtin.intersect((warpgate_users | map(attribute='name') | list) + [warpgate_admin_username])) == []"
+          - "(_prune_users | map('lower') | ansible.builtin.intersect(((warpgate_users | map(attribute='name') | list) + [warpgate_admin_username]) | map('lower') | list)) == []"
           - "(_prune_targets | ansible.builtin.intersect(warpgate_targets | map(attribute='name') | list)) == []"
         fail_msg: >-
           Prune diff is wrong: users={{ _prune_users }} targets={{ _prune_targets }}

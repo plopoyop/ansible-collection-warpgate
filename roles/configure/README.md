@@ -214,6 +214,9 @@ warpgate_targets: []
 
 Warpgate users. Optional per-user fields (v0.23+):
 rate_limit_bytes_per_second, allowed_ip_ranges, admin_roles.
+Passwords are only set when the user has none, unless update_password is "always"
+(which also lets an explicit empty password_credentials list remove them). Leaving out
+sso_credentials or admin_roles keeps the existing ones: set [] to remove them.
 
 **_Type:_** list<br />
 

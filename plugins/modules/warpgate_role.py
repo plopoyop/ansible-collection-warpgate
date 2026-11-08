@@ -42,6 +42,7 @@ options:
     id:
         description:
             - Role ID (for update/delete operations)
+            - With O(state=absent), the deletion fails if the object found by ID is not named O(name).
         type: str
         required: false
     name:
@@ -210,7 +211,20 @@ def main():
 
         # If state=absent, delete the role
         if state == "absent":
-            if not role_id:
+            if role_id:
+                existing = get_role(client, role_id)
+                if existing is None:
+                    other_id = find_id_by_exact_name(get_roles, client, name)
+                    if other_id:
+                        module.fail_json(
+                            msg=f"Role {role_id} not found, but '{name}' exists with ID {other_id}"
+                        )
+                    role_id = None
+                elif existing.name != name:
+                    module.fail_json(
+                        msg=f"Role {role_id} is named '{existing.name}', not '{name}'"
+                    )
+            else:
                 # Search for role by name
                 role_id = find_id_by_exact_name(get_roles, client, name)
 

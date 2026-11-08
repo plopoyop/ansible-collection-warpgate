@@ -43,11 +43,14 @@ options:
     id:
         description:
             - User ID (for update/delete operations)
+            - With O(state=absent), the deletion fails if the object found by ID is not named O(username).
         type: str
         required: false
     username:
         description:
             - Username
+            - An existing user is matched exactly, else ignoring ASCII case like Warpgate on
+              SQLite (on PostgreSQL, Warpgate also ignores the case of non-ASCII letters).
         type: str
         required: true
     description:
@@ -120,6 +123,7 @@ options:
         description:
             - C(on_create) will only set passwords when the user has no existing password credentials.
             - C(always) will replace all password credentials on every run (not idempotent).
+            - With C(always), an empty O(password_credentials) list removes every password credential.
         type: str
         choices: ['on_create', 'always']
         default: on_create
@@ -131,6 +135,8 @@ options:
             - Adds missing ones, updates changed ones, removes keys not in this list
             - If an empty list is provided, all public key credentials will be removed
             - If not provided, existing credentials are left unchanged
+            - Labels must be unique. Keys are added or updated before others are removed,
+              so a rejected new key leaves the previous ones in place (and the task fails).
         type: list
         elements: dict
         required: false
@@ -307,6 +313,7 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client 
     WarpgateClient,
     WarpgateClientError,
     find_id_by_exact_name,
+    fold_username,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client import (
     resolve_role_ids as _resolve_role_ids,
@@ -362,8 +369,20 @@ def normalize_credential_policy(policy):
     return cp
 
 
+def _mark_changed(result):
+    """Record a change in the module result as soon as it happens."""
+    if result is not None:
+        result["changed"] = True
+
+
 def manage_password_credentials(
-    client, user_id, passwords, module, update_password="on_create"
+    client,
+    user_id,
+    passwords,
+    module,
+    update_password="on_create",
+    changed_before=False,
+    result=None,
 ):
     """
     Manages password credentials for a user.
@@ -374,59 +393,70 @@ def manage_password_credentials(
     * ``on_create`` (default): only set passwords when the user has **no**
       existing password credentials.  If at least one credential already
       exists, this is a no-op (``changed=False``).
-    * ``always``: delete all existing password credentials and recreate them
-      with the provided values on every run (``changed=True``).
+    * ``always``: add the provided values, then delete the existing password
+      credentials, on every run (``changed=True``). An empty list removes them.
     """
-    if not passwords:
+    if passwords is None or (not passwords and update_password != "always"):
         return False
 
-    # Try to get existing password credentials
-    existing_password_creds = []
     try:
         existing_password_creds = get_password_credentials(client, user_id)
-        module.debug(
-            f"Found {len(existing_password_creds)} existing password credentials"
-        )
     except WarpgateAPIError as e:
-        module.debug(f"Could not get existing password credentials: {e.message}")
-        existing_password_creds = None
+        module.fail_json(
+            changed=changed_before,
+            msg=f"Failed to get existing password credentials: {e.message}",
+            status_code=e.status_code,
+        )
 
-    # on_create: skip if user already has credentials
-    if update_password == "on_create":
-        if existing_password_creds:
-            module.debug("update_password=on_create and credentials exist, skipping")
-            return False
+    if not passwords and not existing_password_creds:
+        return False
 
-    # always: replace all credentials unconditionally
+    if update_password == "on_create" and existing_password_creds:
+        module.debug("update_password=on_create and credentials exist, skipping")
+        return False
+
+    changed = False
     if not module.check_mode:
-        # Delete all existing password credentials first
-        if existing_password_creds:
-            for cred in existing_password_creds:
-                if cred.id:
-                    try:
-                        delete_password_credential(client, user_id, cred.id)
-                        module.debug(f"Deleted existing password credential {cred.id}")
-                    except WarpgateAPIError as e:
-                        module.debug(
-                            f"Could not delete password credential {cred.id}: {e.message}"
-                        )
-
-        # Add the desired passwords
+        # Add before deleting so that a rejected password never leaves the
+        # user without any.
         for password in passwords:
             try:
                 add_password_credential(client, user_id, password)
-                module.debug("Added password credential")
+                changed = True
+                _mark_changed(result)
             except WarpgateAPIError as e:
                 policy_msg = format_password_policy_error(e)
                 module.fail_json(
+                    changed=changed_before or changed,
                     msg=policy_msg or f"Failed to add password credential: {e.message}",
                     status_code=e.status_code,
+                )
+
+        for cred in existing_password_creds:
+            if not cred.id:
+                continue
+            try:
+                delete_password_credential(client, user_id, cred.id)
+                changed = True
+                _mark_changed(result)
+            except WarpgateAPIError as e:
+                module.fail_json(
+                    msg=f"Failed to delete password credential {cred.id}: {e.message}",
+                    status_code=e.status_code,
+                    changed=changed_before or changed,
                 )
 
     return True
 
 
-def manage_public_key_credentials(client, user_id, desired_keys, module):
+def _public_key_part(key):
+    """Key type and data of an OpenSSH public key, without the comment."""
+    return " ".join((key or "").split()[:2])
+
+
+def manage_public_key_credentials(
+    client, user_id, desired_keys, module, changed_before=False, result=None
+):
     """
     Manages public key credentials for a user.
     Ensures the user has exactly the specified keys (adds missing, updates changed, removes extras).
@@ -442,43 +472,40 @@ def manage_public_key_credentials(client, user_id, desired_keys, module):
     managed_creds = []
 
     # Get existing public key credentials (both in normal and check mode for idempotence)
-    existing_creds = {}
     try:
         existing_list = get_public_key_credentials(client, user_id)
-        for cred in existing_list:
-            existing_creds[cred.label] = cred
-        module.debug(
-            f"Found {len(existing_creds)} existing public key credentials: {list(existing_creds.keys())}"
-        )
     except WarpgateAPIError as e:
-        # If we can't read credentials, we'll just try to add/update
-        module.debug(f"Could not get existing public key credentials: {e.message}")
-        existing_creds = {}
+        module.fail_json(
+            changed=changed_before or changed,
+            msg=f"Failed to get existing public key credentials: {e.message}",
+            status_code=e.status_code,
+        )
+    labels = [k["label"] for k in desired_keys]
+    if len(labels) != len(set(labels)):
+        module.fail_json(
+            changed=changed_before,
+            msg="public_key_credentials contains the same label several times",
+        )
 
-    # Build set of desired labels
-    desired_labels = set()
-    if desired_keys:
-        desired_labels = {key_spec["label"] for key_spec in desired_keys}
-
-    # Remove keys that are not in the desired list
-    keys_to_remove = set(existing_creds.keys()) - desired_labels
-    if keys_to_remove:
-        module.debug(f"Keys to remove: {keys_to_remove}")
-        if not module.check_mode:
-            for label in keys_to_remove:
-                try:
-                    delete_public_key_credential(
-                        client, user_id, existing_creds[label].id
-                    )
-                except WarpgateAPIError as e:
-                    module.fail_json(
-                        msg=f"Failed to delete public key credential '{label}': {e.message}",
-                        status_code=e.status_code,
-                    )
-        # Only mark as changed if we actually remove keys
-        changed = True
-    else:
-        module.debug("No keys to remove")
+    # Warpgate does not enforce unique labels: keep one credential per desired
+    # label (the matching one if any) and remove every other one.
+    desired_by_label = {k["label"]: k["public_key"] for k in desired_keys or []}
+    by_label = {}
+    for cred in existing_list:
+        by_label.setdefault(cred.label, []).append(cred)
+    existing_creds = {}
+    creds_to_remove = []
+    for label, creds in by_label.items():
+        if label not in desired_by_label:
+            creds_to_remove.extend(creds)
+            continue
+        wanted = _public_key_part(desired_by_label[label])
+        keep = next(
+            (c for c in creds if _public_key_part(c.openssh_public_key) == wanted),
+            creds[0],
+        )
+        existing_creds[label] = keep
+        creds_to_remove.extend(c for c in creds if c is not keep)
 
     # Process desired keys (add or update)
     if desired_keys:
@@ -490,39 +517,8 @@ def manage_public_key_credentials(client, user_id, desired_keys, module):
                 # Key exists, check if update is needed
                 existing_cred = existing_creds[label]
 
-                # Normalize both keys for comparison (strip whitespace and normalize line endings)
-                def _normalize_key(k):
-                    return (k or "").strip().replace("\r\n", "\n").replace("\r", "\n")
-
-                existing_key_normalized = _normalize_key(
-                    existing_cred.openssh_public_key
-                )
-                desired_key_normalized = _normalize_key(public_key)
-
-                # Extract the key part (without comment) for comparison
-                # SSH public keys format: "type keydata [comment]"
-                # The API may not return the comment, so we compare only the key part
-                def extract_key_part(key_str):
-                    """Extract the key part without comment (first two space-separated parts)"""
-                    parts = key_str.split()
-                    if len(parts) >= 2:
-                        return " ".join(parts[:2])  # type and keydata
-                    return key_str
-
-                existing_key_part = extract_key_part(existing_key_normalized)
-                desired_key_part = extract_key_part(desired_key_normalized)
-
-                module.debug(
-                    f"Comparing key '{label}': existing len={len(existing_key_part)}, "
-                    f"desired len={len(desired_key_part)}"
-                )
-                module.debug(
-                    f"Existing key part: {existing_key_part[:80] if existing_key_part else 'EMPTY'}"
-                )
-                module.debug(
-                    f"Desired key part: {desired_key_part[:80] if desired_key_part else 'EMPTY'}"
-                )
-                module.debug(f"Keys are equal: {existing_key_part == desired_key_part}")
+                existing_key_part = _public_key_part(existing_cred.openssh_public_key)
+                desired_key_part = _public_key_part(public_key)
 
                 if existing_key_part != desired_key_part:
                     # Update needed
@@ -532,6 +528,8 @@ def manage_public_key_credentials(client, user_id, desired_keys, module):
                             updated_cred = update_public_key_credential(
                                 client, user_id, existing_cred.id, label, public_key
                             )
+                            changed = True
+                            _mark_changed(result)
                             managed_creds.append(
                                 {
                                     "id": updated_cred.id,
@@ -541,6 +539,7 @@ def manage_public_key_credentials(client, user_id, desired_keys, module):
                             )
                         except WarpgateAPIError as e:
                             module.fail_json(
+                                changed=changed_before or changed,
                                 msg=f"Failed to update public key credential '{label}': {e.message}",
                                 status_code=e.status_code,
                             )
@@ -573,6 +572,8 @@ def manage_public_key_credentials(client, user_id, desired_keys, module):
                         new_cred = add_public_key_credential(
                             client, user_id, label, public_key
                         )
+                        changed = True
+                        _mark_changed(result)
                         managed_creds.append(
                             {
                                 "id": new_cred.id,
@@ -582,6 +583,7 @@ def manage_public_key_credentials(client, user_id, desired_keys, module):
                         )
                     except WarpgateAPIError as e:
                         module.fail_json(
+                            changed=changed_before or changed,
                             msg=f"Failed to add public key credential '{label}': {e.message}",
                             status_code=e.status_code,
                         )
@@ -595,10 +597,28 @@ def manage_public_key_credentials(client, user_id, desired_keys, module):
                     )
                 changed = True
 
+    # Removed last so that a rejected new key never leaves the user without any.
+    if creds_to_remove:
+        if not module.check_mode:
+            for cred in creds_to_remove:
+                try:
+                    delete_public_key_credential(client, user_id, cred.id)
+                    changed = True
+                    _mark_changed(result)
+                except WarpgateAPIError as e:
+                    module.fail_json(
+                        changed=changed_before or changed,
+                        msg=f"Failed to delete public key credential '{cred.label}': {e.message}",
+                        status_code=e.status_code,
+                    )
+        changed = True
+
     return changed, managed_creds
 
 
-def manage_sso_credentials(client, user_id, desired_creds, module):
+def manage_sso_credentials(
+    client, user_id, desired_creds, module, changed_before=False, result=None
+):
     """
     Manages SSO credentials for a user.
     Ensures the user has exactly the specified (provider, email) pairs
@@ -612,37 +632,31 @@ def manage_sso_credentials(client, user_id, desired_creds, module):
     changed = False
     managed_creds = []
 
-    existing_creds = []
     try:
         existing_creds = get_sso_credentials(client, user_id)
-        module.debug(f"Found {len(existing_creds)} existing SSO credentials")
     except WarpgateAPIError as e:
-        module.debug(f"Could not get existing SSO credentials: {e.message}")
-        existing_creds = []
+        module.fail_json(
+            changed=changed_before or changed,
+            msg=f"Failed to get existing SSO credentials: {e.message}",
+            status_code=e.status_code,
+        )
 
     # Index existing credentials by (provider, email) for deterministic matching.
     # Warpgate treats a null provider as a wildcard, so normalize "" → "" and keep it as a key.
     def _key(provider, email):
         return ((provider or "").strip(), (email or "").strip())
 
-    existing_by_key = {_key(cred.provider, cred.email): cred for cred in existing_creds}
     desired_by_key = {
         _key(spec.get("provider"), spec["email"]): spec for spec in desired_creds
     }
-
-    keys_to_remove = set(existing_by_key) - set(desired_by_key)
-    if keys_to_remove:
-        if not module.check_mode:
-            for key in keys_to_remove:
-                cred = existing_by_key[key]
-                try:
-                    delete_sso_credential(client, user_id, cred.id)
-                except WarpgateAPIError as e:
-                    module.fail_json(
-                        msg=f"Failed to delete SSO credential (provider={cred.provider}, email={cred.email}): {e.message}",
-                        status_code=e.status_code,
-                    )
-        changed = True
+    existing_by_key = {}
+    creds_to_remove = []
+    for cred in existing_creds:
+        key = _key(cred.provider, cred.email)
+        if key in desired_by_key and key not in existing_by_key:
+            existing_by_key[key] = cred
+        else:
+            creds_to_remove.append(cred)
 
     for key, spec in desired_by_key.items():
         email = spec["email"]
@@ -658,6 +672,8 @@ def manage_sso_credentials(client, user_id, desired_creds, module):
         if not module.check_mode:
             try:
                 new_cred = add_sso_credential(client, user_id, email, provider)
+                changed = True
+                _mark_changed(result)
                 managed_creds.append(
                     {
                         "id": new_cred.id,
@@ -667,6 +683,7 @@ def manage_sso_credentials(client, user_id, desired_creds, module):
                 )
             except WarpgateAPIError as e:
                 module.fail_json(
+                    changed=changed_before or changed,
                     msg=f"Failed to add SSO credential (provider={provider}, email={email}): {e.message}",
                     status_code=e.status_code,
                 )
@@ -676,10 +693,27 @@ def manage_sso_credentials(client, user_id, desired_creds, module):
             )
         changed = True
 
+    if creds_to_remove:
+        if not module.check_mode:
+            for cred in creds_to_remove:
+                try:
+                    delete_sso_credential(client, user_id, cred.id)
+                    changed = True
+                    _mark_changed(result)
+                except WarpgateAPIError as e:
+                    module.fail_json(
+                        changed=changed_before or changed,
+                        msg=f"Failed to delete SSO credential (provider={cred.provider}, email={cred.email}): {e.message}",
+                        status_code=e.status_code,
+                    )
+        changed = True
+
     return changed, managed_creds
 
 
-def manage_user_roles(client, user_id, desired_role_ids, module):
+def manage_user_roles(
+    client, user_id, desired_role_ids, module, changed_before=False, result=None
+):
     """
     Manages user roles to match the desired list exactly.
     Adds missing roles and removes roles not in the desired list.
@@ -693,22 +727,14 @@ def manage_user_roles(client, user_id, desired_role_ids, module):
 
     changed = False
 
-    # Get current user roles
-    current_roles = []
-    if not module.check_mode:
-        try:
-            current_roles = get_user_roles(client, user_id)
-        except WarpgateAPIError as e:
-            module.fail_json(
-                msg=f"Failed to get user roles: {e.message}", status_code=e.status_code
-            )
-    else:
-        # In check mode, try to get current roles to simulate properly
-        try:
-            current_roles = get_user_roles(client, user_id)
-        except WarpgateAPIError:
-            # If we can't get roles in check mode, assume empty
-            current_roles = []
+    try:
+        current_roles = get_user_roles(client, user_id)
+    except WarpgateAPIError as e:
+        module.fail_json(
+            changed=changed_before or changed,
+            msg=f"Failed to get user roles: {e.message}",
+            status_code=e.status_code,
+        )
 
     current_role_ids = set(role.id for role in current_roles)
     desired_role_ids_set = set(desired_role_ids)
@@ -720,8 +746,11 @@ def manage_user_roles(client, user_id, desired_role_ids, module):
             for role_id in roles_to_add:
                 try:
                     add_user_role(client, user_id, role_id)
+                    changed = True
+                    _mark_changed(result)
                 except WarpgateAPIError as e:
                     module.fail_json(
+                        changed=changed_before or changed,
                         msg=f"Failed to add role {role_id} to user: {e.message}",
                         status_code=e.status_code,
                     )
@@ -734,8 +763,11 @@ def manage_user_roles(client, user_id, desired_role_ids, module):
             for role_id in roles_to_remove:
                 try:
                     delete_user_role(client, user_id, role_id)
+                    changed = True
+                    _mark_changed(result)
                 except WarpgateAPIError as e:
                     module.fail_json(
+                        changed=changed_before or changed,
                         msg=f"Failed to remove role {role_id} from user: {e.message}",
                         status_code=e.status_code,
                     )
@@ -746,7 +778,9 @@ def manage_user_roles(client, user_id, desired_role_ids, module):
     return changed, final_role_ids
 
 
-def manage_user_admin_roles(client, user_id, desired_admin_role_ids, module):
+def manage_user_admin_roles(
+    client, user_id, desired_admin_role_ids, module, changed_before=False, result=None
+):
     """Ensure the user holds exactly the given admin-role IDs.
 
     ``desired_admin_role_ids`` is a list of already-resolved admin-role
@@ -760,6 +794,7 @@ def manage_user_admin_roles(client, user_id, desired_admin_role_ids, module):
         current_roles = get_user_admin_roles(client, user_id)
     except WarpgateAPIError as e:
         module.fail_json(
+            changed=changed_before or changed,
             msg=f"Failed to get user admin roles: {e.message}",
             status_code=e.status_code,
         )
@@ -775,10 +810,13 @@ def manage_user_admin_roles(client, user_id, desired_admin_role_ids, module):
             for role_id in to_add:
                 try:
                     add_user_admin_role(client, user_id, role_id)
+                    changed = True
+                    _mark_changed(result)
                 except WarpgateAPIError as e:
                     if e.status_code == 409:
                         continue  # already assigned
                     module.fail_json(
+                        changed=changed_before or changed,
                         msg=f"Failed to grant admin role {role_id}: {e.message}",
                         status_code=e.status_code,
                     )
@@ -788,8 +826,11 @@ def manage_user_admin_roles(client, user_id, desired_admin_role_ids, module):
             for role_id in to_remove:
                 try:
                     delete_user_admin_role(client, user_id, role_id)
+                    changed = True
+                    _mark_changed(result)
                 except WarpgateAPIError as e:
                     module.fail_json(
+                        changed=changed_before or changed,
                         msg=f"Failed to revoke admin role {role_id}: {e.message}",
                         status_code=e.status_code,
                     )
@@ -907,7 +948,20 @@ def main():
 
         # If state=absent, delete the user
         if state == "absent":
-            if not user_id:
+            if user_id:
+                existing = get_user(client, user_id)
+                if existing is None:
+                    other_id = find_id_by_exact_name(get_users, client, username)
+                    if other_id:
+                        module.fail_json(
+                            msg=f"User {user_id} not found, but '{username}' exists with ID {other_id}"
+                        )
+                    user_id = None
+                elif fold_username(existing.username) != fold_username(username):
+                    module.fail_json(
+                        msg=f"User {user_id} is named '{existing.username}', not '{username}'"
+                    )
+            else:
                 # Search for user by username
                 user_id = find_id_by_exact_name(get_users, client, username)
 
@@ -991,6 +1045,7 @@ def main():
                             rate_limit_bytes_per_second=rate_limit_bytes_per_second,
                             allowed_ip_ranges=allowed_ip_ranges,
                         )
+                        result["changed"] = True
                         result["id"] = updated_user.id
                         result["description"] = updated_user.description
                         result["rate_limit_bytes_per_second"] = (
@@ -1027,7 +1082,13 @@ def main():
                 # Manage credentials
                 if password_credentials is not None:
                     creds_changed = manage_password_credentials(
-                        client, user_id, password_credentials, module, update_password
+                        client,
+                        user_id,
+                        password_credentials,
+                        module,
+                        update_password,
+                        changed_before=result["changed"],
+                        result=result,
                     )
                     if creds_changed:
                         result["changed"] = True
@@ -1035,7 +1096,12 @@ def main():
                 # Manage public_key_credentials (None is treated as empty list, meaning remove all)
                 if public_key_credentials is not None:
                     creds_changed, managed_keys = manage_public_key_credentials(
-                        client, user_id, public_key_credentials, module
+                        client,
+                        user_id,
+                        public_key_credentials,
+                        module,
+                        changed_before=result["changed"],
+                        result=result,
                     )
                     if creds_changed:
                         result["changed"] = True
@@ -1059,7 +1125,12 @@ def main():
                 # Manage sso_credentials (None = leave untouched, [] = remove all)
                 if sso_credentials is not None:
                     sso_changed, managed_sso = manage_sso_credentials(
-                        client, user_id, sso_credentials, module
+                        client,
+                        user_id,
+                        sso_credentials,
+                        module,
+                        changed_before=result["changed"],
+                        result=result,
                     )
                     if sso_changed:
                         result["changed"] = True
@@ -1091,7 +1162,12 @@ def main():
                     diff_after["roles"] = resolved_role_ids
 
                     roles_changed, final_role_ids = manage_user_roles(
-                        client, user_id, resolved_role_ids, module
+                        client,
+                        user_id,
+                        resolved_role_ids,
+                        module,
+                        changed_before=result["changed"],
+                        result=result,
                     )
                     if roles_changed:
                         result["changed"] = True
@@ -1112,7 +1188,7 @@ def main():
                             client, admin_roles
                         )
                     except ValueError as e:
-                        module.fail_json(msg=str(e))
+                        module.fail_json(msg=str(e), changed=result["changed"])
 
                     try:
                         current_admin_before = get_user_admin_roles(client, user_id)
@@ -1124,7 +1200,12 @@ def main():
                     diff_after["admin_roles"] = resolved_admin_role_ids
 
                     admin_changed, final_admin_ids = manage_user_admin_roles(
-                        client, user_id, resolved_admin_role_ids, module
+                        client,
+                        user_id,
+                        resolved_admin_role_ids,
+                        module,
+                        changed_before=result["changed"],
+                        result=result,
                     )
                     if admin_changed:
                         result["changed"] = True
@@ -1144,6 +1225,7 @@ def main():
                 # Create a new user
                 if not module.check_mode:
                     new_user = create_user(client, username, description)
+                    result["changed"] = True
                     user_id = new_user.id
 
                     # POST /users only accepts username + description. Apply
@@ -1197,6 +1279,8 @@ def main():
                             password_credentials,
                             module,
                             update_password,
+                            changed_before=result["changed"],
+                            result=result,
                         )
                         if creds_changed:
                             result["changed"] = True
@@ -1204,7 +1288,12 @@ def main():
                     # Manage public_key_credentials (None is treated as empty list, meaning remove all)
                     if public_key_credentials is not None:
                         creds_changed, managed_keys = manage_public_key_credentials(
-                            client, user_id, public_key_credentials, module
+                            client,
+                            user_id,
+                            public_key_credentials,
+                            module,
+                            changed_before=result["changed"],
+                            result=result,
                         )
                         if creds_changed:
                             result["changed"] = True
@@ -1215,7 +1304,12 @@ def main():
                     # Manage sso_credentials
                     if sso_credentials is not None:
                         sso_changed, managed_sso = manage_sso_credentials(
-                            client, user_id, sso_credentials, module
+                            client,
+                            user_id,
+                            sso_credentials,
+                            module,
+                            changed_before=result["changed"],
+                            result=result,
                         )
                         if sso_changed:
                             result["changed"] = True
@@ -1228,7 +1322,12 @@ def main():
                         # Resolve role names/IDs to actual role IDs
                         resolved_role_ids = _resolve_role_ids(client, roles)
                         roles_changed, final_role_ids = manage_user_roles(
-                            client, user_id, resolved_role_ids, module
+                            client,
+                            user_id,
+                            resolved_role_ids,
+                            module,
+                            changed_before=result["changed"],
+                            result=result,
                         )
                         if roles_changed:
                             result["changed"] = True
@@ -1243,9 +1342,14 @@ def main():
                                 client, admin_roles
                             )
                         except ValueError as e:
-                            module.fail_json(msg=str(e))
+                            module.fail_json(msg=str(e), changed=result["changed"])
                         admin_changed, final_admin_ids = manage_user_admin_roles(
-                            client, user_id, resolved_admin_role_ids, module
+                            client,
+                            user_id,
+                            resolved_admin_role_ids,
+                            module,
+                            changed_before=result["changed"],
+                            result=result,
                         )
                         if admin_changed:
                             result["changed"] = True
@@ -1306,12 +1410,14 @@ def main():
 
     except WarpgateAPIError as e:
         module.fail_json(
-            msg=f"Warpgate API error: {e.message}", status_code=e.status_code
+            msg=f"Warpgate API error: {e.message}",
+            status_code=e.status_code,
+            changed=result["changed"],
         )
     except WarpgateClientError as e:
-        module.fail_json(msg=f"Warpgate client error: {e!s}")
+        module.fail_json(msg=f"Warpgate client error: {e!s}", changed=result["changed"])
     except Exception as e:
-        module.fail_json(msg=f"Unexpected error: {e!s}")
+        module.fail_json(msg=f"Unexpected error: {e!s}", changed=result["changed"])
     finally:
         if client is not None:
             client.logout()

@@ -668,6 +668,58 @@ class TestTargetModuleDelete:
             result, mod = _run_module(params)
         assert result["changed"] is False
 
+    def test_delete_lookup_error_fails(self):
+        params = _base_params(state="absent")
+        with (
+            patch(
+                "warpgate_target.get_targets",
+                side_effect=WarpgateAPIError(500, "boom"),
+            ),
+            patch("warpgate_target.delete_target") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        mod.fail_json.assert_called_once()
+        assert result.get("changed") is not True
+
+    def test_delete_by_id_with_other_name_fails(self):
+        params = _base_params(state="absent", id="t1")
+        with (
+            patch(
+                "warpgate_target.get_target",
+                return_value=Target(id="t1", name="other-target"),
+            ),
+            patch("warpgate_target.delete_target") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert "other-target" in result["msg"]
+
+    def test_delete_by_unknown_id_with_recreated_name_fails(self):
+        params = _base_params(state="absent", id="t1")
+        with (
+            patch("warpgate_target.get_target", return_value=None),
+            patch(
+                "warpgate_target.get_targets",
+                return_value=[Target(id="t2", name="prod-ssh")],
+            ),
+            patch("warpgate_target.delete_target") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert "t2" in result["msg"]
+
+    def test_delete_by_unknown_id_is_noop(self):
+        params = _base_params(state="absent", id="t1")
+        with (
+            patch("warpgate_target.get_target", return_value=None),
+            patch("warpgate_target.get_targets", return_value=[]),
+            patch("warpgate_target.delete_target") as mock_del,
+        ):
+            result, mod = _run_module(params)
+        mock_del.assert_not_called()
+        assert result["changed"] is False
+
 
 # ---------------------------------------------------------------------------
 # argument_spec: secrets nested in *_options must be no_log
@@ -900,3 +952,37 @@ class TestArgumentSpecNoLog:
         mod.fail_json = MagicMock(side_effect=SystemExit)
         opts = warpgate_target.build_target_options(mod)
         assert warpgate_target.options_equal(server_options, opts)
+
+
+class TestTargetRolesPartialFailure:
+    def test_second_role_removal_failure_reports_changed(
+        self, mock_client, mock_module
+    ):
+        result = {"changed": False}
+        with (
+            patch(
+                "warpgate_target.delete_target_role",
+                side_effect=[None, WarpgateAPIError(500, "boom")],
+            ),
+            pytest.raises(SystemExit),
+        ):
+            warpgate_target.manage_target_roles(
+                mock_client,
+                "t1",
+                [],
+                mock_module,
+                current_role_ids_from_target=["r1", "r2"],
+                result=result,
+            )
+        assert result["changed"] is True
+        assert mock_module.fail_json.call_args.kwargs["changed"] is True
+
+    def test_role_listing_404_fails(self, mock_client, mock_module):
+        with (
+            patch(
+                "warpgate_target.get_target_roles",
+                side_effect=WarpgateAPIError(404, "gone"),
+            ),
+            pytest.raises(SystemExit),
+        ):
+            warpgate_target.manage_target_roles(mock_client, "t1", [], mock_module)

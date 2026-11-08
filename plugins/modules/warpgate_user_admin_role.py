@@ -111,6 +111,9 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client 
     WarpgateClient,
     WarpgateClientError,
 )
+from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.user import (
+    get_user,
+)
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.admin_role import (
     add_user_admin_role,
     delete_user_admin_role,
@@ -168,7 +171,10 @@ def main():
             module.fail_json(msg=str(e))
 
         current = [r.id for r in get_user_admin_roles(client, user_id)]
-        assigned = admin_role_id in current
+        # Warpgate lists no admin role for an unknown user.
+        if not current and get_user(client, user_id) is None:
+            module.fail_json(msg=f"User with ID {user_id} not found")
+        assigned = admin_role_id.lower() in {r.lower() for r in current}
 
         result = {
             "changed": False,

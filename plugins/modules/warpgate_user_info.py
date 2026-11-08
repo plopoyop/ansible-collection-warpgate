@@ -44,7 +44,7 @@ options:
         required: false
     username:
         description:
-            - Return only the user whose username matches exactly.
+            - Return only the user with this username (exact match, else a unique match ignoring ASCII case).
             - Returns an empty list when no user matches.
             - Mutually exclusive with C(search).
         type: str

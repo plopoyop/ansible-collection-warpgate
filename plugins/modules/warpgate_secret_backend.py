@@ -48,6 +48,7 @@ options:
     id:
         description:
             - Secret backend ID (for update/delete operations).
+            - With O(state=absent), the deletion fails if the object found by ID is not named O(name).
         type: str
         required: false
     name:
@@ -290,6 +291,16 @@ def main():
                 backend_id = existing.id
 
         if state == "absent":
+            if backend_id and not existing:
+                other = find_by_exact_name(get_secret_backends, client, name)
+                if other:
+                    module.fail_json(
+                        msg=f"Secret backend {backend_id} not found, but '{name}' exists with ID {other.id}"
+                    )
+            if existing and backend_id and existing.name != name:
+                module.fail_json(
+                    msg=f"Secret backend {backend_id} is named '{existing.name}', not '{name}'"
+                )
             if not existing:
                 module.exit_json(**result)
             if not module.check_mode:

@@ -19,8 +19,8 @@ description:
       idempotence behavior depends on C(update_password).
       With C(on_create) (default), state=present is a no-op when the user
       already has at least one password credential.
-      With C(always), existing credentials are deleted and re-created on
-      every run."
+      With C(always), the password is added, then the existing credentials
+      are deleted, on every run."
 
 version_added: "1.0.0"
 
@@ -65,7 +65,7 @@ options:
     update_password:
         description:
             - C(on_create) will only set the password if the user has no existing password credential (default).
-            - C(always) will delete existing password credentials and re-create with the provided password.
+            - C(always) will add the provided password, then delete the existing password credentials.
         type: str
         choices: ['on_create', 'always']
         default: on_create
@@ -124,6 +124,9 @@ from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client 
     WarpgateAPIError,
     WarpgateClient,
     WarpgateClientError,
+)
+from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.user import (
+    get_user,
 )
 from ansible_collections.plopoyop.warpgate.plugins.module_utils.warpgate_client.credential import (
     add_password_credential,
@@ -194,6 +197,14 @@ def main():
         )
 
         if state == "absent":
+            existing_ids = {
+                c.id.lower() for c in get_password_credentials(client, user_id)
+            }
+            if credential_id.lower() not in existing_ids:
+                # Warpgate lists no credentials for an unknown user.
+                if get_user(client, user_id) is None:
+                    module.fail_json(msg=f"User with ID {user_id} not found")
+                module.exit_json(**result)
             if not module.check_mode:
                 delete_password_credential(client, user_id, credential_id)
             result["changed"] = True
@@ -215,12 +226,8 @@ def main():
                 # on_create with no creds, or always: (re)create
                 existing_count = len(existing_creds)
                 if not module.check_mode:
-                    # Delete existing credentials when update_password=always
-                    if update_password == "always" and existing_creds:
-                        for cred in existing_creds:
-                            if cred.id:
-                                delete_password_credential(client, user_id, cred.id)
-
+                    # Add before deleting so that a rejected password never
+                    # leaves the user without any.
                     try:
                         cred = add_password_credential(client, user_id, password)
                     except WarpgateAPIError as e:
@@ -228,6 +235,19 @@ def main():
                         if policy_msg:
                             module.fail_json(msg=policy_msg, status_code=e.status_code)
                         raise
+                    result["changed"] = True
+                    if update_password == "always":
+                        for old in existing_creds:
+                            if not old.id:
+                                continue
+                            try:
+                                delete_password_credential(client, user_id, old.id)
+                            except WarpgateAPIError as e:
+                                module.fail_json(
+                                    msg=f"Failed to delete password credential {old.id}: {e.message}",
+                                    status_code=e.status_code,
+                                    changed=True,
+                                )
                     result["id"] = f"{user_id}:{cred.id}"
                     result["credential_id"] = cred.id
                 else:
@@ -246,12 +266,14 @@ def main():
 
     except WarpgateAPIError as e:
         module.fail_json(
-            msg=f"Warpgate API error: {e.message}", status_code=e.status_code
+            msg=f"Warpgate API error: {e.message}",
+            status_code=e.status_code,
+            changed=result["changed"],
         )
     except WarpgateClientError as e:
-        module.fail_json(msg=f"Warpgate client error: {e!s}")
+        module.fail_json(msg=f"Warpgate client error: {e!s}", changed=result["changed"])
     except Exception as e:
-        module.fail_json(msg=f"Unexpected error: {e!s}")
+        module.fail_json(msg=f"Unexpected error: {e!s}", changed=result["changed"])
     finally:
         if client is not None:
             client.logout()
