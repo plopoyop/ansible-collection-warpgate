@@ -304,7 +304,7 @@ class TestManagePublicKeyCredentials:
             patch("warpgate_user.get_public_key_credentials", return_value=[existing]),
             patch("warpgate_user.delete_public_key_credential") as mock_del,
         ):
-            changed, _ = warpgate_user.manage_public_key_credentials(
+            changed, _result = warpgate_user.manage_public_key_credentials(
                 mock_client,
                 "u1",
                 [],
@@ -328,7 +328,7 @@ class TestManagePublicKeyCredentials:
     def test_key_comparison_ignores_whitespace(self, mock_client, mock_module):
         existing = self._make_pk("pk1", "laptop", "  ssh-ed25519 AAAA...  \r\n")
         with patch("warpgate_user.get_public_key_credentials", return_value=[existing]):
-            changed, _ = warpgate_user.manage_public_key_credentials(
+            changed, _result = warpgate_user.manage_public_key_credentials(
                 mock_client,
                 "u1",
                 [{"label": "laptop", "public_key": "ssh-ed25519 AAAA..."}],
@@ -433,7 +433,7 @@ class TestManageSsoCredentials:
                 "warpgate_user.add_sso_credential", return_value=new_cred
             ) as mock_add,
         ):
-            changed, _ = warpgate_user.manage_sso_credentials(
+            changed, _result = warpgate_user.manage_sso_credentials(
                 mock_client,
                 "u1",
                 [{"email": "new@example.com", "provider": "microsoft"}],
@@ -454,7 +454,7 @@ class TestManageSsoCredentials:
                 "warpgate_user.add_sso_credential", return_value=new_cred
             ) as mock_add,
         ):
-            changed, _ = warpgate_user.manage_sso_credentials(
+            changed, _result = warpgate_user.manage_sso_credentials(
                 mock_client, "u1", [{"email": "user@example.com"}], mock_module
             )
         assert changed is True
@@ -561,7 +561,7 @@ class TestManageUserRoles:
             patch("warpgate_user.add_user_role") as mock_add,
             patch("warpgate_user.delete_user_role") as mock_del,
         ):
-            changed, _ = warpgate_user.manage_user_roles(
+            changed, _result = warpgate_user.manage_user_roles(
                 mock_client, "u1", ["r2"], mock_module
             )
         assert changed is True
@@ -595,7 +595,7 @@ class TestDuplicateCredentials:
             patch("warpgate_user.get_public_key_credentials", return_value=existing),
             patch("warpgate_user.delete_public_key_credential") as mock_del,
         ):
-            changed, _ = warpgate_user.manage_public_key_credentials(
+            changed, _result = warpgate_user.manage_public_key_credentials(
                 mock_client, "u1", [], mock_module
             )
         assert changed is True
@@ -632,7 +632,7 @@ class TestDuplicateCredentials:
             patch("warpgate_user.delete_sso_credential") as mock_del,
             patch("warpgate_user.add_sso_credential") as mock_add,
         ):
-            changed, _ = warpgate_user.manage_sso_credentials(
+            changed, _result = warpgate_user.manage_sso_credentials(
                 mock_client,
                 "u1",
                 [{"email": "a@example.com", "provider": "google"}],

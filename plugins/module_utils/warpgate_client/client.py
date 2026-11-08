@@ -103,7 +103,7 @@ def _secret_forms(secret: str) -> set[str]:
     forms = {secret, escaped, escaped.replace("&#x27;", "&#39;"), repr(secret)[1:-1]}
     for ensure_ascii in (True, False):
         form = secret
-        for _ in range(3):
+        for _level in range(3):
             form = json.dumps(form, ensure_ascii=ensure_ascii)[1:-1]
             forms.add(form)
             forms.add(
@@ -143,7 +143,7 @@ def _mask_json(value: Any, secrets: list[str], forms: list[str]) -> Any:
 
 
 def _unique_keys(pairs: list) -> dict:
-    keys = [k for k, _ in pairs]
+    keys = [key for key, _value in pairs]
     if len(set(keys)) != len(keys):
         raise ValueError("Duplicate key")
     return dict(pairs)
@@ -176,7 +176,7 @@ def _error_body(error: HTTPError, secrets: set[str] = frozenset()) -> tuple[str,
         parsed = None
     if parsed is None:
         for secret in secrets:
-            for quoted in {json.dumps(secret), json.dumps(secret, ensure_ascii=False)}:
+            for quoted in (json.dumps(secret), json.dumps(secret, ensure_ascii=False)):
                 body = body.replace(quoted, f'"{MASK}"')
     # Also masks the secrets found in JSON keys.
     body = _mask_text(body, forms)
@@ -304,7 +304,7 @@ class WarpgateClient:
             host = f"https://{host}"
         try:
             parts = urllib.parse.urlsplit(host)
-            _ = parts.port  # raises on an invalid port
+            _port = parts.port  # raises on an invalid port
         except ValueError:
             parts = None
         # Refused without quoting the host, which may hold credentials.

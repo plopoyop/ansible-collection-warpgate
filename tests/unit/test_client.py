@@ -267,7 +267,7 @@ class TestRedirects:
         c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="secret")
         with pytest.raises(WarpgateClientError, match="Refusing to follow a redirect"):
             c._request("GET", "/x")
-        assert all(port != other.server_port for port, _, _ in _Handler.seen)
+        assert all(port != other.server_port for port, _path, _token in _Handler.seen)
 
     def test_same_origin_redirect_is_followed(self, servers):
         api = servers({"/api/new": (200, {}, b'{"ok": true}')})
@@ -278,7 +278,7 @@ class TestRedirects:
         )
         c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="secret")
         assert c._request("GET", "/old") == {"ok": True}
-        assert ("/api/new", "secret") in [(p, t) for _, p, t in _Handler.seen]
+        assert ("/api/new", "secret") in [(p, t) for _port, p, t in _Handler.seen]
 
 
 class TestErrorsAndLimits:
@@ -381,7 +381,7 @@ class TestRedirectOrigins:
         )
         with pytest.raises(WarpgateClientError, match="Refusing to follow a redirect"):
             c._request("GET", "/users")
-        assert all(port != other.server_port for port, _, _ in _Handler.seen)
+        assert all(port != other.server_port for port, _path, _token in _Handler.seen)
 
 
 class TestErrorBodyBytes:
@@ -455,7 +455,7 @@ class _RawServer:
         threading.Thread(target=self._serve, daemon=True).start()
 
     def _serve(self):
-        conn, _ = self.sock.accept()
+        conn, _addr = self.sock.accept()
         with conn:
             request = b""
             while b"\r\n\r\n" not in request:
