@@ -6,7 +6,7 @@
     "git@2.56.0",
     "go-task@3.53.1",
     "podman@6.1.4",
-    "prek@0.5.5",
+    "prek@0.5.7",
     "python313Packages.ansible@14.4.0",
     "python313Packages.molecule@26.8.0",
     "python313Packages.molecule-plugins@25.8.12",
