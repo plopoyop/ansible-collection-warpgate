@@ -6,35 +6,53 @@ on:
     types:
       - released
 
+permissions:
+  contents: "read"
+
 jobs:
-  deploy:
+  publish:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
-
-      - name: Deploy the collection
-        uses: artis3n/ansible_galaxy_collection@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          api_key: ${{ secrets.GALAXY_TOKEN }}
-          galaxy_version: ${{ github.event.release.tag_name }}
+          persist-credentials: false
 
-      - uses: actions/checkout@v7
-        with:
-          ref: main
+      - name: Install ansible-core
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install "ansible-core==2.20.3"
 
-      - name: update galaxy.yml with new version
-        uses: microsoft/variable-substitution@v1
-        with:
-          files: 'galaxy.yml'
+      - name: Build and publish the collection
         env:
-          version: "${{ github.event.release.tag_name }}"
+          VERSION: "${{ github.event.release.tag_name }}"
+          ANSIBLE_GALAXY_SERVER_LIST: "release_galaxy"
+          ANSIBLE_GALAXY_SERVER_RELEASE_GALAXY_URL: "https://galaxy.ansible.com/"
+          ANSIBLE_GALAXY_SERVER_RELEASE_GALAXY_TOKEN: "${{ secrets.GALAXY_TOKEN }}"
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid version: $VERSION"; exit 1; }
+          sed -i "s/^version: .*/version: ${VERSION}/" galaxy.yml
+          "$RUNNER_TEMP/venv/bin/ansible-galaxy" collection build ./
+          "$RUNNER_TEMP/venv/bin/ansible-galaxy" collection publish "plopoyop-warpgate-${VERSION}.tar.gz"
 
-      - name: push galaxy.yml
-        uses: github-actions-x/commit@v2.9
+  bump-version:
+    needs: publish
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: "write"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          push-branch: 'main'
-          commit-message: 'update galaxy.yml with new version'
-          force-add: 'true'
-          files: galaxy.yml
-          name: CI
+          ref: "main"
+
+      - name: Update galaxy.yml with the new version
+        env:
+          VERSION: "${{ github.event.release.tag_name }}"
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid version: $VERSION"; exit 1; }
+          sed -i "s/^version: .*/version: ${VERSION}/" galaxy.yml
+          git add galaxy.yml
+          git diff --cached --quiet && exit 0
+          git -c user.name=CI -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "update galaxy.yml with new version"
+          git pull --rebase origin main
+          git push origin HEAD:main

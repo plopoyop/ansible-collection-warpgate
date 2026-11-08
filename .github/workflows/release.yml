@@ -7,63 +7,75 @@ on:
     branches:
       - main
 
+permissions:
+  contents: "read"
+
+concurrency:
+  group: "release-${{ github.ref }}"
+  cancel-in-progress: false
+
 jobs:
   generate_changelog:
     name: create release draft
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-26.04
+    permissions:
+      contents: "write"
+      issues: "read"
+      pull-requests: "read"
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: 'Get Previous tag'
         id: previoustag
-        uses: "WyriHaximus/github-action-get-previous-tag@master"
+        uses: WyriHaximus/github-action-get-previous-tag@83f26fea93bc7efcbca2eb5591f5eaaf66b8f206 # v2.1.0
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: calculate next version
         id: version
-        uses: patrickjahns/version-drafter-action@v1
+        uses: patrickjahns/version-drafter-action@2076fa43abb28f31d0e8b0890253fbd1d1a966fc # v1.3.1
         with:
           config-name: version-drafter.yml
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Generate changelog
-        uses: janheinrichmerker/action-github-changelog-generator@v2.4
+        uses: janheinrichmerker/action-github-changelog-generator@e60b5a2bd9fcd88dadf6345ff8327863fb8b490f # v2.4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           configureSections: '{"features": {"prefix":"## 🚀 New Features","labels":["feature", "enhancement", "improvements"]}, "bugs": {"prefix":"## 🐛 Bug Fixes","labels":["fix", "bug", "bugfix"]}, "tests": {"prefix":"## 🧪 Tests","labels":["test"]}, "documentation": {"prefix":"## 📖 Documentation Updates","labels":["docs", "documentation", "doc"]}, "dependency": {"prefix":"## ⚙️ Dependencies","labels":["dependency"]}}'
           futureRelease: ${{ steps.version.outputs.next-version }}
 
       - name: push changelog
-        uses: github-actions-x/commit@v2.9
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          push-branch: 'main'
-          commit-message: 'update changelog'
-          force-add: 'true'
-          files: CHANGELOG.md
-          name: CI
+        run: |
+          git add -f CHANGELOG.md
+          git diff --cached --quiet && exit 0
+          git -c user.name=CI -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -m "update changelog"
+          git push origin HEAD:main
 
       - name: Generate changelog for the release
+        env:
+          PREVIOUS_TAG: "${{ steps.previoustag.outputs.tag }}"
         run: |
-          sed '/## \[${{ steps.previoustag.outputs.tag }}\]/Q' CHANGELOG.md > CHANGELOGRELEASE.md
+          sed "/## \\[${PREVIOUS_TAG}\\]/Q" CHANGELOG.md > CHANGELOGRELEASE.md
 
       - name: Read CHANGELOG.md
         id: package
-        uses: juliangruber/read-file-action@v1
+        uses: juliangruber/read-file-action@271ff311a4947af354c6abcd696a306553b9ec18 # v1.1.8
         with:
           path: ./CHANGELOGRELEASE.md
 
       - name: Delete old drafts
-        uses: hugo19941994/delete-draft-releases@v3.0.0
+        uses: hugo19941994/delete-draft-releases@3f19a25abf2ce87850c2268938f98f14e4d3d1f1 # v3.0.0
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Create Release draft
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           name: ${{ steps.version.outputs.next-version }}
           tag_name: ${{ steps.version.outputs.next-version }}
