@@ -1,5 +1,6 @@
 """Tests for WarpgateClient initialisation and URL helpers."""
 
+import json
 import socket
 import threading
 from http.client import IncompleteRead
@@ -9,11 +10,13 @@ from urllib.error import HTTPError, URLError
 from urllib.request import HTTPSHandler, Request
 
 import pytest
+from warpgate_client.credential import format_password_policy_error
 from warpgate_client.client import (
     WarpgateAPIError,
     WarpgateClient,
     WarpgateClientError,
     _error_body,
+    _secret_values,
     _SameOriginRedirectHandler,
     _short,
     _user_api_base,
@@ -534,6 +537,19 @@ class TestResponseEdgeCases:
             WarpgateClient("https://host", token="t")._request("GET", "/x")
         assert sizes and all(0 < n <= 1024 * 1024 for n in sizes)
 
+    def test_login_error_does_not_echo_the_body(self, servers):
+        api = servers(
+            {"/@warpgate/api/auth/login": (401, {}, b'{"password": "S3cr\\"et"}')}
+        )
+        c = WarpgateClient(
+            f"http://127.0.0.1:{api.server_port}/@warpgate/admin/api",
+            username="u",
+            password='S3cr"et',
+        )
+        with pytest.raises(WarpgateClientError) as exc:
+            c._request("GET", "/users")
+        assert str(exc.value) == "Login failed: HTTP 401"
+
     def test_logout_error_response_is_closed(self):
         fp = MagicMock()
         error = HTTPError("https://host/x", 500, "Error", {}, fp)
@@ -542,6 +558,16 @@ class TestResponseEdgeCases:
             c = WarpgateClient("https://host", username="u", password="p")
             c._session_cookie = "s=1"
             c.logout()
+        fp.close.assert_called_once()
+
+    def test_login_error_response_is_closed(self):
+        fp = MagicMock()
+        error = HTTPError("https://host/x", 401, "Unauthorized", {}, fp)
+        with patch("warpgate_client.client.build_opener") as mock_build:
+            mock_build.return_value.open.side_effect = error
+            c = WarpgateClient("https://host", username="u", password="p")
+            with pytest.raises(WarpgateClientError):
+                c._login()
         fp.close.assert_called_once()
 
 
@@ -581,11 +607,11 @@ class TestNetworkErrors:
         error.__enter__ = MagicMock(return_value=error)
         error.__exit__ = MagicMock(return_value=False)
         _error_body(error)
-        error.read.assert_called_once_with(1000 + 1)
+        error.read.assert_called_once_with(64 * 1024 + 1)
 
     def test_error_without_body_does_not_report_the_reason(self):
         error = HTTPError("https://h/x", 502, "echo S3cretPass", {}, None)
-        assert _error_body(error) == ""
+        assert _error_body(error) == ("", None)
 
     @pytest.mark.parametrize(
         "exc",
@@ -601,7 +627,7 @@ class TestNetworkErrors:
         error.read.side_effect = exc
         error.__enter__ = MagicMock(return_value=error)
         error.__exit__ = MagicMock(return_value=False)
-        assert _error_body(error).startswith("<unreadable error body: ")
+        assert _error_body(error)[0].startswith("<unreadable error body: ")
 
     @pytest.mark.parametrize(
         "token", ["abc\n", "abc\r", "a\x00b", "abc\u200bxyz", "\ufeffabc", "abcé"]
@@ -645,3 +671,300 @@ class TestLoginNetworkErrors:
     def test_error_messages_do_not_embed_encoded_strings(self):
         error = UnicodeEncodeError("latin-1", "SECRETTOKEN\u200bxyz", 11, 12, "x")
         assert "SECRETTOKEN" not in _short(error)
+
+
+class TestEchoedSecrets:
+    @pytest.mark.parametrize(
+        "echo",
+        [
+            'S3cr"et€',
+            'S3cr\\"et\\u20ac',
+            'S3cr\\"et€',
+        ],
+    )
+    def test_secret_echoed_by_the_server_is_masked(self, servers, echo):
+        api = servers(
+            {"/api/x": (400, {}, f'{{"error": "bad", "echo": "{echo}"}}'.encode())}
+        )
+        c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="t")
+        with pytest.raises(WarpgateAPIError) as exc:
+            c._request("GET", "/x", {"name": "web", "auth": {"password": 'S3cr"et€'}})
+        assert "S3cr" not in exc.value.message
+        assert "********" in exc.value.message
+
+    def test_non_secret_values_are_kept(self, servers):
+        api = servers({"/api/x": (409, {}, b'{"error": "target web already exists"}')})
+        c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="t")
+        with pytest.raises(WarpgateAPIError) as exc:
+            c._request("GET", "/x", {"name": "web", "token": "tok-123"})
+        assert "target web already exists" in exc.value.message
+
+    def test_secret_cut_by_the_limit_is_masked(self, servers):
+        secret = "SECRET-" + "z" * 40
+        body = ("x" * 990 + secret).encode()
+        api = servers({"/api/x": (400, {}, body)})
+        c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="t")
+        with pytest.raises(WarpgateAPIError) as exc:
+            c._request("GET", "/x", {"private_key": secret})
+        assert "SECRET" not in exc.value.message
+
+    @pytest.mark.parametrize("password", ["s", "ing", "a", "Short", '"', ",", "\\"])
+    def test_short_password_keeps_the_policy_error_readable(self, servers, password):
+        body = b'["TooShort","MissingUppercase","MissingDigit","MissingSpecial"]'
+        api = servers({"/api/x": (422, {}, body)})
+        c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="t")
+        with pytest.raises(WarpgateAPIError) as exc:
+            c._request("POST", "/x", {"password": password})
+        assert json.loads(exc.value.message) == json.loads(body)
+        assert format_password_policy_error(exc.value).count(", ") == 3
+
+    @pytest.mark.parametrize("password", ["MissingDigit", "TooShort"])
+    def test_policy_error_does_not_reveal_a_password_named_like_a_violation(
+        self, servers, password
+    ):
+        api = servers({"/api/x": (422, {}, b'["MissingDigit","TooShort"]')})
+        c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="t")
+        with pytest.raises(WarpgateAPIError) as exc:
+            c._request("POST", "/x", {"password": password})
+        assert password not in exc.value.message
+        assert format_password_policy_error(exc.value) == (
+            "Password rejected by the server password policy: "
+            "missing a digit, password is too short"
+        )
+        assert password not in str(exc.value)
+
+    def test_short_secret_echoed_as_json_string_is_masked(self, servers):
+        api = servers({"/api/x": (400, {}, b'{"password": "ab", "name": "abc"}')})
+        c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token="t")
+        with pytest.raises(WarpgateAPIError) as exc:
+            c._request("POST", "/x", {"password": "ab", "name": "abc"})
+        assert exc.value.message == '{"password": "********", "name": "abc"}'
+
+
+class TestSecretValues:
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {"password": "v"},
+            {"auth": {"kind": "Password", "password": "v"}},
+            {"auth": {"token": "v"}},
+            {"auth": {"private_key": "v"}},
+            {"auth": {"secret_id": "v"}},
+            {"secret_key": "v"},
+            {"recordings_storage": {"secret_access_key": "v"}},
+            {"options": {"headers": {"Authorization": "v"}}},
+            {"options": {"headers": {"X-Api-Key": "v"}}},
+            {"options": {"headers": {"X-Hub-Signature": "v"}}},
+            {"options": {"url": "https://u:v@host/"}},
+            {"keys": [{"password": "v"}]},
+            {"password": {"nested": "v"}},
+            {"options": {"cluster_url": "https://u:v@host/"}},
+            {"options": {"url": "https://%76:@host/"}, "x": "y"},
+        ],
+    )
+    def test_secret_is_collected(self, body):
+        assert "v" in _secret_values(body)
+
+    def test_url_userinfo_is_collected(self):
+        assert _secret_values({"url": "https://u:p%40ss@host/"}) == {
+            "u",
+            "p%40ss",
+            "p@ss",
+        }
+        assert _secret_values({"url": "https://ghp_tok@host/"}) == {"ghp_tok"}
+
+    def test_numeric_secret_is_collected(self):
+        assert _secret_values({"password": 12345678}) == {"12345678"}
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {"password_login_mode": "Disabled"},
+            {"password_policy": {"min_length": 8}},
+            {"name": "web", "kind": "Password"},
+            {"options": {"url": "https://host/"}},
+            {"options": {"url": "http://[bad"}},
+            {"password": ""},
+            {"secret": True},
+        ],
+    )
+    def test_non_secret_is_ignored(self, body):
+        assert _secret_values(body) == set()
+
+
+def _echo(servers, body, payload, token="t"):
+    api = servers({"/api/x": (400, {}, body.encode())})
+    c = WarpgateClient(f"http://127.0.0.1:{api.server_port}/api", token=token)
+    with pytest.raises(WarpgateAPIError) as exc:
+        c._request("POST", "/x", payload)
+    return exc.value
+
+
+KEY = '-----BEGIN TEST KEY-----\nAAAAB3Nza\u00e9"x\n-----END-----'
+
+
+class TestEchoForms:
+    def test_request_quoted_in_a_json_string_is_masked(self, servers):
+        inner = json.dumps({"secret_key": KEY})
+        error = _echo(servers, json.dumps({"request": inner}), {"secret_key": KEY})
+        assert "AAAAB3" not in error.message
+
+    def test_request_quoted_twice_in_a_non_json_body_is_masked(self, servers):
+        inner = json.dumps(json.dumps({"secret_key": KEY}))
+        error = _echo(servers, f"<pre>{inner}</pre>", {"secret_key": KEY})
+        assert "AAAAB3" not in error.message
+
+    @pytest.mark.parametrize("ensure_ascii", [True, False])
+    def test_escaped_long_secret_in_a_non_json_body_is_masked(
+        self, servers, ensure_ascii
+    ):
+        echo = json.dumps(KEY, ensure_ascii=ensure_ascii)[1:-1]
+        error = _echo(servers, f"<html>{echo}</html>", {"secret_key": KEY})
+        assert "AAAAB3" not in error.message
+
+    def test_secret_escaped_three_times_is_masked(self, servers):
+        echo = json.dumps(json.dumps(json.dumps({"password": 'Pa"ss-long'})))
+        error = _echo(servers, f"<pre>{echo}</pre>", {"password": 'Pa"ss-long'})
+        assert "ss-long" not in error.message
+
+    def test_large_body_is_marked_truncated_even_when_masking_shortens_it(
+        self, servers
+    ):
+        secret = "S3cret-" + "x" * 4089
+        error = _echo(servers, secret * 17, {"password": secret})
+        assert len(error.message) < 1000
+        assert error.message.endswith("... (truncated)")
+
+    def test_html_escaped_secret_is_masked(self, servers):
+        error = _echo(
+            servers, "<p>S3cr&amp;t&lt;pass&gt;</p>", {"password": "S3cr&t<pass>"}
+        )
+        assert "S3cr" not in error.message
+
+    def test_long_secret_inside_a_json_string_is_masked(self, servers):
+        body = json.dumps({"error": "invalid password Sup3rSecret! given"})
+        error = _echo(servers, body, {"password": "Sup3rSecret!"})
+        assert "Sup3r" not in error.message
+        assert "invalid password" in error.message
+
+    def test_escaped_short_secret_inside_a_json_string_is_masked(self, servers):
+        body = json.dumps({"error": 'invalid password p"\\1 given'})
+        error = _echo(servers, body, {"password": 'p"\\1'})
+        assert 'p\\"' not in error.message
+        assert "invalid password" in error.message
+
+    def test_short_secret_quoted_in_a_non_json_body_is_masked(self, servers):
+        error = _echo(servers, 'bad request: "ab"', {"password": "ab"})
+        assert error.message == 'bad request: "********"'
+
+    def test_nested_secrets_are_masked_longest_first(self, servers):
+        error = _echo(
+            servers,
+            "abcdefgh123 abcdefgh",
+            {"password": "abcdefgh", "token": "abcdefgh123"},
+        )
+        assert error.message == "******** ********"
+
+    def test_json_keys_are_kept_for_short_secrets(self, servers):
+        error = _echo(servers, '{"name": "ab"}', {"password": "name"})
+        assert error.message == '{"name": "ab"}'
+
+    def test_short_secret_in_a_reserialized_body_is_masked(self, servers):
+        body = json.dumps({"t": "LongSecret-123", "msg": 'bad pw p"w1 é'})
+        error = _echo(servers, body, {"token": "LongSecret-123", "password": 'p"w1'})
+        assert error.message == '{"t": "********", "msg": "bad pw ******** é"}'
+
+    def test_python_repr_form_is_masked(self, servers):
+        secret = 'it\'s "both" secret'
+        error = _echo(servers, f"got {{'password': {secret!r}}}", {"password": secret})
+        assert "both" not in error.message
+
+    def test_one_char_secret_does_not_mask_escaped_quotes(self, servers):
+        body = '{"msg": "bad \\"quote\\" here"}'
+        error = _echo(servers, body, {"password": '"'})
+        assert error.message == body
+
+    def test_php_escaped_secret_is_masked(self, servers):
+        echo = json.dumps(json.dumps({"password": "p/assword-long"})).replace(
+            "/", "\\/"
+        )
+        error = _echo(servers, f"<pre>{echo}</pre>", {"password": "p/assword-long"})
+        assert "-long" not in error.message
+
+    def test_long_secret_in_an_escaped_json_key_is_masked(self, servers):
+        body = '{"pass\\u002dsecret\\u002dlong": "x"}'
+        error = _echo(servers, body, {"password": "pass-secret-long"})
+        assert "secret" not in error.message
+
+    def test_login_password_echoed_by_the_api_is_masked(self, servers):
+        api = servers({"/api/x": (400, {}, b"bad credentials Adm1nPassw0rd")})
+        c = WarpgateClient(
+            f"http://127.0.0.1:{api.server_port}/api",
+            username="u",
+            password="Adm1nPassw0rd",
+        )
+        c._session_cookie = "warpgate-http-session=s"
+        with pytest.raises(WarpgateAPIError) as exc:
+            c._request("GET", "/x")
+        assert exc.value.message == "bad credentials ********"
+
+    def test_lone_surrogate_is_replaced(self, servers):
+        error = _echo(servers, '{"error": "bad \\ud83d value"}', {"password": "ab"})
+        error.message.encode("utf-8")
+
+    def test_long_secret_used_as_a_json_key_is_masked(self, servers):
+        error = _echo(
+            servers, '{"S3cretPassw0rd": "x"}', {"password": "S3cretPassw0rd"}
+        )
+        assert "S3cret" not in error.message
+
+    def test_secret_hidden_by_a_duplicate_key_is_masked(self, servers):
+        error = _echo(servers, '{"a": "ab", "a": "x"}', {"password": "ab"})
+        assert error.message == '{"a": "********", "a": "x"}'
+
+    @pytest.mark.parametrize(
+        ("secret", "echo"),
+        [
+            ("a&b<c>dPassword", "a\\u0026b\\u003cc\\u003edPassword"),
+            ("it's-a-Password", "it&#39;s-a-Password"),
+        ],
+    )
+    def test_go_and_html_entity_forms_are_masked(self, servers, secret, echo):
+        error = _echo(servers, f"<p>{echo}</p>", {"password": secret})
+        assert "Password" not in error.message
+
+    def test_deeply_nested_error_body_keeps_the_api_error(self, servers):
+        error = _echo(servers, "[" * 60000, {"password": "ab"})
+        assert error.status_code == 400
+
+    def test_session_cookie_is_masked(self, servers):
+        api = servers(
+            {"/api/x": (400, {}, b"Cookie: warpgate-http-session=sess-value-123")}
+        )
+        c = WarpgateClient(
+            f"http://127.0.0.1:{api.server_port}/api", username="u", password="p"
+        )
+        c._session_cookie = "warpgate-http-session=sess-value-123"
+        with pytest.raises(WarpgateAPIError) as exc:
+            c._request("GET", "/x")
+        assert "sess-value" not in exc.value.message
+
+    def test_session_cookie_value_alone_is_masked(self, servers):
+        api = servers({"/api/x": (400, {}, b"unknown session sess-value-123")})
+        c = WarpgateClient(
+            f"http://127.0.0.1:{api.server_port}/api", username="u", password="p"
+        )
+        c._session_cookie = "warpgate-http-session=sess-value-123"
+        with pytest.raises(WarpgateAPIError) as exc:
+            c._request("GET", "/x")
+        assert exc.value.message == "unknown session ********"
+
+    def test_escaped_form_is_masked_whole(self, servers):
+        error = _echo(servers, "key: abcdefg\\\\", {"password": "abcdefg\\"})
+        assert error.message == "key: ********"
+
+    def test_token_is_masked(self, servers):
+        error = _echo(
+            servers, "X-Warpgate-Token: tok-abcdef-123", None, token="tok-abcdef-123"
+        )
+        assert "tok-abcdef" not in error.message

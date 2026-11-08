@@ -29,13 +29,20 @@ def format_password_policy_error(error: WarpgateAPIError) -> str | None:
     """
     if getattr(error, "status_code", None) != 422:
         return None
-    try:
-        violations = json.loads(error.message)
-    except (TypeError, ValueError):
-        return None
+    violations = getattr(error, "details", None)
+    if violations is None:
+        try:
+            violations = json.loads(error.message)
+        except (TypeError, ValueError):
+            return None
     if not isinstance(violations, list) or not violations:
         return None
-    labels = [PASSWORD_POLICY_VIOLATION_LABELS.get(str(v), str(v)) for v in violations]
+    # The body is not masked here: only report known variants.
+    if not all(
+        isinstance(v, str) and v in PASSWORD_POLICY_VIOLATION_LABELS for v in violations
+    ):
+        return None
+    labels = [PASSWORD_POLICY_VIOLATION_LABELS[v] for v in violations]
     return "Password rejected by the server password policy: " + ", ".join(labels)
 
 

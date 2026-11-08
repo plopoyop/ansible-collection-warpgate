@@ -4,8 +4,10 @@ Base client for the Warpgate API
 This module provides the core HTTP client functionality for interacting with the Warpgate API.
 """
 
+import html
 import http.client
 import json
+import re
 import ssl
 import urllib.parse
 from typing import Any
@@ -20,6 +22,8 @@ MAX_RESPONSE_BYTES = 64 * 1024 * 1024
 READ_CHUNK_BYTES = 1024 * 1024
 # Server error bodies are reported in module messages: keep them short.
 MAX_ERROR_BODY_BYTES = 1000
+# Read a bit more than reported so that a secret cut by the limit is still masked.
+MAX_ERROR_SCAN_BYTES = 64 * 1024
 
 
 def _user_api_base(admin_base: str) -> str:
@@ -40,16 +44,135 @@ def path_segment(value: Any) -> str:
     return urllib.parse.quote(segment, safe="")
 
 
-def _error_body(error: HTTPError) -> str:
+_SECRET_KEY = re.compile(
+    r"(^|_)(password|token|secret|secret_id|secret_key|secret_access_key|private_key)$",
+    re.IGNORECASE,
+)
+# Shorter secrets are not searched as raw substrings: that would garble
+# messages (e.g. the password policy variants) and give the secret away.
+MIN_MASKED_SUBSTRING = 8
+# Escaped forms of a shorter secret are only masked from this length on, so
+# that a one-character secret does not mask every escaped quote.
+MIN_MASKED_FORM = 4
+MASK = "********"
+
+
+def _url_credentials(url: str) -> set[str]:
+    try:
+        parts = urllib.parse.urlsplit(url)
+        userinfo = {parts.username, parts.password} if "@" in parts.netloc else set()
+    except ValueError:
+        return set()
+    return {v for u in userinfo if u for v in (u, urllib.parse.unquote(u))}
+
+
+def _secret_values(value: Any, secret: bool = False, key: str = "") -> set[str]:
+    """Values held under secret-looking keys of a request body, and the
+    userinfo of its URLs."""
+    if isinstance(value, dict):
+        found = set()
+        for k, item in value.items():
+            k = str(k)
+            hidden = secret or key == "headers" or bool(_SECRET_KEY.search(k))
+            found |= _secret_values(item, hidden, k)
+        return found
+    if isinstance(value, list):
+        return set().union(*(_secret_values(item, secret, key) for item in value))
+    if secret and isinstance(value, (str, int, float)) and not isinstance(value, bool):
+        return {str(value)} if str(value) else set()
+    if isinstance(value, str) and key.lower().endswith("url"):
+        return _url_credentials(value)
+    return set()
+
+
+def _secret_forms(secret: str) -> set[str]:
+    """Forms of a secret echoed by a server: raw, JSON-escaped once or more
+    (a request quoted inside a JSON string, as Python, Go or PHP encode it),
+    Python repr and HTML-escaped."""
+    escaped = html.escape(secret)
+    forms = {secret, escaped, escaped.replace("&#x27;", "&#39;"), repr(secret)[1:-1]}
+    for ensure_ascii in (True, False):
+        form = secret
+        for _ in range(3):
+            form = json.dumps(form, ensure_ascii=ensure_ascii)[1:-1]
+            forms.add(form)
+            forms.add(
+                form.replace("&", "\\u0026")
+                .replace("<", "\\u003c")
+                .replace(">", "\\u003e")
+            )
+            forms.add(form.replace("/", "\\/"))
+    if len(secret) < MIN_MASKED_SUBSTRING:
+        forms = {f for f in forms if f != secret and len(f) >= MIN_MASKED_FORM}
+    return forms
+
+
+def _masked_forms(secrets: list[str]) -> list[str]:
+    """Forms to replace, longest secret first, then longest form first."""
+    return [
+        form
+        for secret in secrets
+        for form in sorted(_secret_forms(secret), key=len, reverse=True)
+    ]
+
+
+def _mask_text(text: str, forms: list[str]) -> str:
+    for form in forms:
+        text = text.replace(form, MASK)
+    return text
+
+
+def _mask_json(value: Any, secrets: list[str], forms: list[str]) -> Any:
+    if isinstance(value, dict):
+        return {k: _mask_json(v, secrets, forms) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_mask_json(item, secrets, forms) for item in value]
+    if isinstance(value, str):
+        return MASK if value in secrets else _mask_text(value, forms)
+    return value
+
+
+def _unique_keys(pairs: list) -> dict:
+    keys = [k for k, _ in pairs]
+    if len(set(keys)) != len(keys):
+        raise ValueError("Duplicate key")
+    return dict(pairs)
+
+
+def _error_body(error: HTTPError, secrets: set[str] = frozenset()) -> tuple[str, Any]:
+    """Bounded error body with the request's secrets masked, in case the server
+    echoes the request in a form no_log would not catch, and the unmasked
+    parsed JSON body (None if not JSON)."""
     try:
         with error:
-            raw = error.read(MAX_ERROR_BODY_BYTES + 1)
+            raw = error.read(MAX_ERROR_SCAN_BYTES + 1)
     except (http.client.HTTPException, OSError, ValueError) as exc:
-        return f"<unreadable error body: {_short(exc)}>"
-    body = raw[:MAX_ERROR_BODY_BYTES].decode("utf-8", errors="replace")
-    if len(raw) > MAX_ERROR_BODY_BYTES:
-        body += "... (truncated)"
-    return body
+        return f"<unreadable error body: {_short(exc)}>", None
+    body = raw.decode("utf-8", errors="replace")
+    secrets = sorted(secrets, key=len, reverse=True)
+    forms = _masked_forms(secrets)
+    try:
+        # Duplicate keys would hide a value from the parsed body.
+        parsed = json.loads(body, object_pairs_hook=_unique_keys)
+        masked = _mask_json(parsed, secrets, forms)
+        # Re-serialized even when unchanged, so the text pass sees keys and
+        # nested strings in a canonical form.
+        body = (
+            json.dumps(masked, ensure_ascii=False)
+            .encode("utf-8", errors="replace")
+            .decode("utf-8")
+        )
+    except (ValueError, RecursionError):
+        parsed = None
+    if parsed is None:
+        for secret in secrets:
+            for quoted in {json.dumps(secret), json.dumps(secret, ensure_ascii=False)}:
+                body = body.replace(quoted, f'"{MASK}"')
+    # Also masks the secrets found in JSON keys.
+    body = _mask_text(body, forms)
+    if len(raw) > MAX_ERROR_SCAN_BYTES or len(body) > MAX_ERROR_BODY_BYTES:
+        body = body[:MAX_ERROR_BODY_BYTES] + "... (truncated)"
+    return body, parsed
 
 
 def _bounded(text: str) -> str:
@@ -97,9 +220,11 @@ class WarpgateClientError(Exception):
 class WarpgateAPIError(WarpgateClientError):
     """Exception for Warpgate API errors"""
 
-    def __init__(self, status_code: int, message: str):
+    def __init__(self, status_code: int, message: str, details: Any = None):
         self.status_code = status_code
         self.message = message
+        # Unmasked parsed body, for callers that interpret it; never reported.
+        self.details = details
         super().__init__(f"API request failed with status {status_code}: {message}")
 
 
@@ -220,7 +345,8 @@ class WarpgateClient:
                     )
                 self._session_cookie = set_cookie.split(";")[0].strip()
         except HTTPError as e:
-            raise WarpgateClientError(f"Login failed: {e.code} {_error_body(e)}")
+            e.close()
+            raise WarpgateClientError(f"Login failed: HTTP {e.code}")
         except URLError as e:
             raise WarpgateClientError(
                 f"Login request failed: {_bounded(str(e.reason))}"
@@ -307,7 +433,13 @@ class WarpgateClient:
                 return json.loads(response_body)
 
         except HTTPError as e:
-            raise WarpgateAPIError(e.code, _error_body(e))
+            secrets = _secret_values(body)
+            secrets |= {
+                v for v in (self._token, self._password, self._session_cookie) if v
+            }
+            if self._session_cookie and "=" in self._session_cookie:
+                secrets.add(self._session_cookie.split("=", 1)[1])
+            raise WarpgateAPIError(e.code, *_error_body(e, secrets))
         except URLError as e:
             raise WarpgateClientError(f"Request failed: {e.reason}")
         except json.JSONDecodeError as e:
