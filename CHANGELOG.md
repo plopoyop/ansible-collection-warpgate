@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.0.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/3.0.0) (2026-11-08)
+## [3.0.0](https://github.com/plopoyop/ansible-collection-warpgate/tree/3.0.0) (2026-11-12)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/2.4.0...3.0.0)
 
@@ -14,6 +14,8 @@
 
 ## ⚙️ Dependencies
 
+- feat\(ci\): update jetify-com/devbox-install-action action \(v0.15.0 → v0.16.0\) [\#180](https://github.com/plopoyop/ansible-collection-warpgate/pull/180) ([plopoyop](https://github.com/plopoyop))
+- fix\(ci\): update renovatebot/github-action action \(v46.3.12 → v46.3.13\) [\#179](https://github.com/plopoyop/ansible-collection-warpgate/pull/179) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.17.3 → v0.17.4\) [\#173](https://github.com/plopoyop/ansible-collection-warpgate/pull/173) ([plopoyop](https://github.com/plopoyop))
 - fix\(ci\): update renovatebot/github-action action \(v46.3.11 → v46.3.12\) [\#172](https://github.com/plopoyop/ansible-collection-warpgate/pull/172) ([plopoyop](https://github.com/plopoyop))
 - fix\(deps\): update warp-tech/warpgate \(v0.30.2 → v0.30.4\) [\#170](https://github.com/plopoyop/ansible-collection-warpgate/pull/170) ([plopoyop](https://github.com/plopoyop))
