@@ -268,41 +268,41 @@
         }
       }
     },
-    "prek@0.5.7": {
-      "last_modified": "2026-10-30T07:30:20Z",
-      "resolved": "github:NixOS/nixpkgs/885ba4d038f10c3d17d7a92e8c3cc185b99c9158#prek",
+    "prek@0.5.10": {
+      "last_modified": "2026-11-11T14:42:58Z",
+      "resolved": "github:NixOS/nixpkgs/9397dcb09c9598a33509fbc0cce699bd4e6c84d5#prek",
       "source": "devbox-search",
-      "version": "0.5.7",
+      "version": "0.5.10",
       "systems": {
         "aarch64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/zz95l80h2ig1wi9nh3pxk5pzr2pcmjby-prek-0.5.7",
+              "path": "/nix/store/6pm5spmwvz7dny2h0lpyjgslmx7lhy32-prek-0.5.10",
               "default": true
             }
           ],
-          "store_path": "/nix/store/zz95l80h2ig1wi9nh3pxk5pzr2pcmjby-prek-0.5.7"
+          "store_path": "/nix/store/6pm5spmwvz7dny2h0lpyjgslmx7lhy32-prek-0.5.10"
         },
         "aarch64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/kjr1x1gw2fw23xv87cfwx6vi3vab9ygl-prek-0.5.7",
+              "path": "/nix/store/y950210rhfi28jkcg4hjx3f6rab755xp-prek-0.5.10",
               "default": true
             }
           ],
-          "store_path": "/nix/store/kjr1x1gw2fw23xv87cfwx6vi3vab9ygl-prek-0.5.7"
+          "store_path": "/nix/store/y950210rhfi28jkcg4hjx3f6rab755xp-prek-0.5.10"
         },
         "x86_64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/hfp4if46g9ms3z68ma90mmkn43mkz1iz-prek-0.5.7",
+              "path": "/nix/store/0h7crssrl7jvf3v8wa7bqjx4pa9i164w-prek-0.5.10",
               "default": true
             }
           ],
-          "store_path": "/nix/store/hfp4if46g9ms3z68ma90mmkn43mkz1iz-prek-0.5.7"
+          "store_path": "/nix/store/0h7crssrl7jvf3v8wa7bqjx4pa9i164w-prek-0.5.10"
         }
       }
     },
