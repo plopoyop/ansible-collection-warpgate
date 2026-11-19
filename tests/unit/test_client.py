@@ -156,6 +156,48 @@ class TestClientRequest:
 
 
 # ---------------------------------------------------------------------------
+# WarpgateClient._request — transient database errors (SQLite lock)
+# ---------------------------------------------------------------------------
+
+
+class TestTransientDatabaseErrorRetry:
+    @patch("warpgate_client.client.time.sleep")
+    def test_retries_then_succeeds(self, mock_sleep):
+        c = WarpgateClient("https://host", token="t")
+        locked = WarpgateAPIError(500, "database error (reference: abc)")
+        with patch.object(
+            c, "_request_once", side_effect=[locked, locked, {"ok": True}]
+        ) as once:
+            assert c._request("DELETE", "/targets/x") == {"ok": True}
+        assert once.call_count == 3
+        assert [call.args[0] for call in mock_sleep.call_args_list] == [0.5, 1]
+
+    @patch("warpgate_client.client.time.sleep")
+    def test_gives_up_after_the_last_retry(self, mock_sleep):
+        c = WarpgateClient("https://host", token="t")
+        locked = WarpgateAPIError(500, "database error (reference: abc)")
+        with patch.object(c, "_request_once", side_effect=locked) as once:
+            with pytest.raises(WarpgateAPIError):
+                c._request("DELETE", "/targets/x")
+        assert once.call_count == 4
+        assert mock_sleep.call_count == 3
+
+    @patch("warpgate_client.client.time.sleep")
+    def test_other_errors_are_not_retried(self, mock_sleep):
+        c = WarpgateClient("https://host", token="t")
+        for error in (
+            WarpgateAPIError(500, "internal error"),
+            WarpgateAPIError(409, "database error"),
+            WarpgateAPIError(404, "not found"),
+        ):
+            with patch.object(c, "_request_once", side_effect=error) as once:
+                with pytest.raises(WarpgateAPIError):
+                    c._request("GET", "/x")
+            assert once.call_count == 1
+        mock_sleep.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
 # WarpgateClient.logout
 # ---------------------------------------------------------------------------
 

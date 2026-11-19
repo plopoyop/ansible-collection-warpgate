@@ -11,6 +11,7 @@ import http.client
 import json
 import re
 import ssl
+import time
 import urllib.parse
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -223,6 +224,15 @@ def _origin(url: str) -> tuple:
     return parts.scheme, parts.hostname or "", parts.port or default_port
 
 
+# Seconds to wait before each retry of a request failing with a transient
+# database error (see WarpgateClient._request).
+DATABASE_ERROR_RETRY_DELAYS = (0.5, 1, 2)
+
+
+def _is_transient_database_error(error: "WarpgateAPIError") -> bool:
+    return error.status_code == 500 and str(error.message).startswith("database error")
+
+
 class WarpgateClientError(Exception):
     """Base exception for Warpgate client errors"""
 
@@ -415,7 +425,28 @@ class WarpgateClient:
         self, method: str, path: str, body: dict[str, Any] | None = None
     ) -> Any:
         """
-        Performs an HTTP request to the Warpgate API
+        Performs an HTTP request to the Warpgate API, retried on transient
+        database errors.
+
+        Warpgate stores its state in SQLite without waiting for locks: a write
+        racing another one fails with HTTP 500 "database error" ("database is
+        locked" in the server log). The failed statement is rolled back, so
+        the request is retried a few times with a short backoff.
+        """
+        for delay in DATABASE_ERROR_RETRY_DELAYS:
+            try:
+                return self._request_once(method, path, body)
+            except WarpgateAPIError as e:
+                if not _is_transient_database_error(e):
+                    raise
+            time.sleep(delay)
+        return self._request_once(method, path, body)
+
+    def _request_once(
+        self, method: str, path: str, body: dict[str, Any] | None = None
+    ) -> Any:
+        """
+        Performs one HTTP request to the Warpgate API
 
         Args:
             method: HTTP method (GET, POST, PUT, DELETE)
