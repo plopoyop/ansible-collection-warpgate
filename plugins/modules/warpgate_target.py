@@ -585,8 +585,9 @@ def build_target_options(module):
             },
         }
 
-        if http_options.get("headers"):
-            options["headers"] = http_options["headers"]
+        # Always sent: Warpgate rejects an Http target without a headers map
+        # ("missing field `headers`"); an empty dict means no extra headers.
+        options["headers"] = dict(http_options.get("headers") or {})
         if http_options.get("external_host"):
             options["external_host"] = http_options["external_host"]
 

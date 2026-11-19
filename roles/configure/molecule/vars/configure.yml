@@ -96,3 +96,24 @@ warpgate_targets:
       allow_insecure_algos: false
       password_auth:
         password: "testpassword"
+  # Http target without headers: Warpgate requires the headers map anyway.
+  - name: "web-no-headers"
+    description: "HTTP target without extra headers"
+    roles:
+      - "ops"
+    http_options:
+      url: "http://127.0.0.1:9999"
+      tls:
+        mode: "Disabled"
+        verify: false
+  - name: "web-with-headers"
+    description: "HTTP target with an extra header"
+    roles:
+      - "ops"
+    http_options:
+      url: "https://127.0.0.1:9998"
+      tls:
+        mode: "Preferred"
+        verify: false
+      headers:
+        X-Forwarded-Proto: "https"
