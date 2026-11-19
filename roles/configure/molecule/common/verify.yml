@@ -234,6 +234,14 @@
       loop_control:
         label: "{{ item.name }}"
 
+    - name: "Assert HTTP target headers"
+      ansible.builtin.assert:
+        that:
+          - (_verify_targets.json | selectattr('name', 'equalto', 'web-no-headers') | first).options.kind == "Http"
+          - (_verify_targets.json | selectattr('name', 'equalto', 'web-no-headers') | first).options.headers | default({}, true) == {}
+          - (_verify_targets.json | selectattr('name', 'equalto', 'web-with-headers') | first).options.headers['X-Forwarded-Proto'] == 'https'
+        quiet: true
+
     - name: "Assert target rate_limit_bytes_per_second when configured"
       ansible.builtin.assert:
         that:
