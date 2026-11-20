@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.0.2](https://github.com/plopoyop/ansible-collection-warpgate/tree/3.0.2) (2026-11-20)
+
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/3.0.1...3.0.2)
+
+## ⚙️ Dependencies
+
+- fix\(deps\): update warp-tech/warpgate \(v0.30.4 → v0.30.6\) [\#189](https://github.com/plopoyop/ansible-collection-warpgate/pull/189) ([plopoyop](https://github.com/plopoyop))
+- fix\(deps\): update pre-commit hook astral-sh/ruff-pre-commit \(v0.17.5 → v0.17.6\) [\#188](https://github.com/plopoyop/ansible-collection-warpgate/pull/188) ([plopoyop](https://github.com/plopoyop))
+
 ## [3.0.1](https://github.com/plopoyop/ansible-collection-warpgate/tree/3.0.1) (2026-11-19)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/3.0.0...3.0.1)
