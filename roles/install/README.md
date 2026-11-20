@@ -1045,7 +1045,7 @@ warpgate version to install
 #### Default value
 
 ```YAML
-warpgate_version: 0.30.4
+warpgate_version: 0.30.6
 ```
 
 ### warpgate_vnc_certificate

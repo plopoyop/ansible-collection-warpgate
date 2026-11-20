@@ -16,7 +16,7 @@ warpgate_system_group: "warpgate"
 # @var warpgate_version:type: string
 # @var warpgate_version:description: >
 # warpgate version to install
-warpgate_version: 0.30.4
+warpgate_version: 0.30.6
 
 # @var warpgate_checksum
 # @var warpgate_checksum:type: string
