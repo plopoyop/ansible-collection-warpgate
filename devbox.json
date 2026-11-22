@@ -13,7 +13,7 @@
     "python313Packages.pytest@9.1.1",
     "python313Packages.pytest-ansible@26.6.0",
     "python313Packages.ruff@0.17.4",
-    "yamllint@1.37.1"
+    "yamllint@1.38.0"
   ],
   "env": {
       "DEVBOX_VIRTUAL_ENV": "${DEVBOX_PROJECT_ROOT}/.devbox/virtenv",
