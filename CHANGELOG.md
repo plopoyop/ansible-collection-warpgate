@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.0.3](https://github.com/plopoyop/ansible-collection-warpgate/tree/3.0.3) (2026-11-24)
+
+[Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/3.0.2...3.0.3)
+
+**Merged pull requests:**
+
+- fix\(deps\): update prek \(0.5.10 → 0.5.11\) [\#191](https://github.com/plopoyop/ansible-collection-warpgate/pull/191) ([plopoyop](https://github.com/plopoyop))
+
 ## [3.0.2](https://github.com/plopoyop/ansible-collection-warpgate/tree/3.0.2) (2026-11-22)
 
 [Full Changelog](https://github.com/plopoyop/ansible-collection-warpgate/compare/3.0.1...3.0.2)
